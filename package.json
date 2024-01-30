@@ -28,6 +28,7 @@
   },
   "homepage": "https://github.com/versatiles-org/node-versatiles/blob/main/versatiles-release-tool/README.md",
   "devDependencies": {
+    "@types/inquirer": "^9.0.7",
     "@types/jest": "^29.5.11",
     "@types/node": "^20.11.10",
     "@typescript-eslint/eslint-plugin": "^6.20.0",
@@ -41,6 +42,7 @@
   },
   "dependencies": {
     "commander": "^11.1.0",
+    "inquirer": "^9.2.13",
     "remark": "^15.0.1",
     "remark-gfm": "^4.0.0",
     "typedoc": "^0.25.7"
