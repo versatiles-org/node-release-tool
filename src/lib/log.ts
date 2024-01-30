@@ -10,7 +10,8 @@ export function info(text: string): void {
 }
 
 export function abort(): void {
-	info('abort'); process.exit();
+	info('abort');
+	process.exit();
 }
 
 export async function check<T>(message: string, promise: Promise<T>): Promise<T> {
