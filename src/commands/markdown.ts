@@ -1,7 +1,7 @@
 import type { Heading, Root, RootContent, PhrasingContent } from 'mdast';
 import { remark } from 'remark';
 import remarkGfm from 'remark-gfm';
-import { getErrorMessage } from './utils.js';
+import { getErrorMessage } from '../lib/utils.js';
 
 /**
  * Injects a Markdown segment under a specified heading in a Markdown document.

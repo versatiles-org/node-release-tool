@@ -2,21 +2,21 @@
 import { jest } from '@jest/globals';
 import type { Command } from 'commander';
 
-jest.unstable_mockModule('./lib/typedoc.js', () => ({
+jest.unstable_mockModule('./commands/typedoc.js', () => ({
 	generateTsMarkdownDoc: jest.fn<typeof generateTsMarkdownDoc>().mockResolvedValue('generateTsMarkdownDoc'),
 }));
-const { generateTsMarkdownDoc } = await import('./lib/typedoc.js');
+const { generateTsMarkdownDoc } = await import('./commands/typedoc.js');
 
-jest.unstable_mockModule('./lib/command.js', () => ({
+jest.unstable_mockModule('./commands/command.js', () => ({
 	generateCommandDocumentation: jest.fn<typeof generateCommandDocumentation>().mockResolvedValue('generateCommandDocumentation'),
 }));
-const { generateCommandDocumentation } = await import('./lib/command.js');
+const { generateCommandDocumentation } = await import('./commands/command.js');
 
-jest.unstable_mockModule('./lib/markdown.js', () => ({
+jest.unstable_mockModule('./commands/markdown.js', () => ({
 	injectMarkdown: jest.fn<typeof injectMarkdown>().mockReturnValue('injectMarkdown'),
 	updateTOC: jest.fn<typeof updateTOC>().mockReturnValue('updateTOC'),
 }));
-const { injectMarkdown, updateTOC } = await import('./lib/markdown.js');
+const { injectMarkdown, updateTOC } = await import('./commands/markdown.js');
 
 jest.unstable_mockModule('node:fs', () => ({
 	existsSync: jest.fn<typeof existsSync>().mockReturnValue(true),

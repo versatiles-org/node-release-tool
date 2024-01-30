@@ -2,11 +2,11 @@
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { generateTsMarkdownDoc } from './lib/typedoc.js';
-import { injectMarkdown, updateTOC } from './lib/markdown.js';
+import { generateTsMarkdownDoc } from './commands/typedoc.js';
+import { injectMarkdown, updateTOC } from './commands/markdown.js';
 import { Command, InvalidArgumentError } from 'commander';
 import { cwd } from 'node:process';
-import { generateCommandDocumentation } from './lib/command.js';
+import { generateCommandDocumentation } from './commands/command.js';
 
 
 export const program = new Command();

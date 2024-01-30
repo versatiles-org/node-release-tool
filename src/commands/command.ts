@@ -1,5 +1,5 @@
 import cp from 'child_process';
-import { getErrorMessage } from './utils.js';
+import { getErrorMessage } from '../lib/utils.js';
 
 /**
  * Generates documentation for a CLI command and its subcommands.
