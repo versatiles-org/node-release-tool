@@ -2,7 +2,10 @@
 export function getErrorMessage(error: unknown): string {
 	if (error == null) return 'unknown';
 	if (typeof error === 'object') {
-		if ('message' in error) return String(error.message);
+		if ('message' in error) {
+			if (typeof error.message === 'string') return error.message;
+			return JSON.stringify(error.message);
+		}
 	}
 	return 'unknown';
 }
