@@ -6,7 +6,7 @@ export interface Commit {
 }
 
 export function Git(cwd: string): {
-	getLastGitHubTag: () => Promise<{ sha: string; version: string; }>;
+	getLastGitHubTag: () => Promise<{ sha: string; version: string; } | undefined>;
 	getCurrentGitHubCommit: () => Promise<Commit>;
 	getCommitsBetween: (shaLast: string, shaCurrent: string) => Promise<Commit[]>;
 } {
@@ -18,7 +18,7 @@ export function Git(cwd: string): {
 		getCommitsBetween
 	}
 
-	async function getLastGitHubTag(): Promise<{ sha: string; version: string }> {
+	async function getLastGitHubTag(): Promise<{ sha: string; version: string } | undefined> {
 		const commits: Commit[] = await getAllCommits();
 
 		const result = commits
@@ -27,8 +27,6 @@ export function Git(cwd: string): {
 				version: commit.tag?.match(/^v(\d+\.\d+\.\d+)$/)?.[1],
 			}))
 			.find(r => r.version) as { sha: string; version: string } | undefined;
-
-		if (!result) throw Error();
 
 		return result;
 	}
