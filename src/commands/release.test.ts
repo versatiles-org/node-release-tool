@@ -13,7 +13,7 @@ jest.unstable_mockModule('node:fs', () => ({
 jest.unstable_mockModule('../lib/log.js', () => ({
 	check: jest.fn(),
 	info: jest.fn(),
-	panic: jest.fn(() => { throw Error() }),
+	panic: jest.fn((message: string) => { throw message }),
 	warn: jest.fn(),
 }));
 jest.unstable_mockModule('../lib/shell.js', () => ({
@@ -31,8 +31,6 @@ const { getGit } = await import('../lib/git.js');
 const { release } = await import('./release.js');
 
 describe('release function', () => {
-	const directory = '/test/directory';
-	const branch = 'main';
 	let mockGit: { getCommitsBetween: any; getCurrentGitHubCommit: any; getLastGitHubTag: any; };
 	let mockShell: { run: any; stdout: any; stderr: any; ok: any; };
 
@@ -54,7 +52,7 @@ describe('release function', () => {
 			}),
 			ok: jest.fn(async (command: string): Promise<boolean> => true),
 		};
-		jest.mocked(getShell).mockReturnValue(mockShell);
+		jest.mocked(getShell).mockClear().mockReturnValue(mockShell);
 
 		mockGit = {
 			getCommitsBetween: jest.fn(async () => [
@@ -68,19 +66,19 @@ describe('release function', () => {
 				sha: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', version: '1.0.1',
 			})),
 		}
-		jest.mocked(getGit).mockReturnValue(mockGit);
+		jest.mocked(getGit).mockClear().mockReturnValue(mockGit);
 
-		jest.mocked(readFileSync).mockReturnValue(JSON.stringify({ version: '1.0.0', scripts: { build: '', doc: '', lint: '', test: '' } }));
+		jest.mocked(readFileSync).mockClear().mockReturnValue(JSON.stringify({ version: '1.0.0', scripts: { build: '', doc: '', lint: '', test: '' } }));
 
-		jest.mocked(inquirer.prompt).mockResolvedValue({ versionNew: '1.1.0' });
+		jest.mocked(inquirer.prompt).mockClear().mockResolvedValue({ versionNew: '1.1.0' });
 
-		jest.mocked(check).mockImplementation(async function <T>(message: string, promise: Promise<T>): Promise<T> {
+		jest.mocked(check).mockClear().mockImplementation(async function <T>(message: string, promise: Promise<T>): Promise<T> {
 			return promise;
 		});
 	});
 
 	it('should execute the release process', async () => {
-		await release(directory, branch);
+		await release('/test/directory', 'main');
 
 		expect(jest.mocked(info).mock.calls).toStrictEqual([['starting release process'], ['Finished']]);
 		expect(jest.mocked(warn).mock.calls).toStrictEqual([['versions differ in package.json (1.0.0) and last GitHub tag (1.0.1)']]);
@@ -154,5 +152,15 @@ describe('release function', () => {
 			['git rev-parse --abbrev-ref HEAD'],
 			['git status --porcelain'],
 		]);
+	});
+
+	it('should error on wrong branch', async () => {
+		jest.mocked(readFileSync).mockReturnValue(JSON.stringify({ version: '1.0.0', scripts: { build: '', lint: '', test: '' } }));
+		await expect(release('/test/directory', 'dev')).rejects.toBe('current branch is "main" but should be "dev"');
+	});
+
+	it('should error on missing scripts in package', async () => {
+		jest.mocked(readFileSync).mockReturnValue(JSON.stringify({ version: '1.0.0', scripts: { build: '', lint: '', test: '' } }));
+		await expect(release('/test/directory', 'main')).rejects.toBe('missing npm script "doc" in package.json');
 	});
 });

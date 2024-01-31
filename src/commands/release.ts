@@ -16,7 +16,7 @@ export async function release(directory: string, branch = 'main'): Promise<void>
 
 	// git: check if in the correct branch
 	const currentBranch = await check('get branch name', shell.stdout('git rev-parse --abbrev-ref HEAD'));
-	if (currentBranch !== branch) panic(`branch name "${currentBranch}" is not "${branch}"`);
+	if (currentBranch !== branch) panic(`current branch is "${currentBranch}" but should be "${branch}"`);
 
 	// git: check if no changes
 	await check('are all changes committed?', checkThatNoUncommittedChanges());
