@@ -97,7 +97,7 @@ export async function release(directory: string, branch: string = 'main'): Promi
 		await run('npm i --package-lock-only');
 	}
 
-	async function getReleaseNotes(version: string, hashLast: string, hashCurrent: string): Promise<string> {
+	async function getReleaseNotes(version: string, hashLast: string | undefined, hashCurrent: string): Promise<string> {
 		const commits = await getCommitsBetween(hashLast, hashCurrent);
 		let notes = commits.reverse()
 			.map(commit => '- ' + commit.message.replace(/\s+/g, ' '))

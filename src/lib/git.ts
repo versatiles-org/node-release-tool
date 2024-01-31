@@ -8,7 +8,7 @@ export interface Commit {
 export function Git(cwd: string): {
 	getLastGitHubTag: () => Promise<{ sha: string; version: string; } | undefined>;
 	getCurrentGitHubCommit: () => Promise<Commit>;
-	getCommitsBetween: (shaLast: string, shaCurrent: string) => Promise<Commit[]>;
+	getCommitsBetween: (shaLast: string | undefined, shaCurrent: string | undefined) => Promise<Commit[]>;
 } {
 	const run = Run(cwd);
 
@@ -51,7 +51,7 @@ export function Git(cwd: string): {
 		return (await getAllCommits())[0];
 	}
 
-	async function getCommitsBetween(shaLast: string, shaCurrent: string): Promise<Commit[]> {
+	async function getCommitsBetween(shaLast: string | undefined, shaCurrent: string | undefined): Promise<Commit[]> {
 		let commits: Commit[] = await getAllCommits();
 
 		const start = commits.findIndex(commit => commit.sha === shaCurrent);
