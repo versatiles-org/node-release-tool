@@ -58,7 +58,7 @@ program.command('inserttoc')
 		writeFileSync(mdFilename, mdFile);
 	});
 
-program.command('release')
+program.command('release-npm')
 	.description('release a npm package')
 	.argument('[path]', 'root path of the Node.js project')
 	.action((path: string | null) => {

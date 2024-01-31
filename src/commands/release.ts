@@ -24,7 +24,9 @@ export async function release(directory: string, branch: string = 'main'): Promi
 	await check('git pull', run('git pull -t'));
 
 	// get last version
-	const { sha: shaLast, version: versionLastGithub } = await check('get last github tag', getLastGitHubTag());
+	const tag = await check('get last github tag', getLastGitHubTag());
+	const shaLast = tag?.sha;
+	const versionLastGithub = tag?.version;
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 	const versionLastPackage: string = JSON.parse(readFileSync('./package.json', 'utf8'))?.version;
 	if (versionLastPackage !== versionLastGithub) warn(`versions differ in package.json (${versionLastPackage}) and last GitHub tag (${versionLastGithub})`);
