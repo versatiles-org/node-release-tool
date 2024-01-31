@@ -28,7 +28,7 @@ describe('getErrorMessage', () => {
 	// Test for custom error objects with a message property
 	it('handles custom error objects with a message property', () => {
 		class CustomError {
-			message = 'Custom error message';
+			public message = 'Custom error message';
 		}
 		const error = new CustomError();
 		expect(getErrorMessage(error)).toBe('Custom error message');
