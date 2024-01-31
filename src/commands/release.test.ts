@@ -13,7 +13,7 @@ jest.unstable_mockModule('node:fs', () => ({
 jest.unstable_mockModule('../lib/log.js', () => ({
 	check: jest.fn(),
 	info: jest.fn(),
-	panic: jest.fn(),
+	panic: jest.fn(() => { throw Error() }),
 	warn: jest.fn(),
 }));
 jest.unstable_mockModule('../lib/shell.js', () => ({
@@ -33,76 +33,85 @@ const { release } = await import('./release.js');
 describe('release function', () => {
 	const directory = '/test/directory';
 	const branch = 'main';
-	const mockShell = {
-		run: jest.fn(async (command: string, _errorOnCodeNonZero?: boolean) => {
-			switch (command) {
-				case 'git add .':
-				case 'git pull -t':
-				case 'git push --no-verify --follow-tags':
-				case 'npm i --package-lock-only':
-				case 'npm publish --access public':
-				case 'npm run build':
-				case 'npm run doc':
-				case 'npm run lint':
-				case 'npm run test':
-					return { code: 0, signal: '', stdout: '', stderr: '' };
-			}
-			if (command.startsWith('git commit -m "v')) return { code: 0, signal: '', stdout: '', stderr: '' };
-			if (command.startsWith('git tag -f -a "v')) return { code: 0, signal: '', stdout: '', stderr: '' };
-			if (command.startsWith('echo -e')) return { code: 0, signal: '', stdout: '', stderr: '' };
-			console.log('run:', command);
-			throw Error();
-		}),
-		stdout: jest.fn(async (command: string, errorOnCodeZero?: boolean): Promise<string> => {
-			switch (command) {
-				case 'git rev-parse --abbrev-ref HEAD': return 'main'; // get current branch
-				case 'git status --porcelain': return ''; // no changes to commit
-			}
-			console.log('stdout:', command);
-			throw Error();
-		}),
-		stderr: jest.fn<ReturnType<typeof getShell>['stderr']>(),
-		ok: jest.fn<ReturnType<typeof getShell>['ok']>(),
-	};
-
-	const mockGit = {
-		getCommitsBetween: jest.fn(async () => [
-			{ sha: 'cccccccccccccccccccccccccccccccccccccccc', message: 'commit message 3', tag: undefined },
-			{ sha: 'dddddddddddddddddddddddddddddddddddddddd', message: 'commit message 2', tag: undefined },
-		]),
-		getCurrentGitHubCommit: jest.fn(async () => ({
-			sha: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', message: 'commit message 1', tag: undefined,
-		})),
-		getLastGitHubTag: jest.fn(async () => ({
-			sha: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', version: '1.0.1',
-		})),
-	};
+	let mockGit: { getCommitsBetween: any; getCurrentGitHubCommit: any; getLastGitHubTag: any; };
+	let mockShell: { run: any; stdout: any; stderr: any; ok: any; };
 
 	beforeEach(() => {
+		mockShell = {
+			run: jest.fn(async (command: string, _errorOnCodeNonZero?: boolean) => {
+				return { code: 0, signal: '', stdout: '', stderr: '' };
+			}),
+			stdout: jest.fn(async (command: string, errorOnCodeZero?: boolean): Promise<string> => {
+				switch (command) {
+					case 'git rev-parse --abbrev-ref HEAD': return 'main'; // get current branch
+					case 'git status --porcelain': return ''; // no changes to commit
+				}
+				console.log('stdout:', command);
+				throw Error();
+			}),
+			stderr: jest.fn(async (command: string, errorOnCodeZero?: boolean): Promise<string> => {
+				throw Error();
+			}),
+			ok: jest.fn(async (command: string): Promise<boolean> => true),
+		};
 		jest.mocked(getShell).mockReturnValue(mockShell);
-		jest.mocked(getGit).mockReturnValue(mockGit);
-	});
 
-	it('should execute the release process', async () => {
-		jest.mocked(readFileSync).mockReturnValue(JSON.stringify({ version: '1.0.0' }));
-		jest.mocked(inquirer.prompt).mockResolvedValue({ versionNew: '1.0.1' });
+		mockGit = {
+			getCommitsBetween: jest.fn(async () => [
+				{ sha: 'cccccccccccccccccccccccccccccccccccccccc', message: 'commit message 3', tag: undefined },
+				{ sha: 'dddddddddddddddddddddddddddddddddddddddd', message: 'commit message 2', tag: undefined },
+			]),
+			getCurrentGitHubCommit: jest.fn(async () => ({
+				sha: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', message: 'commit message 1', tag: undefined,
+			})),
+			getLastGitHubTag: jest.fn(async () => ({
+				sha: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', version: '1.0.1',
+			})),
+		}
+		jest.mocked(getGit).mockReturnValue(mockGit);
+
+		jest.mocked(readFileSync).mockReturnValue(JSON.stringify({ version: '1.0.0', scripts: { build: '', doc: '', lint: '', test: '' } }));
+
+		jest.mocked(inquirer.prompt).mockResolvedValue({ versionNew: '1.1.0' });
+
 		jest.mocked(check).mockImplementation(async function <T>(message: string, promise: Promise<T>): Promise<T> {
 			return promise;
 		});
+	});
 
+	it('should execute the release process', async () => {
 		await release(directory, branch);
 
 		expect(jest.mocked(info).mock.calls).toStrictEqual([['starting release process'], ['Finished']]);
 		expect(jest.mocked(warn).mock.calls).toStrictEqual([['versions differ in package.json (1.0.0) and last GitHub tag (1.0.1)']]);
 		expect(jest.mocked(panic).mock.calls).toStrictEqual([]);
-		//expect(jest.mocked(check).mock.calls).toStrictEqual([]);
+		expect(jest.mocked(check).mock.calls.map(v => v[0])).toStrictEqual([
+			'get branch name',
+			'are all changes committed?',
+			'git pull',
+			'get last github tag',
+			'get current github commit',
+			'prepare release notes',
+			'update version',
+			'lint',
+			'build',
+			'run tests',
+			'update doc',
+			'npm publish',
+			'git add',
+			'git commit',
+			'git tag',
+			'git push',
+			'check github release',
+			'edit release',
+		]);
 
 		expect(jest.mocked(readFileSync).mock.calls).toStrictEqual([
 			['/test/directory/package.json', 'utf8'],
 			['/test/directory/package.json', 'utf8'],
 		]);
-		expect(jest.mocked(writeFileSync).mock.calls).toStrictEqual([
-			['/test/directory/package.json', '{\n  "version": "1.0.1"\n}\n'],
+		expect(jest.mocked(writeFileSync).mock.calls.map(v => { v[1] = JSON.parse(v[1] as string); return v })).toStrictEqual([
+			['/test/directory/package.json', { version: '1.1.0', scripts: { build: '', doc: '', lint: '', test: '' } }],
 		]);
 
 		expect(jest.mocked(inquirer.prompt).mock.calls).toStrictEqual([[{
@@ -118,10 +127,32 @@ describe('release function', () => {
 			type: 'list',
 		}]]);
 
-		expect(jest.mocked(mockGit.getCommitsBetween).mock.calls).toStrictEqual([
-			['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'],
-		]);
+		expect(jest.mocked(mockGit.getCommitsBetween).mock.calls).toStrictEqual([[
+			'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+			'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+		]]);
 		expect(jest.mocked(mockGit.getCurrentGitHubCommit).mock.calls).toStrictEqual([[]]);
 		expect(jest.mocked(mockGit.getLastGitHubTag).mock.calls).toStrictEqual([[]]);
+
+		expect(jest.mocked(mockShell.ok).mock.calls).toStrictEqual([['gh release view v1.1.0']]);
+		expect(jest.mocked(mockShell.run).mock.calls).toStrictEqual([
+			['git pull -t'],
+			['npm i --package-lock-only'],
+			['npm run lint'],
+			['npm run build'],
+			['npm run test'],
+			['npm run doc'],
+			['npm publish --access public'],
+			['git add .'],
+			['git commit -m "v1.1.0"', false],
+			['git tag -f -a "v1.1.0" -m "new release: v1.1.0"'],
+			['git push --no-verify --follow-tags'],
+			['echo -e \'\\x23 Release v1.1.0\\x0a\\x0achanges: \\x0a- commit message 2\\x0a- commit message 3\\x0a\\x0a\' | gh release edit "v1.1.0" -F -'],
+		]);
+		expect(jest.mocked(mockShell.stderr).mock.calls).toStrictEqual([]);
+		expect(jest.mocked(mockShell.stdout).mock.calls).toStrictEqual([
+			['git rev-parse --abbrev-ref HEAD'],
+			['git status --porcelain'],
+		]);
 	});
 });

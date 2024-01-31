@@ -24,12 +24,21 @@ export async function release(directory: string, branch = 'main'): Promise<void>
 	// git: pull
 	await check('git pull', shell.run('git pull -t'));
 
+	// check package.json
+	const pkg = JSON.parse(readFileSync(resolve(directory, 'package.json'), 'utf8'));
+	if (typeof pkg.scripts !== 'object') panic('missing npm scripts (lint, build, test, doc) in package.json');
+	if (typeof pkg.scripts?.lint !== 'string') panic('missing npm script "lint" in package.json');
+	if (typeof pkg.scripts?.build !== 'string') panic('missing npm script "build" in package.json');
+	if (typeof pkg.scripts?.test !== 'string') panic('missing npm script "test" in package.json');
+	if (typeof pkg.scripts?.doc !== 'string') panic('missing npm script "doc" in package.json');
+
 	// get last version
 	const tag = await check('get last github tag', getLastGitHubTag());
 	const shaLast = tag?.sha;
 	const versionLastGithub = tag?.version;
+
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-	const versionLastPackage: string = JSON.parse(readFileSync(resolve(directory, 'package.json'), 'utf8'))?.version;
+	const versionLastPackage: string = pkg.version;
 	if (versionLastPackage !== versionLastGithub) warn(`versions differ in package.json (${versionLastPackage}) and last GitHub tag (${versionLastGithub})`);
 
 	// get current sha
