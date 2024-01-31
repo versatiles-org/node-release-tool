@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-empty-function */
 import { getShell } from './shell.js';
 import { jest } from '@jest/globals';
 
@@ -33,4 +34,4 @@ describe('Run', () => {
 		await expect(shell.run('exit 1')).rejects.toEqual({ code: 1, signal: null, stderr: '', stdout: '' });
 		mockError.mockRestore();
 	});
-})
+});
