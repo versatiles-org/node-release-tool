@@ -25,7 +25,7 @@ describe('Git module tests', () => {
 	});
 });
 
-function checkCommit(commit: any) {
+function checkCommit(commit: { tag?: string; sha: string; message: string }): void {
 	expect(commit).toBeDefined();
 	expect(commit).toHaveProperty('tag');
 	expect(commit.sha).toMatch(/^[a-f0-9]{40}$/);
