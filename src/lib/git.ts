@@ -1,4 +1,4 @@
-import { Run } from './shell.js';
+import { Shell } from './shell.js';
 
 
 export interface Commit {
@@ -8,9 +8,9 @@ export interface Commit {
 export function Git(cwd: string): {
 	getLastGitHubTag: () => Promise<{ sha: string; version: string; } | undefined>;
 	getCurrentGitHubCommit: () => Promise<Commit>;
-	getCommitsBetween: (shaLast: string | undefined, shaCurrent: string | undefined) => Promise<Commit[]>;
+	getCommitsBetween: (shaLast?: string, shaCurrent?: string) => Promise<Commit[]>;
 } {
-	const run = Run(cwd);
+	const shell = Shell(cwd);
 
 	return {
 		getLastGitHubTag,
@@ -32,7 +32,7 @@ export function Git(cwd: string): {
 	}
 
 	async function getAllCommits(): Promise<Commit[]> {
-		const result: string = await run.stdout('git log --pretty=format:\'⍃%H⍄%s⍄%D⍄\'');
+		const result: string = await shell.stdout('git log --pretty=format:\'⍃%H⍄%s⍄%D⍄\'');
 
 		return result
 			.split('⍃')
@@ -51,7 +51,7 @@ export function Git(cwd: string): {
 		return (await getAllCommits())[0];
 	}
 
-	async function getCommitsBetween(shaLast: string | undefined, shaCurrent: string | undefined): Promise<Commit[]> {
+	async function getCommitsBetween(shaLast?: string, shaCurrent?: string): Promise<Commit[]> {
 		let commits: Commit[] = await getAllCommits();
 
 		const start = commits.findIndex(commit => commit.sha === shaCurrent);

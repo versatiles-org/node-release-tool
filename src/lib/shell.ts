@@ -1,7 +1,7 @@
 import { spawn } from 'child_process';
 
-export function Run(cwd: string): {
-	(command: string, errorOnCodeNonZero?: boolean): Promise<{ code: number | null; signal: string | null; stdout: string; stderr: string; }>;
+export function Shell(cwd: string): {
+	run(command: string, errorOnCodeNonZero?: boolean): Promise<{ code: number | null; signal: string | null; stdout: string; stderr: string; }>;
 	stderr(command: string, errorOnCodeZero?: boolean): Promise<string>;
 	stdout(command: string, errorOnCodeZero?: boolean): Promise<string>;
 	ok(command: string): Promise<boolean>;
@@ -37,14 +37,15 @@ export function Run(cwd: string): {
 		}
 	}
 
-	run.stderr = async (command: string, errorOnCodeZero?: boolean): Promise<string> =>
-		(await run(command, errorOnCodeZero)).stderr.trim();
+	return {
+		run,
+		stderr: async (command: string, errorOnCodeZero?: boolean): Promise<string> =>
+			(await run(command, errorOnCodeZero)).stderr.trim(),
 
-	run.stdout = async (command: string, errorOnCodeZero?: boolean): Promise<string> =>
-		(await run(command, errorOnCodeZero)).stdout.trim();
+		stdout: async (command: string, errorOnCodeZero?: boolean): Promise<string> =>
+			(await run(command, errorOnCodeZero)).stdout.trim(),
 
-	run.ok = async (command: string): Promise<boolean> =>
-		(await run(command, false)).code === 0;
-
-	return run;
+		ok: async (command: string): Promise<boolean> =>
+			(await run(command, false)).code === 0,
+	}
 }
