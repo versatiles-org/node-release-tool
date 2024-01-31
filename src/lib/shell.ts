@@ -1,10 +1,10 @@
 import { spawn } from 'child_process';
 
-export function Shell(cwd: string): {
-	run(command: string, errorOnCodeNonZero?: boolean): Promise<{ code: number | null; signal: string | null; stdout: string; stderr: string; }>;
-	stderr(command: string, errorOnCodeZero?: boolean): Promise<string>;
-	stdout(command: string, errorOnCodeZero?: boolean): Promise<string>;
-	ok(command: string): Promise<boolean>;
+export function getShell(cwd: string): {
+	run: (command: string, errorOnCodeNonZero?: boolean) => Promise<{ code: number | null; signal: string | null; stdout: string; stderr: string }>;
+	stderr: (command: string, errorOnCodeZero?: boolean) => Promise<string>;
+	stdout: (command: string, errorOnCodeZero?: boolean) => Promise<string>;
+	ok: (command: string) => Promise<boolean>;
 } {
 	async function run(command: string, errorOnCodeNonZero?: boolean): Promise<{ code: number | null; signal: string | null; stdout: string; stderr: string }> {
 		try {
@@ -47,5 +47,5 @@ export function Shell(cwd: string): {
 
 		ok: async (command: string): Promise<boolean> =>
 			(await run(command, false)).code === 0,
-	}
+	};
 }

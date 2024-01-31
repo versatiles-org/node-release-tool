@@ -1,22 +1,22 @@
-import { Shell } from './shell.js';
+import { getShell } from './shell.js';
 
 
 export interface Commit {
 	sha: string; message: string; tag?: string;
 }
 
-export function Git(cwd: string): {
-	getLastGitHubTag: () => Promise<{ sha: string; version: string; } | undefined>;
+export function getGit(cwd: string): {
+	getLastGitHubTag: () => Promise<{ sha: string; version: string } | undefined>;
 	getCurrentGitHubCommit: () => Promise<Commit>;
 	getCommitsBetween: (shaLast?: string, shaCurrent?: string) => Promise<Commit[]>;
 } {
-	const shell = Shell(cwd);
+	const shell = getShell(cwd);
 
 	return {
 		getLastGitHubTag,
 		getCurrentGitHubCommit,
-		getCommitsBetween
-	}
+		getCommitsBetween,
+	};
 
 	async function getLastGitHubTag(): Promise<{ sha: string; version: string } | undefined> {
 		const commits: Commit[] = await getAllCommits();

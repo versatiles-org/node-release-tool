@@ -1,8 +1,8 @@
-import { Git } from './git.js';
+import { getGit } from './git.js';
 
 describe('Git module tests', () => {
 	const cwd = new URL('../../', import.meta.url).pathname;
-	const git = Git(cwd);
+	const git = getGit(cwd);
 
 	it('gets the last GitHub tag', async () => {
 		const lastTag = await git.getLastGitHubTag();

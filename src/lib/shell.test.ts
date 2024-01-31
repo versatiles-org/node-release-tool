@@ -1,9 +1,9 @@
-import { Shell } from './shell.js';
+import { getShell } from './shell.js';
 import { jest } from '@jest/globals';
 
 describe('Run', () => {
 	const cwd = new URL('../../', import.meta.url).pathname;
-	const shell = Shell(cwd);
+	const shell = getShell(cwd);
 
 	it('runs ls', async () => {
 		const ls = await shell.run('ls -1');

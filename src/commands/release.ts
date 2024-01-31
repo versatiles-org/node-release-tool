@@ -3,14 +3,14 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import inquirer from 'inquirer';
 import { check, info, panic, warn } from '../lib/log.js';
-import { Shell } from '../lib/shell.js';
-import { Git } from '../lib/git.js';
+import { getShell } from '../lib/shell.js';
+import { getGit } from '../lib/git.js';
 import { resolve } from 'node:path';
 
-export async function release(directory: string, branch: string = 'main'): Promise<void> {
+export async function release(directory: string, branch = 'main'): Promise<void> {
 
-	const shell = Shell(directory);
-	const { getCommitsBetween, getCurrentGitHubCommit, getLastGitHubTag } = Git(directory);
+	const shell = getShell(directory);
+	const { getCommitsBetween, getCurrentGitHubCommit, getLastGitHubTag } = getGit(directory);
 
 	info('starting release process');
 
@@ -78,7 +78,7 @@ export async function release(directory: string, branch: string = 'main'): Promi
 
 	info('Finished');
 
-	return
+	return;
 
 	async function checkThatNoUncommittedChanges(): Promise<void> {
 		if ((await shell.stdout('git status --porcelain')).length < 3) return;

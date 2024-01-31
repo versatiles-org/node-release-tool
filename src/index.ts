@@ -62,7 +62,7 @@ program.command('release-npm')
 	.description('release a npm package')
 	.argument('[path]', 'root path of the Node.js project')
 	.action((path: string | null) => {
-		release(resolve(path || ',', process.cwd()), 'main');
+		void release(resolve(path ?? ',', process.cwd()), 'main');
 	});
 
 if (process.env.NODE_ENV !== 'test') {

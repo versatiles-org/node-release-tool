@@ -1,4 +1,4 @@
-
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { jest } from '@jest/globals';
 
 jest.unstable_mockModule('inquirer', () => ({
@@ -15,24 +15,24 @@ jest.unstable_mockModule('../lib/log.js', () => ({
 	warn: jest.fn(),
 }));
 jest.unstable_mockModule('../lib/shell.js', () => ({
-	Shell: jest.fn(),
+	getShell: jest.fn(),
 }));
 jest.unstable_mockModule('../lib/git.js', () => ({
-	Git: jest.fn(),
+	getGit: jest.fn(),
 }));
 
 const inquirer = (await import('inquirer')).default;
 const { readFileSync, writeFileSync } = await import('node:fs');
 const { check, info, panic, warn } = await import('../lib/log.js');
-const { Shell } = await import('../lib/shell.js');
-const { Git } = await import('../lib/git.js');
+const { getShell } = await import('../lib/shell.js');
+const { getGit } = await import('../lib/git.js');
 const { release } = await import('./release.js');
 
 describe('release function', () => {
 	const directory = '/test/directory';
 	const branch = 'main';
 	const mockShell = {
-		run: jest.fn<ReturnType<typeof Shell>['run']>(async (command: string, _errorOnCodeNonZero?: boolean) => {
+		run: jest.fn(async (command: string, _errorOnCodeNonZero?: boolean) => {
 			switch (command) {
 				case 'git add .':
 				case 'git pull -t':
@@ -51,7 +51,7 @@ describe('release function', () => {
 			console.log('run:', command);
 			throw Error()
 		}),
-		stdout: jest.fn<ReturnType<typeof Shell>['stdout']>(async (command: string, errorOnCodeZero?: boolean): Promise<string> => {
+		stdout: jest.fn(async (command: string, errorOnCodeZero?: boolean): Promise<string> => {
 			switch (command) {
 				case 'git rev-parse --abbrev-ref HEAD': return 'main'; // get current branch
 				case 'git status --porcelain': return ''; // no changes to commit
@@ -59,8 +59,8 @@ describe('release function', () => {
 			console.log('stdout:', command);
 			throw Error()
 		}),
-		stderr: jest.fn<ReturnType<typeof Shell>['stderr']>(),
-		ok: jest.fn<ReturnType<typeof Shell>['ok']>(),
+		stderr: jest.fn<ReturnType<typeof getShell>['stderr']>(),
+		ok: jest.fn<ReturnType<typeof getShell>['ok']>(),
 	}
 
 	const mockGit = {
@@ -77,8 +77,8 @@ describe('release function', () => {
 	};
 
 	beforeEach(() => {
-		jest.mocked(Shell).mockReturnValue(mockShell);
-		jest.mocked(Git).mockReturnValue(mockGit);
+		jest.mocked(getShell).mockReturnValue(mockShell);
+		jest.mocked(getGit).mockReturnValue(mockGit);
 	});
 
 	it('should execute the release process', async () => {
