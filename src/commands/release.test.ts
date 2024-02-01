@@ -171,11 +171,11 @@ describe('release function', () => {
 
 	it('should error on wrong branch', async () => {
 		jest.mocked(readFileSync).mockReturnValue(JSON.stringify({ version: '1.0.0', scripts: { build: '', lint: '', test: '' } }));
-		await expect(release('/test/directory', 'dev')).rejects.toBe('current branch is "main" but should be "dev"');
+		await expect(release('/test/directory', 'dev')).rejects.toThrow('current branch is "main" but should be "dev"');
 	});
 
 	it('should error on missing scripts in package', async () => {
 		jest.mocked(readFileSync).mockReturnValue(JSON.stringify({ version: '1.0.0', scripts: { build: '', lint: '', test: '' } }));
-		await expect(release('/test/directory', 'main')).rejects.toBe('missing npm script "doc" in package.json');
+		await expect(release('/test/directory', 'main')).rejects.toThrow('missing npm script "doc" in package.json');
 	});
 });
