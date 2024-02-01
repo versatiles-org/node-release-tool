@@ -20,6 +20,7 @@ npm i -D @versatiles/release-tool
 # configure scripts
 
 You need to configure the scripts in the package.json:
+
 ```JSON
 {
   "scripts": {
@@ -31,6 +32,7 @@ You need to configure the scripts in the package.json:
   ...
 }
 ```
+
 * `scripts.check` is **required** by the release command. Here you can lint, build and test your code.
 * `scripts.prepack` is **recommended** to ensure that all files are up-to-date before releasing. Here you can build code and documentation.
 * `scripts.release` is **recommended** to make it easy to release a new version.
