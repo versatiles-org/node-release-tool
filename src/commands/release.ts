@@ -28,9 +28,13 @@ export async function release(directory: string, branch = 'main'): Promise<void>
 	const pkg: unknown = JSON.parse(readFileSync(resolve(directory, 'package.json'), 'utf8'));
 	if (typeof pkg !== 'object' || pkg === null) panic('package.json is not valid');
 	if (!('version' in pkg) || (typeof pkg.version !== 'string')) panic('package.json is missing "version"');
-	if (!('scripts' in pkg) || (typeof pkg.version !== 'object')) panic('package.json is missing "scripts"');
+	if (!('scripts' in pkg) || (typeof pkg.scripts !== 'object') || (pkg.scripts == null)) panic('package.json is missing "scripts"');
+
+	const { scripts } = pkg;
 	for (const scriptName of ['lint', 'build', 'test', 'doc']) {
-		if (typeof pkg.scripts?.[scriptName] !== 'string') panic(`missing npm script "${scriptName}" in package.json`);
+		if (!(scriptName in scripts)) {
+			panic(`missing npm script "${scriptName}" in package.json`);
+		}
 	}
 
 	// get last version
