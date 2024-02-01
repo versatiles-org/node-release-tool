@@ -5,8 +5,11 @@ describe('Git module tests', () => {
 	const git = getGit(cwd);
 
 	it('gets the last GitHub tag', async () => {
-		const lastTag = await git.getLastGitHubTag();
-		expect(lastTag).toBe(undefined);
+		const result = await git.getLastGitHubTag();
+		expect(result).toBeTruthy();
+		if (!result) throw Error();
+		expect(result.sha).toMatch(/^[a-f0-9]{40}$/);
+		expect(result.version).toMatch(/^[0-9]+\.[0-9]+\.[0-9]+$/);
 	});
 
 	it('gets the current GitHub commit', async () => {

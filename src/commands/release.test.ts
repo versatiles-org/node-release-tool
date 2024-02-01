@@ -81,7 +81,7 @@ describe('release function', () => {
 		};
 		jest.mocked(getGit).mockClear().mockReturnValue(mockGit);
 
-		jest.mocked(readFileSync).mockClear().mockReturnValue(JSON.stringify({ version: '1.0.0', scripts: { build: '', doc: '', lint: '', test: '' } }));
+		jest.mocked(readFileSync).mockClear().mockReturnValue(JSON.stringify({ version: '1.0.0', scripts: { check: '' } }));
 
 		jest.mocked(inquirer.prompt).mockClear().mockResolvedValue({ versionNew: '1.1.0' });
 
@@ -104,10 +104,7 @@ describe('release function', () => {
 			'get current github commit',
 			'prepare release notes',
 			'update version',
-			'lint',
-			'build',
-			'run tests',
-			'update doc',
+			'run checks',
 			'npm publish',
 			'git add',
 			'git commit',
@@ -124,7 +121,7 @@ describe('release function', () => {
 			]);
 		expect(jest.mocked(writeFileSync).mock.calls.map(v => [v[0], JSON.parse(v[1] as string) as unknown]))
 			.toStrictEqual([
-				['/test/directory/package.json', { version: '1.1.0', scripts: { build: '', doc: '', lint: '', test: '' } }],
+				['/test/directory/package.json', { version: '1.1.0', scripts: { check: '' } }],
 			]);
 
 		expect(jest.mocked(inquirer.prompt).mock.calls).toStrictEqual([[{
@@ -151,10 +148,7 @@ describe('release function', () => {
 		expect(jest.mocked(mockShell.run).mock.calls).toStrictEqual([
 			['git pull -t'],
 			['npm i --package-lock-only'],
-			['npm run lint'],
-			['npm run build'],
-			['npm run test'],
-			['npm run doc'],
+			['npm run check'],
 			['npm publish --access public'],
 			['git add .'],
 			['git commit -m "v1.1.0"', false],
@@ -170,12 +164,11 @@ describe('release function', () => {
 	});
 
 	it('should error on wrong branch', async () => {
-		jest.mocked(readFileSync).mockReturnValue(JSON.stringify({ version: '1.0.0', scripts: { build: '', lint: '', test: '' } }));
 		await expect(release('/test/directory', 'dev')).rejects.toThrow('current branch is "main" but should be "dev"');
 	});
 
 	it('should error on missing scripts in package', async () => {
-		jest.mocked(readFileSync).mockReturnValue(JSON.stringify({ version: '1.0.0', scripts: { build: '', lint: '', test: '' } }));
-		await expect(release('/test/directory', 'main')).rejects.toThrow('missing npm script "doc" in package.json');
+		jest.mocked(readFileSync).mockReturnValue(JSON.stringify({ version: '1.0.0', scripts: {  } }));
+		await expect(release('/test/directory', 'main')).rejects.toThrow('missing npm script "check" in package.json');
 	});
 });

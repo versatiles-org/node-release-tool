@@ -29,13 +29,7 @@ export async function release(directory: string, branch = 'main'): Promise<void>
 	if (typeof pkg !== 'object' || pkg === null) panic('package.json is not valid');
 	if (!('version' in pkg) || (typeof pkg.version !== 'string')) panic('package.json is missing "version"');
 	if (!('scripts' in pkg) || (typeof pkg.scripts !== 'object') || (pkg.scripts == null)) panic('package.json is missing "scripts"');
-
-	const { scripts } = pkg;
-	for (const scriptName of ['lint', 'build', 'test', 'doc']) {
-		if (!(scriptName in scripts)) {
-			panic(`missing npm script "${scriptName}" in package.json`);
-		}
-	}
+	if (!('check' in pkg.scripts)) panic('missing npm script "check" in package.json');
 
 	// get last version
 	const tag = await check('get last github tag', getLastGitHubTag());
@@ -57,17 +51,8 @@ export async function release(directory: string, branch = 'main'): Promise<void>
 	// update version
 	await check('update version', setNextVersion(nextVersion));
 
-	// lint
-	await check('lint', shell.run('npm run lint'));
-
-	// build
-	await check('build', shell.run('npm run build'));
-
 	// test
-	await check('run tests', shell.run('npm run test'));
-
-	// test
-	await check('update doc', shell.run('npm run doc'));
+	await check('run checks', shell.run('npm run check'));
 
 	// npm publish
 	await check('npm publish', shell.run('npm publish --access public'));
