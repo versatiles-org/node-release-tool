@@ -28,6 +28,7 @@ Commands:
   cmd2md <command>                        documents a runnable command and outputs it to stdout
   insertmd <readme> [heading] [foldable]  takes Markdown from stdin and insert it into a Markdown file
   inserttoc <readme> [heading]            updates the TOC in a Markdown file
+  release-npm [path]                      release a npm package
   help [command]                          display help for command
 ```
 
@@ -90,6 +91,21 @@ updates the TOC in a Markdown file
 Arguments:
   readme      Markdown file, like a readme.md
   heading     Heading in the Markdown file (default: "# Table of Content")
+
+Options:
+  -h, --help  display help for command
+```
+
+## Subcommand: `vrt release-npm`
+
+```console
+$ vrt release-npm
+Usage: vrt release-npm [options] [path]
+
+release a npm package
+
+Arguments:
+  path        root path of the Node.js project
 
 Options:
   -h, --help  display help for command
