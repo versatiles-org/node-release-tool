@@ -7,6 +7,7 @@ import { injectMarkdown, updateTOC } from './commands/markdown.js';
 import { Command, InvalidArgumentError } from 'commander';
 import { cwd } from 'node:process';
 import { generateCommandDocumentation } from './commands/command.js';
+import { release } from './commands/release.js';
 
 
 export const program = new Command();
@@ -55,6 +56,13 @@ program.command('inserttoc')
 		let mdFile = readFileSync(mdFilename, 'utf8');
 		mdFile = updateTOC(mdFile, heading);
 		writeFileSync(mdFilename, mdFile);
+	});
+
+program.command('release-npm')
+	.description('release a npm package')
+	.argument('[path]', 'root path of the Node.js project')
+	.action((path: string | null) => {
+		void release(resolve(path ?? ',', process.cwd()), 'main');
 	});
 
 if (process.env.NODE_ENV !== 'test') {
