@@ -5,11 +5,13 @@ export interface Commit {
 	sha: string; message: string; tag?: string;
 }
 
-export function getGit(cwd: string): {
+export interface Git {
 	getLastGitHubTag: () => Promise<{ sha: string; version: string } | undefined>;
 	getCurrentGitHubCommit: () => Promise<Commit>;
 	getCommitsBetween: (shaLast?: string, shaCurrent?: string) => Promise<Commit[]>;
-} {
+}
+
+export function getGit(cwd: string): Git {
 	const shell = getShell(cwd);
 
 	return {

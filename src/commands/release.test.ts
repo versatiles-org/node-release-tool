@@ -2,6 +2,8 @@
 /* eslint-disable @typescript-eslint/require-await */
 
 import { jest } from '@jest/globals';
+import type { Shell } from '../lib/shell.js';
+import type { Git } from '../lib/git.js';
 
 jest.unstable_mockModule('inquirer', () => ({
 	default: { prompt: jest.fn() },
@@ -13,7 +15,9 @@ jest.unstable_mockModule('node:fs', () => ({
 jest.unstable_mockModule('../lib/log.js', () => ({
 	check: jest.fn(),
 	info: jest.fn(),
-	panic: jest.fn((message: string) => { throw message }),
+	panic: jest.fn((message: string) => {
+		throw Error(message);
+	}),
 	warn: jest.fn(),
 }));
 jest.unstable_mockModule('../lib/shell.js', () => ({
@@ -31,8 +35,17 @@ const { getGit } = await import('../lib/git.js');
 const { release } = await import('./release.js');
 
 describe('release function', () => {
-	let mockGit: { getCommitsBetween: any; getCurrentGitHubCommit: any; getLastGitHubTag: any; };
-	let mockShell: { run: any; stdout: any; stderr: any; ok: any; };
+	let mockGit: {
+		getCommitsBetween: jest.Mock<Git['getCommitsBetween']>;
+		getCurrentGitHubCommit: jest.Mock<Git['getCurrentGitHubCommit']>;
+		getLastGitHubTag: jest.Mock<Git['getLastGitHubTag']>;
+	};
+	let mockShell: {
+		run: jest.Mock<Shell['run']>;
+		stdout: jest.Mock<Shell['stdout']>;
+		stderr: jest.Mock<Shell['stderr']>;
+		ok: jest.Mock<Shell['ok']>;
+	};
 
 	beforeEach(() => {
 		mockShell = {
@@ -65,7 +78,7 @@ describe('release function', () => {
 			getLastGitHubTag: jest.fn(async () => ({
 				sha: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', version: '1.0.1',
 			})),
-		}
+		};
 		jest.mocked(getGit).mockClear().mockReturnValue(mockGit);
 
 		jest.mocked(readFileSync).mockClear().mockReturnValue(JSON.stringify({ version: '1.0.0', scripts: { build: '', doc: '', lint: '', test: '' } }));
@@ -104,13 +117,15 @@ describe('release function', () => {
 			'edit release',
 		]);
 
-		expect(jest.mocked(readFileSync).mock.calls).toStrictEqual([
-			['/test/directory/package.json', 'utf8'],
-			['/test/directory/package.json', 'utf8'],
-		]);
-		expect(jest.mocked(writeFileSync).mock.calls.map(v => { v[1] = JSON.parse(v[1] as string); return v })).toStrictEqual([
-			['/test/directory/package.json', { version: '1.1.0', scripts: { build: '', doc: '', lint: '', test: '' } }],
-		]);
+		expect(jest.mocked(readFileSync).mock.calls)
+			.toStrictEqual([
+				['/test/directory/package.json', 'utf8'],
+				['/test/directory/package.json', 'utf8'],
+			]);
+		expect(jest.mocked(writeFileSync).mock.calls.map(v => [v[0], JSON.parse(v[1] as string) as unknown]))
+			.toStrictEqual([
+				['/test/directory/package.json', { version: '1.1.0', scripts: { build: '', doc: '', lint: '', test: '' } }],
+			]);
 
 		expect(jest.mocked(inquirer.prompt).mock.calls).toStrictEqual([[{
 			choices: [

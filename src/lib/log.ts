@@ -1,5 +1,5 @@
 
-export function panic(text: string): void {
+export function panic(text: string): never {
 	process.stderr.write(`\x1b[1;31m! ERROR: ${text}\x1b[0m\n`); abort();
 }
 export function warn(text: string): void {
@@ -9,7 +9,7 @@ export function info(text: string): void {
 	process.stderr.write(`\x1b[0mi ${text}\n`);
 }
 
-export function abort(): void {
+export function abort(): never {
 	info('abort');
 	process.exit();
 }

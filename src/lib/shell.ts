@@ -1,11 +1,13 @@
 import { spawn } from 'child_process';
 
-export function getShell(cwd: string): {
+export interface Shell {
 	run: (command: string, errorOnCodeNonZero?: boolean) => Promise<{ code: number | null; signal: string | null; stdout: string; stderr: string }>;
 	stderr: (command: string, errorOnCodeZero?: boolean) => Promise<string>;
 	stdout: (command: string, errorOnCodeZero?: boolean) => Promise<string>;
 	ok: (command: string) => Promise<boolean>;
-} {
+}
+
+export function getShell(cwd: string): Shell {
 	async function run(command: string, errorOnCodeNonZero?: boolean): Promise<{ code: number | null; signal: string | null; stdout: string; stderr: string }> {
 		try {
 			return await new Promise((resolve, reject) => {
