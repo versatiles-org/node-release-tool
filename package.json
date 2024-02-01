@@ -15,7 +15,7 @@
     "doc": "npx vrt cmd2md vrt | npx vrt insertmd README.md '# Command'",
     "lint": "eslint . --color",
     "prepack": "npm run build && npm run doc",
-    "release": "vrt release-npm",
+    "release": "npx vrt release-npm",
     "test-coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "upgrade": "npm-check-updates -u && rm -f package-lock.json; rm -rf node_modules; npm i && npm update"
@@ -34,7 +34,6 @@
     "@types/node": "^20.11.15",
     "@typescript-eslint/eslint-plugin": "^6.20.0",
     "@typescript-eslint/parser": "^6.20.0",
-    "@versatiles/release-tool": "^1.1.0",
     "eslint": "^8.56.0",
     "jest": "^29.7.0",
     "ts-jest": "^29.1.2",
