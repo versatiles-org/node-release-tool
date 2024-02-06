@@ -71,7 +71,7 @@ export async function release(directory: string, branch = 'main'): Promise<void>
 	if (await check('check github release', shell.ok('gh release view v' + nextVersion))) {
 		await check('edit release', shell.run(`${releaseNotesPipe} | gh release edit "v${nextVersion}" -F -`));
 	} else {
-		await check('create release', shell.run(`${releaseNotesPipe} | gh release create "v${nextVersion}" --draft --prerelease -F -`));
+		await check('create release', shell.run(`${releaseNotesPipe} | gh release create "v${nextVersion}" -F -`));
 	}
 
 	info('Finished');
