@@ -39,7 +39,7 @@ describe('release-tool CLI', () => {
 	});
 
 	describe('ts2md command', () => {
-		test('should generate markdown documentation from a TypeScript file', async () => {
+		it('should generate markdown documentation from a TypeScript file', async () => {
 			const tsFilename = rootDir + 'src/index.ts';
 			const tsConfig = rootDir + 'tsconfig.build.json';
 
@@ -53,7 +53,7 @@ describe('release-tool CLI', () => {
 	});
 
 	describe('cmd2md command', () => {
-		test('should generate markdown documentation from an executable', async () => {
+		it('should generate markdown documentation from an executable', async () => {
 			const command = 'test';
 
 			await run('cmd2md', command);
@@ -64,7 +64,7 @@ describe('release-tool CLI', () => {
 	});
 
 	describe('inserttoc command', () => {
-		test('should insert inserttoc', async () => {
+		it('should insert inserttoc', async () => {
 			const readme = rootDir + 'README.md';
 			const heading = '## heading';
 

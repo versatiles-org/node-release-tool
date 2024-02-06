@@ -25,29 +25,29 @@ describe('Your Module Tests', () => {
 		abortSpy.mockRestore();
 	});
 
-	test('panic should write to stderr and call abort', () => {
+	it('panic should write to stderr and call abort', () => {
 		panic('test panic');
 		expect(processSpy).toHaveBeenCalledWith(expect.stringContaining('! ERROR: test panic'));
 		expect(abortSpy).toHaveBeenCalled();
 	});
 
-	test('warn should write a warning message to stderr', () => {
+	it('warn should write a warning message to stderr', () => {
 		warn('test warning');
 		expect(processSpy).toHaveBeenCalledWith(expect.stringContaining('! warning: test warning'));
 	});
 
-	test('info should write an info message to stderr', () => {
+	it('info should write an info message to stderr', () => {
 		info('test info');
 		expect(processSpy).toHaveBeenCalledWith(expect.stringContaining('i test info'));
 	});
 
-	test('check should resolve correctly and write success message', async () => {
+	it('check should resolve correctly and write success message', async () => {
 		const promise = Promise.resolve('success');
 		await expect(check('test check', promise)).resolves.toEqual('success');
 		expect(processSpy).toHaveBeenCalledWith(expect.stringContaining('\u2714 test check'));
 	});
 
-	test('check should catch error, write error message, and rethrow', async () => {
+	it('check should catch error, write error message, and rethrow', async () => {
 		const error = new Error('test error');
 		const promise = Promise.reject(error);
 		await expect(check('test check', promise)).rejects.toThrow();
