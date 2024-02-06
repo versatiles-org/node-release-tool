@@ -15,7 +15,7 @@
     "doc": "npx vrt cmd2md vrt | npx vrt insertmd README.md '# Command'",
     "lint": "eslint . --color",
     "prepack": "npm run build && npm run doc",
-    "release": "npx vrt release-npm",
+    "release": "npm run build && npx vrt release-npm",
     "test-coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "upgrade": "npm-check-updates -u && rm -f package-lock.json; rm -rf node_modules; npm i && npm update"
