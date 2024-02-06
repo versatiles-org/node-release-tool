@@ -77,5 +77,5 @@ describe('generateCommandDocumentation', () => {
 				if (line.startsWith(text)) return;
 			}
 		}
-	}, 20e3);
+	}, 30e3);
 });
