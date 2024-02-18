@@ -102,9 +102,9 @@ describe('release function', () => {
 			'git pull',
 			'get last github tag',
 			'get current github commit',
-			'prepare release notes',
-			'update version',
 			'run checks',
+			'update version',
+			'prepare release notes',
 			'npm publish',
 			'git add',
 			'git commit',
@@ -147,14 +147,14 @@ describe('release function', () => {
 		expect(jest.mocked(mockShell.ok).mock.calls).toStrictEqual([['gh release view v1.1.0']]);
 		expect(jest.mocked(mockShell.run).mock.calls).toStrictEqual([
 			['git pull -t'],
-			['npm i --package-lock-only'],
 			['npm run check'],
+			['npm i --package-lock-only'],
 			['npm publish --access public'],
 			['git add .'],
 			['git commit -m "v1.1.0"', false],
 			['git tag -f -a "v1.1.0" -m "new release: v1.1.0"'],
 			['git push --no-verify --follow-tags'],
-			['echo -e \'\\x23 Release v1.1.0\\x0a\\x0achanges: \\x0a- commit message 2\\x0a- commit message 3\\x0a\\x0a\' | gh release edit "v1.1.0" -F -'],
+			['echo -e \'\\x23 Release v1.1.0\\x0a\\x0achanges:\\x0a- commit message 2\\x0a- commit message 3\\x0a\\x0a\' | gh release edit "v1.1.0" -F -'],
 		]);
 		expect(jest.mocked(mockShell.stderr).mock.calls).toStrictEqual([]);
 		expect(jest.mocked(mockShell.stdout).mock.calls).toStrictEqual([

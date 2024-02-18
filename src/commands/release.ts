@@ -43,16 +43,16 @@ export async function release(directory: string, branch = 'main'): Promise<void>
 	const { sha: shaCurrent } = await check('get current github commit', getCurrentGitHubCommit());
 
 	// handle version
-	const nextVersion = await editVersion(versionLastPackage);
+	const nextVersion = await getNewVersion(versionLastPackage);
 
-	// prepare release notes
-	const releaseNotes = await check('prepare release notes', getReleaseNotes(nextVersion, shaLast, shaCurrent));
+	// test
+	await check('run checks', shell.run('npm run check'));
 
 	// update version
 	await check('update version', setNextVersion(nextVersion));
 
-	// test
-	await check('run checks', shell.run('npm run check'));
+	// prepare release notes
+	const releaseNotes = await check('prepare release notes', getReleaseNotes(nextVersion, shaLast, shaCurrent));
 
 	if (!('private' in pkg) || !Boolean(pkg.private)) {
 		// npm publish
@@ -105,7 +105,7 @@ export async function release(directory: string, branch = 'main'): Promise<void>
 		return notes;
 	}
 
-	async function editVersion(versionPackage: string): Promise<string> {
+	async function getNewVersion(versionPackage: string): Promise<string> {
 		// ask for new version
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const versionNew: string = (await inquirer.prompt({
