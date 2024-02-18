@@ -54,8 +54,10 @@ export async function release(directory: string, branch = 'main'): Promise<void>
 	// test
 	await check('run checks', shell.run('npm run check'));
 
-	// npm publish
-	await check('npm publish', shell.run('npm publish --access public'));
+	if (!('private' in pkg) || !Boolean(pkg.private)) {
+		// npm publish
+		await check('npm publish', shell.run('npm publish --access public'));
+	}
 
 	// git push
 	await check('git add', shell.run('git add .'));
@@ -99,7 +101,7 @@ export async function release(directory: string, branch = 'main'): Promise<void>
 		let notes = commits.reverse()
 			.map(commit => '- ' + commit.message.replace(/\s+/g, ' '))
 			.join('\n');
-		notes = `# Release v${version}\n\nchanges: \n${notes}\n\n`;
+		notes = `# Release v${version}\n\nchanges:\n${notes}\n\n`;
 		return notes;
 	}
 
