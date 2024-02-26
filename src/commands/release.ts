@@ -30,6 +30,7 @@ export async function release(directory: string, branch = 'main'): Promise<void>
 	if (!('version' in pkg) || (typeof pkg.version !== 'string')) panic('package.json is missing "version"');
 	if (!('scripts' in pkg) || (typeof pkg.scripts !== 'object') || (pkg.scripts == null)) panic('package.json is missing "scripts"');
 	if (!('check' in pkg.scripts)) panic('missing npm script "check" in package.json');
+	if (!('prepack' in pkg.scripts)) panic('missing npm script "prepack" in package.json');
 
 	// get last version
 	const tag = await check('get last github tag', getLastGitHubTag());
