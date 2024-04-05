@@ -81,7 +81,7 @@ describe('release function', () => {
 		};
 		jest.mocked(getGit).mockClear().mockReturnValue(mockGit);
 
-		jest.mocked(readFileSync).mockClear().mockReturnValue(JSON.stringify({ version: '1.0.0', scripts: { check: '' } }));
+		jest.mocked(readFileSync).mockClear().mockReturnValue(JSON.stringify({ version: '1.0.0', scripts: { check: '', prepack: '' } }));
 
 		jest.mocked(inquirer.prompt).mockClear().mockResolvedValue({ versionNew: '1.1.0' });
 
@@ -121,7 +121,7 @@ describe('release function', () => {
 			]);
 		expect(jest.mocked(writeFileSync).mock.calls.map(v => [v[0], JSON.parse(v[1] as string) as unknown]))
 			.toStrictEqual([
-				['/test/directory/package.json', { version: '1.1.0', scripts: { check: '' } }],
+				['/test/directory/package.json', { version: '1.1.0', scripts: { check: '', prepack: '' } }],
 			]);
 
 		expect(jest.mocked(inquirer.prompt).mock.calls).toStrictEqual([[{
@@ -168,7 +168,7 @@ describe('release function', () => {
 	});
 
 	it('should error on missing scripts in package', async () => {
-		jest.mocked(readFileSync).mockReturnValue(JSON.stringify({ version: '1.0.0', scripts: {  } }));
+		jest.mocked(readFileSync).mockReturnValue(JSON.stringify({ version: '1.0.0', scripts: {} }));
 		await expect(release('/test/directory', 'main')).rejects.toThrow('missing npm script "check" in package.json');
 	});
 });
