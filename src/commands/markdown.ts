@@ -142,20 +142,7 @@ function getHeadingDepth(mainAst: Root, index: number): number {
  */
 function indentSegmentToDepth(segmentAst: Root, depth: number): void {
 	segmentAst.children.forEach(node => {
-		switch (node.type) {
-			case 'code':
-			case 'html':
-			case 'list':
-			case 'listItem':
-			case 'paragraph':
-			case 'text':
-				return;
-			case 'heading':
-				return node.depth += depth;
-			default:
-				console.log(node);
-				throw Error('unknown type: ' + node.type);
-		}
+		if (node.type == 'heading') return node.depth += depth;
 	});
 }
 
@@ -293,6 +280,9 @@ export function nodeToHtml(node: PhrasingContent): string {
 			if (node.alt ?? '') attributes.push(`alt="${node.alt}"`);
 			if (node.title ?? '') attributes.push(`title="${node.title}"`);
 			return `<img ${attributes.join(' ')} />`;
+		case 'footnoteReference': throw new Error('Not implemented yet: "footnoteReference" case');
+		case 'imageReference': throw new Error('Not implemented yet: "imageReference" case');
+		case 'linkReference': throw new Error('Not implemented yet: "linkReference" case');
 		default:
 			console.log(node);
 			throw Error('unknown type');
