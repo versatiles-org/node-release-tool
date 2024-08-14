@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-empty-function */
+ 
 
 import { getShell } from './shell.js';
 import { jest } from '@jest/globals';

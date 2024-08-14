@@ -34,7 +34,7 @@ export async function generateCommandDocumentation(command: string): Promise<str
  */
 async function getCommandResults(command: string): Promise<{ markdown: string; subcommands: string[] }> {
 	return new Promise((resolve, reject) => {
-		// eslint-disable-next-line @typescript-eslint/naming-convention
+		 
 		const env = { ...process.env, NODE_ENV: undefined };
 
 		// Spawn a child process to run the command with the '--help' flag.
@@ -80,7 +80,7 @@ function extractSubcommands(result: string): string[] {
 		.split('\n')                      // Split by newline to process each line.
 		.flatMap((line): string[] => {
 			// Extract subcommand names from each line.
-			const extract = /^  ([^ ]{2,})/.exec(line);
+			const extract = /^ {2}([^ ]{2,})/.exec(line);
 			if (!extract) return [];
 
 			const [, subcommand] = extract;

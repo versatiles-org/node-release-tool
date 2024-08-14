@@ -1,6 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
 import { jest } from '@jest/globals';
 import type { Command } from 'commander';
+import type { injectMarkdown } from './commands/markdown.js';
 
 jest.unstable_mockModule('./commands/typedoc.js', () => ({
 	generateTsMarkdownDoc: jest.fn<typeof generateTsMarkdownDoc>().mockResolvedValue('generateTsMarkdownDoc'),
@@ -16,7 +17,7 @@ jest.unstable_mockModule('./commands/markdown.js', () => ({
 	injectMarkdown: jest.fn<typeof injectMarkdown>().mockReturnValue('injectMarkdown'),
 	updateTOC: jest.fn<typeof updateTOC>().mockReturnValue('updateTOC'),
 }));
-const { injectMarkdown, updateTOC } = await import('./commands/markdown.js');
+const { updateTOC } = await import('./commands/markdown.js');
 
 jest.unstable_mockModule('node:fs', () => ({
 	existsSync: jest.fn<typeof existsSync>().mockReturnValue(true),
@@ -81,7 +82,7 @@ describe('release-tool CLI', () => {
 		console.log({ args });
 		const moduleUrl = './index.js?t=' + Math.random();
 		const module = await import(moduleUrl);
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
 		const program = (module.program) as Command;
 		await program.parseAsync(['node', 'vrt', ...args]);
 	}

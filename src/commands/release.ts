@@ -1,7 +1,7 @@
 #!/usr/bin/env npx tsx
 
 import { readFileSync, writeFileSync } from 'node:fs';
-import inquirer from 'inquirer';
+import select from '@inquirer/select';
 import { check, info, panic, warn } from '../lib/log.js';
 import { getShell } from '../lib/shell.js';
 import { getGit } from '../lib/git.js';
@@ -55,7 +55,7 @@ export async function release(directory: string, branch = 'main'): Promise<void>
 	// prepare release notes
 	const releaseNotes = await check('prepare release notes', getReleaseNotes(nextVersion, shaLast, shaCurrent));
 
-	if (!('private' in pkg) || !Boolean(pkg.private)) {
+	if (!('private' in pkg) || !pkg.private) {
 		// npm publish
 		await check('npm publish', shell.run('npm publish --access public'));
 	}
@@ -88,7 +88,7 @@ export async function release(directory: string, branch = 'main'): Promise<void>
 
 	async function setNextVersion(version: string): Promise<void> {
 		// set new version in package.json
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
 		const packageJSON: { version: string } = JSON.parse(readFileSync(resolve(directory, 'package.json'), 'utf8'));
 		packageJSON.version = version;
 		writeFileSync(resolve(directory, 'package.json'), JSON.stringify(packageJSON, null, '  ') + '\n');
@@ -108,15 +108,18 @@ export async function release(directory: string, branch = 'main'): Promise<void>
 
 	async function getNewVersion(versionPackage: string): Promise<string> {
 		// ask for new version
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		const versionNew: string = (await inquirer.prompt({
+
+		const versionNew: string = (await select({
 			message: 'What should be the new version?',
-			name: 'versionNew',
-			type: 'list',
-			choices: [versionPackage, bump(2), bump(1), bump(0)],
+			choices: [
+				{ value: versionPackage },
+				{ ...bump(2) },
+				{ ...bump(1) },
+				{ ...bump(0) }
+			],
 			default: 1,
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		})).versionNew;
+
+		}));
 		if (!versionNew) throw Error();
 
 		return versionNew;

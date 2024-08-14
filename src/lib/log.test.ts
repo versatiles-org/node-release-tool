@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-empty-function */
+ 
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 
 import type { SpiedFunction } from 'jest-mock';

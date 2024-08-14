@@ -67,7 +67,6 @@ describe('generateCommandDocumentation', () => {
 		});
 
 		function find(text: string): void {
-			// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 			while (true) {
 				const line = lines.shift();
 				if (line == null) {

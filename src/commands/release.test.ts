@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/require-await */
+
 
 import { jest } from '@jest/globals';
 import type { Shell } from '../lib/shell.js';
 import type { Git } from '../lib/git.js';
 
-jest.unstable_mockModule('inquirer', () => ({
-	default: { prompt: jest.fn() },
+jest.unstable_mockModule('@inquirer/select', () => ({
+	default: jest.fn(),
 }));
 jest.unstable_mockModule('node:fs', () => ({
 	readFileSync: jest.fn(),
@@ -27,7 +27,7 @@ jest.unstable_mockModule('../lib/git.js', () => ({
 	getGit: jest.fn(),
 }));
 
-const inquirer = (await import('inquirer')).default;
+const select = (await import('@inquirer/select')).default;
 const { readFileSync, writeFileSync } = await import('node:fs');
 const { check, info, panic, warn } = await import('../lib/log.js');
 const { getShell } = await import('../lib/shell.js');
@@ -83,7 +83,7 @@ describe('release function', () => {
 
 		jest.mocked(readFileSync).mockClear().mockReturnValue(JSON.stringify({ version: '1.0.0', scripts: { check: '', prepack: '' } }));
 
-		jest.mocked(inquirer.prompt).mockClear().mockResolvedValue({ versionNew: '1.1.0' });
+		jest.mocked(select).mockClear().mockResolvedValue('1.1.0');
 
 		jest.mocked(check).mockClear().mockImplementation(async function <T>(message: string, promise: Promise<T>): Promise<T> {
 			return promise;
@@ -124,17 +124,15 @@ describe('release function', () => {
 				['/test/directory/package.json', { version: '1.1.0', scripts: { check: '', prepack: '' } }],
 			]);
 
-		expect(jest.mocked(inquirer.prompt).mock.calls).toStrictEqual([[{
+		expect(jest.mocked(select).mock.calls).toStrictEqual([[{
 			choices: [
-				'1.0.0',
+				{ value: '1.0.0' },
 				{ name: '1.0.\x1b[1m1\x1b[22m', value: '1.0.1' },
 				{ name: '1.\x1b[1m1.0\x1b[22m', value: '1.1.0' },
 				{ name: '\x1b[1m2.0.0\x1b[22m', value: '2.0.0' },
 			],
 			default: 1,
 			message: 'What should be the new version?',
-			name: 'versionNew',
-			type: 'list',
 		}]]);
 
 		expect(jest.mocked(mockGit.getCommitsBetween).mock.calls).toStrictEqual([[

@@ -35,7 +35,8 @@ function* documentProject(project: ProjectReflection): Generator<string> {
 
 	for (const group of project.groups) {
 		yield '\n# ' + group.title;
-		for (const declaration of group.children) {
+		for (const d of group.children) {
+			const declaration = d as DeclarationReflection;
 			switch (declaration.kind) {
 				case ReflectionKind.Class: yield* documentClass(declaration); break;
 				case ReflectionKind.Function: yield* documentMethod(declaration, 2); break;
@@ -77,7 +78,7 @@ function* documentClass(declaration: DeclarationReflection): Generator<string> {
 	yield* documentSummaryBlock(declaration);
 
 	for (const group of declaration.groups ?? []) {
-		const publicMembers = group.children.filter(member => !member.flags.isPrivate && !member.flags.isProtected);
+		const publicMembers = group.children.filter(member => !member.flags.isPrivate && !member.flags.isProtected) as DeclarationReflection[];
 		if (publicMembers.length === 0) continue;
 
 		// Sort by order in code
@@ -223,7 +224,7 @@ function formatTypeDeclaration(someType: SomeType): string {
 			case 'literal':
 				return JSON.stringify(some.value);
 
-			case 'reference':
+			case 'reference': {
 				let result = some.name;
 				if (some.reflection) result = `[${result}](#${createAnchorId(some.reflection)})`;
 				if (some.typeArguments?.length ?? 0) result += '&lt;'
@@ -231,6 +232,7 @@ function formatTypeDeclaration(someType: SomeType): string {
 						.map(getTypeRec).join(',')
 					+ '&gt;';
 				return result;
+			}
 
 			case 'reflection':
 				switch (some.declaration.kind) {
@@ -264,7 +266,7 @@ function formatTypeDeclaration(someType: SomeType): string {
 					if (ref.groups.length !== 1) throw Error();
 					const [group] = ref.groups;
 					if (group.title !== 'Properties') throw Error();
-					const properties = group.children.map(r => r.escapedName + ':?');
+					const properties = group.children.map(r => (r as DeclarationReflection).escapedName + ':?');
 					return `{${properties.join(', ')}}`;
 				}
 

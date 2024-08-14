@@ -12,7 +12,7 @@ import { getErrorMessage } from '../lib/utils.js';
  * @param foldable If true, makes the segment foldable.
  * @returns The modified Markdown document.
  */
-// eslint-disable-next-line @typescript-eslint/max-params
+
 export function injectMarkdown(document: string, segment: string, heading: string, foldable?: boolean): string {
 	// Parse the input strings into Abstract Syntax Trees (ASTs).
 	const documentAst = parseMarkdown(document);
@@ -153,7 +153,7 @@ function indentSegmentToDepth(segmentAst: Root, depth: number): void {
  * @param startIndex The start index in the main AST.
  * @param endIndex The end index in the main AST.
  */
-// eslint-disable-next-line @typescript-eslint/max-params
+
 function mergeSegments(mainAst: Root, segmentAst: Root, startIndex: number, endIndex: number): void {
 	mainAst.children.splice(startIndex, endIndex - startIndex, ...segmentAst.children);
 }
@@ -191,10 +191,11 @@ function getMDAnchor(node: Heading): string {
 	for (const c of node.children) {
 		// Handle different types of child nodes to construct the anchor text.
 		switch (c.type) {
-			case 'html':
+			case 'html': {
 				const match = /<a\s.*id\s*=\s*['"]([^'"]+)/i.exec(c.value);
 				if (match) return match[1];
 				break;
+			}
 			case 'text':
 			case 'inlineCode':
 				text += c.value; break;
@@ -208,7 +209,7 @@ function getMDAnchor(node: Heading): string {
 	text = text.toLowerCase()
 		.replace(/[()]+/g, '')
 		.replace(/[^a-z0-9]+/g, '-')
-		.replace(/^\-+|\-+$/g, '');
+		.replace(/^-+|-+$/g, '');
 
 	return text;
 }
@@ -275,11 +276,12 @@ export function nodeToHtml(node: PhrasingContent): string {
 			return `<strong>${nodesToHtml(node.children)}</strong>`;
 		case 'link':
 			return `<a href="${node.url}"${node.title == null ? '' : ` title="${node.title}"`}>${nodesToHtml(node.children)}</a>`;
-		case 'image':
+		case 'image': {
 			const attributes = [`src="${node.url}"`];
 			if (node.alt ?? '') attributes.push(`alt="${node.alt}"`);
 			if (node.title ?? '') attributes.push(`title="${node.title}"`);
 			return `<img ${attributes.join(' ')} />`;
+		}
 		case 'footnoteReference': throw new Error('Not implemented yet: "footnoteReference" case');
 		case 'imageReference': throw new Error('Not implemented yet: "imageReference" case');
 		case 'linkReference': throw new Error('Not implemented yet: "linkReference" case');

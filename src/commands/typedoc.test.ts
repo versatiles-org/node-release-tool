@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-empty-function */
-/* eslint-disable @typescript-eslint/no-useless-constructor */
+ 
+ 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { resolve } from 'path';
 import { generateTsMarkdownDoc } from './typedoc.js';
