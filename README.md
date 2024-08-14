@@ -43,14 +43,8 @@ Have a look at this [package.json](https://github.com/versatiles-org/node-releas
 
 <!--- This chapter is generated automatically --->
 
-> @versatiles/release-tool@1.2.4 npx
-> vrt cmd2md vrt
-
 ```console
 $ vrt
-> @versatiles/release-tool@1.2.4 npx
-> vrt --help
-
 Usage: vrt [options] [command]
 
 versatiles release and documentaion tool
@@ -71,9 +65,6 @@ Commands:
 
 ```console
 $ vrt ts2md
-> @versatiles/release-tool@1.2.4 npx
-> vrt ts2md --help
-
 Usage: vrt ts2md [options] <typescript> <tsconfig>
 
 documents a TypeScript file and outputs it to stdout
@@ -90,9 +81,6 @@ Options:
 
 ```console
 $ vrt cmd2md
-> @versatiles/release-tool@1.2.4 npx
-> vrt cmd2md --help
-
 Usage: vrt cmd2md [options] <command>
 
 documents a runnable command and outputs it to stdout
@@ -108,9 +96,6 @@ Options:
 
 ```console
 $ vrt insertmd
-> @versatiles/release-tool@1.2.4 npx
-> vrt insertmd --help
-
 Usage: vrt insertmd [options] <readme> [heading] [foldable]
 
 takes Markdown from stdin and insert it into a Markdown file
@@ -128,9 +113,6 @@ Options:
 
 ```console
 $ vrt inserttoc
-> @versatiles/release-tool@1.2.4 npx
-> vrt inserttoc --help
-
 Usage: vrt inserttoc [options] <readme> [heading]
 
 updates the TOC in a Markdown file
@@ -147,9 +129,6 @@ Options:
 
 ```console
 $ vrt release-npm
-> @versatiles/release-tool@1.2.4 npx
-> vrt release-npm --help
-
 Usage: vrt release-npm [options] [path]
 
 release a npm package
