@@ -109,16 +109,17 @@ export async function release(directory: string, branch = 'main'): Promise<void>
 	async function getNewVersion(versionPackage: string): Promise<string> {
 		// ask for new version
 
+		const choices = [
+			{ value: versionPackage },
+			{ ...bump(2) },
+			{ ...bump(1) },
+			{ ...bump(0) }
+		]
+
 		const versionNew: string = (await select({
 			message: 'What should be the new version?',
-			choices: [
-				{ value: versionPackage },
-				{ ...bump(2) },
-				{ ...bump(1) },
-				{ ...bump(0) }
-			],
-			default: 1,
-
+			choices,
+			default: choices[1].value,
 		}));
 		if (!versionNew) throw Error();
 

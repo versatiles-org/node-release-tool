@@ -131,7 +131,7 @@ describe('release function', () => {
 				{ name: '1.\x1b[1m1.0\x1b[22m', value: '1.1.0' },
 				{ name: '\x1b[1m2.0.0\x1b[22m', value: '2.0.0' },
 			],
-			default: 1,
+			default: '1.0.1',
 			message: 'What should be the new version?',
 		}]]);
 
