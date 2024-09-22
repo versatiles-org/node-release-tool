@@ -1,8 +1,6 @@
-import type { JestConfigWithTsJest } from 'ts-jest';
-
-const config: JestConfigWithTsJest = {
+const config = {
 	verbose: true,
-	testEnvironment: 'node',
+	//testEnvironment: 'node',
 	transform: {
 		'^.+\\.ts$': ['ts-jest', { useESM: true }]
 	},
