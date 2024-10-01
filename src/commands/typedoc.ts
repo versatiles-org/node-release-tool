@@ -204,7 +204,7 @@ function* documentSummaryBlock(ref: DeclarationReflection | SignatureReflection)
 		let summary = extractSummary(comment) ?? '';
 		const link = createSourceLink(ref);
 		if (link != null) summary += ' ' + link;
-		return summary.replace(/\n/m, '  \n') + '\n';
+		return summary.replace(/\n/mg, '  \n') + '\n';
 	}
 }
 

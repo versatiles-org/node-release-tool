@@ -296,7 +296,7 @@ function nodesToHtml(children: PhrasingContent[]): string {
 }
 
 function textToHtml(text: string): string {
-	return text.replace(/[^a-z0-9 ,.-:_?@äöüß]/gi, c => `&#${c.charCodeAt(0)};`);
+	return text.replace(/[^a-z0-9 ,.\-:_?@äöüß]/gi, c => `&#${c.charCodeAt(0)};`);
 }
 
 export function parseMarkdown(document: string): Root {
