@@ -112,12 +112,12 @@ function* documentMethod(method: DeclarationReflection, depth: number, isConstru
 
 	const [signature] = method.signatures;
 
-	const methodName = signature.name;
 	const parameters = formatMethodParameters(signature.parameters ?? []);
-	const returnType = signature.type;
-	const methodType = isConstructor ? 'Constructor' : 'Method';
-
-	yield `\n${'#'.repeat(depth)} ${methodType}: \`${methodName}(${parameters})\``;
+	if (isConstructor) {
+		yield `\n${'#'.repeat(depth)} Constructor: \`new ${signature.name}(${parameters})\``;
+	} else {
+		yield `\n${'#'.repeat(depth)} Method: \`${signature.name}(${parameters})\``;
+	}
 
 	yield* documentSummaryBlock(signature);
 
@@ -129,8 +129,8 @@ function* documentMethod(method: DeclarationReflection, depth: number, isConstru
 		}
 	}
 
-	if (returnType && !isConstructor) {
-		yield `\n**Returns:** <code>${formatTypeDeclaration(returnType)}</code>`;
+	if (signature.type && !isConstructor) {
+		yield `\n**Returns:** <code>${formatTypeDeclaration(signature.type)}</code>`;
 	}
 }
 
