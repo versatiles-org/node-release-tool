@@ -1,6 +1,6 @@
 {
   "name": "@versatiles/release-tool",
-  "version": "1.2.6",
+  "version": "1.2.7",
   "description": "VersaTiles release and documentation tools",
   "bin": {
     "vrt": "./dist/index.js"
