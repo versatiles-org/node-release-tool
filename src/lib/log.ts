@@ -14,7 +14,7 @@ export function abort(): never {
 	process.exit();
 }
 
-export async function check<T>(message: string, promise: Promise<T> | (() => Promise<T>)): Promise<T> {
+export async function check<T>(message: string, promise: (Promise<T>) | (() => Promise<T>)): Promise<T> {
 	process.stderr.write(`\x1b[0;90m\u2B95 ${message}\x1b[0m`);
 	try {
 		const result: T = await (typeof promise === 'function' ? promise() : promise);
@@ -23,5 +23,6 @@ export async function check<T>(message: string, promise: Promise<T> | (() => Pro
 	} catch (error) {
 		process.stderr.write(`\r\x1b[0;91m\u2718 ${message}\x1b[0m\n`);
 		panic((error as Error).message);
+		throw error;
 	}
 }

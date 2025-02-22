@@ -85,8 +85,8 @@ describe('release function', () => {
 
 		jest.mocked(select).mockClear().mockResolvedValue('1.1.0');
 
-		jest.mocked(check).mockClear().mockImplementation(async function <T>(message: string, promise: Promise<T>): Promise<T> {
-			return promise;
+		jest.mocked(check).mockClear().mockImplementation(async function <T>(message: string, promise: Promise<T> | (() => Promise<T>)): Promise<T> {
+			return (typeof promise == 'function' ? promise() : promise);
 		});
 	});
 
