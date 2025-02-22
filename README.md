@@ -3,13 +3,14 @@
 
 # VersaTiles Release Tools
 
-Tools used internally for:
+Tools used for:
 
-* creating Markdown documentation of TypeScript libraries: [`vrt ts2md`](#subcommand-vrt-ts2md)
-* creating Markdown documentation of executables: [`vrt cmd2md`](#subcommand-vrt-cmd2md)
-* inserting Markdown into documents: [`vrt insertmd`](#subcommand-vrt-insertmd)
-* updating "Table of Content" in Markdown files: [`vrt inserttoc`](#subcommand-vrt-inserttoc)
-* releasing the current version as npm package: [`vrt release-npm`](#subcommand-vrt-release-npm)
+* creating a graph of the source code as mermaid: [`vrt deps-graph`](#subcommand-vrt-deps-graph)
+* upgrading all package dependencies: [`vrt deps-upgrade`](#subcommand-vrt-deps-upgrade)
+* creating Markdown documentation of executables: [`vrt doc-command`](#subcommand-vrt-doc-command)
+* inserting Markdown into documents: [`vrt doc-insert`](#subcommand-vrt-doc-insert)
+* updating "Table of Content" in Markdown files: [`vrt doc-toc`](#subcommand-vrt-doc-toc)
+* releasing the project as npm package: [`vrt release-npm`](#subcommand-vrt-release-npm)
 
 # Installation
 
@@ -149,7 +150,9 @@ Options:
   -h, --help  display help for command
 ```
 
-# Graph
+# Development
+
+## Dependency Graph
 
 <!--- This chapter is generated automatically --->
 

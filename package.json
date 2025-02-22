@@ -15,7 +15,7 @@
     "dev": "tsx src/index.ts",
     "doc": "npm run doc-command && npm run doc-graph",
     "doc-command": "npx vrt doc-command vrt | npx vrt doc-insert README.md '# Command'",
-    "doc-graph": "npx vrt deps-graph | npx vrt doc-insert README.md '# Graph'",
+    "doc-graph": "npx vrt deps-graph | npx vrt doc-insert README.md '## Dependency Graph'",
     "lint": "eslint . --color",
     "prepack": "npm run build",
     "release": "npm run build && npx vrt release-npm",
