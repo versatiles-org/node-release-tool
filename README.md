@@ -38,8 +38,6 @@ You need to configure the scripts in the package.json:
 * `scripts.prepack` is **recommended** to ensure that all files are up-to-date before releasing. Here you can build code and documentation.
 * `scripts.release` is **recommended** to make it easy to release a new version.
 
-Have a look at this [package.json](https://github.com/versatiles-org/node-release-tool/blob/main/package.json) as an example.
-
 # Command `vrt`
 
 <!--- This chapter is generated automatically --->
