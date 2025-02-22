@@ -21,14 +21,14 @@
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "upgrade": "npx vrt upgrade-deps"
   },
-  "author": "yetzt <node@yetzt.me>, Michael Kreil <versatiles@michael-kreil.de>",
+  "author": "Michael Kreil <versatiles@michael-kreil.de>",
   "license": "Unlicense",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/versatiles-org/node-versatiles.git"
+    "url": "git+https://github.com/versatiles-org/node-release-tool.git"
   },
-  "homepage": "https://github.com/versatiles-org/node-versatiles/blob/main/versatiles-release-tool/README.md",
+  "homepage": "https://github.com/versatiles-org/node-release-tool",
   "devDependencies": {
     "@types/jest": "^29.5.14",
     "@types/node": "^22.13.5",
