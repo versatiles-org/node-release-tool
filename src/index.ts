@@ -8,6 +8,7 @@ import { Command, InvalidArgumentError } from 'commander';
 import { cwd } from 'node:process';
 import { generateCommandDocumentation } from './commands/command.js';
 import { release } from './commands/release.js';
+import { upgradeDependencies } from './commands/upgrade.js';
 
 
 export const program = new Command();
@@ -62,7 +63,13 @@ program.command('release-npm')
 	.description('release a npm package')
 	.argument('[path]', 'root path of the Node.js project')
 	.action((path: string | null) => {
-		void release(resolve(path ?? ',', process.cwd()), 'main');
+		void release(resolve(path ?? '.', process.cwd()), 'main');
+	});
+
+program.command('upgrade-deps')
+	.description('upgrades all dependencies to the latest version')
+	.action((path: string | null) => {
+		void upgradeDependencies(resolve(path ?? '.', process.cwd()));
 	});
 
 if (process.env.NODE_ENV !== 'test') {
