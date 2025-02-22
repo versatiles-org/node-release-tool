@@ -7,7 +7,8 @@ import { Command, InvalidArgumentError } from 'commander';
 import { cwd } from 'node:process';
 import { generateCommandDocumentation } from './commands/command.js';
 import { release } from './commands/release.js';
-import { upgradeDependencies } from './commands/upgrade.js';
+import { upgradeDependencies } from './commands/upgrade-dependencies.js';
+import { generateDependencyGraph } from './commands/dependency-graph.js';
 
 
 export const program = new Command();
@@ -16,15 +17,27 @@ program
 	.name('vrt')
 	.description('versatiles release and documentaion tool');
 
-program.command('cmd2md')
-	.description('documents a runnable command and outputs it to stdout')
+program.command('deps-graph')
+	.description('draws a graph of all files in the project and outputs it as mermaid')
+	.action(() => {
+		void generateDependencyGraph(process.cwd());
+	});
+
+program.command('deps-upgrade')
+	.description('upgrades all dependencies to the latest version')
+	.action(() => {
+		void upgradeDependencies(process.cwd());
+	});
+
+program.command('doc-command')
+	.description('documents a runnable command and outputs it')
 	.argument('<command>', 'command to run')
 	.action(async (command: string) => {
 		const mdDocumentation = await generateCommandDocumentation(command);
 		process.stdout.write(mdDocumentation);
 	});
 
-program.command('insertmd')
+program.command('doc-insert')
 	.description('takes Markdown from stdin and insert it into a Markdown file')
 	.argument('<readme>', 'Markdown file, like a readme.md', checkFilename)
 	.argument('[heading]', 'Heading in the Markdown file', '# API')
@@ -39,7 +52,7 @@ program.command('insertmd')
 		writeFileSync(mdFilename, mdFile);
 	});
 
-program.command('inserttoc')
+program.command('doc-toc')
 	.description('updates the TOC in a Markdown file')
 	.argument('<readme>', 'Markdown file, like a readme.md', checkFilename)
 	.argument('[heading]', 'Heading in the Markdown file', '# Table of Content')
@@ -50,16 +63,10 @@ program.command('inserttoc')
 	});
 
 program.command('release-npm')
-	.description('release a npm package')
+	.description('releases a npm package')
 	.argument('[path]', 'root path of the Node.js project')
 	.action((path: string | null) => {
 		void release(resolve(path ?? '.', process.cwd()), 'main');
-	});
-
-program.command('upgrade-deps')
-	.description('upgrades all dependencies to the latest version')
-	.action((path: string | null) => {
-		void upgradeDependencies(resolve(path ?? '.', process.cwd()));
 	});
 
 if (process.env.NODE_ENV !== 'test') {

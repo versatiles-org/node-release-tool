@@ -1,5 +1,3 @@
- 
-
 import { getShell } from './shell.js';
 import { jest } from '@jest/globals';
 

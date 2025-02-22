@@ -10,16 +10,18 @@
     "dist/**/*.d.ts"
   ],
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.build.json && chmod +x dist/index.js",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && chmod +x dist/index.js && npm run doc",
     "check": "npm run lint && npm run build && npm run test",
     "dev": "tsx src/index.ts",
-    "doc": "npx vrt cmd2md vrt | npx vrt insertmd README.md '# Command'",
+    "doc": "npm run doc-command && npm run doc-graph",
+    "doc-command": "npx vrt doc-command vrt | npx vrt doc-insert README.md '# Command'",
+    "doc-graph": "npx vrt deps-graph | npx vrt doc-insert README.md '# Graph'",
     "lint": "eslint . --color",
-    "prepack": "npm run build && npm run doc",
+    "prepack": "npm run build",
     "release": "npm run build && npx vrt release-npm",
     "test-coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
-    "upgrade": "npx vrt upgrade-deps"
+    "upgrade": "npx vrt deps-upgrade"
   },
   "author": "Michael Kreil <versatiles@michael-kreil.de>",
   "license": "Unlicense",
@@ -44,6 +46,7 @@
   "dependencies": {
     "@inquirer/select": "^4.0.9",
     "commander": "^13.1.0",
+    "dependency-cruiser": "^16.10.0",
     "remark": "^15.0.1",
     "remark-gfm": "^4.0.1"
   }

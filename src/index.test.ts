@@ -34,23 +34,23 @@ describe('release-tool CLI', () => {
 		jest.restoreAllMocks();
 	});
 
-	describe('cmd2md command', () => {
+	describe('doc-command command', () => {
 		it('should generate markdown documentation from an executable', async () => {
 			const command = 'test';
 
-			await run('cmd2md', command);
+			await run('doc-command', command);
 
 			expect(generateCommandDocumentation).toHaveBeenCalledWith(command);
 			expect(mockStdout).toHaveBeenCalledWith('generateCommandDocumentation');
 		});
 	});
 
-	describe('inserttoc command', () => {
-		it('should insert inserttoc', async () => {
+	describe('doc-toc command', () => {
+		it('should insert doc-toc', async () => {
 			const readme = rootDir + 'README.md';
 			const heading = '## heading';
 
-			await run('inserttoc', readme, heading);
+			await run('doc-toc', readme, heading);
 
 			expect(existsSync).toHaveBeenCalledWith(readme);
 			expect(readFileSync).toHaveBeenCalledWith(readme, 'utf8');

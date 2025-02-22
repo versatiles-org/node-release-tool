@@ -56,7 +56,14 @@ describe('generateCommandDocumentation', () => {
 		find('Commands:');
 		find('```');
 
-		['cmd2md', 'insertmd', 'inserttoc', 'upgrade-deps'].forEach(subcommand => {
+		[
+			'deps-graph',
+			'deps-upgrade',
+			'doc-command',
+			'doc-insert',
+			'doc-toc',
+			'release-npm'
+		].forEach(subcommand => {
 			find('# Subcommand: `vrt ' + subcommand);
 			find('```console');
 			find('$ vrt ' + subcommand);

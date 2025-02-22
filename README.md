@@ -50,40 +50,49 @@ Usage: vrt [options] [command]
 versatiles release and documentaion tool
 
 Options:
-  -h, --help                              display help for command
+  -h, --help                                display help for command
 
 Commands:
-  ts2md <typescript> <tsconfig>           documents a TypeScript file and outputs it to stdout
-  cmd2md <command>                        documents a runnable command and outputs it to stdout
-  insertmd <readme> [heading] [foldable]  takes Markdown from stdin and insert it into a Markdown file
-  inserttoc <readme> [heading]            updates the TOC in a Markdown file
-  release-npm [path]                      release a npm package
-  help [command]                          display help for command
+  deps-graph                                draws a graph of all files in the project and outputs it as mermaid
+  deps-upgrade                              upgrades all dependencies to the latest version
+  doc-command <command>                     documents a runnable command and outputs it
+  doc-insert <readme> [heading] [foldable]  takes Markdown from stdin and insert it into a Markdown file
+  doc-toc <readme> [heading]                updates the TOC in a Markdown file
+  release-npm [path]                        releases a npm package
+  help [command]                            display help for command
 ```
 
-## Subcommand: `vrt ts2md`
+## Subcommand: `vrt deps-graph`
 
 ```console
-$ vrt ts2md
-Usage: vrt ts2md [options] <typescript> <tsconfig>
+$ vrt deps-graph
+Usage: vrt deps-graph [options]
 
-documents a TypeScript file and outputs it to stdout
-
-Arguments:
-  typescript  Filename of the TypeScript file
-  tsconfig    Filename of tsconfig.json
+draws a graph of all files in the project and outputs it as mermaid
 
 Options:
   -h, --help  display help for command
 ```
 
-## Subcommand: `vrt cmd2md`
+## Subcommand: `vrt deps-upgrade`
 
 ```console
-$ vrt cmd2md
-Usage: vrt cmd2md [options] <command>
+$ vrt deps-upgrade
+Usage: vrt deps-upgrade [options]
 
-documents a runnable command and outputs it to stdout
+upgrades all dependencies to the latest version
+
+Options:
+  -h, --help  display help for command
+```
+
+## Subcommand: `vrt doc-command`
+
+```console
+$ vrt doc-command
+Usage: vrt doc-command [options] <command>
+
+documents a runnable command and outputs it
 
 Arguments:
   command     command to run
@@ -92,11 +101,11 @@ Options:
   -h, --help  display help for command
 ```
 
-## Subcommand: `vrt insertmd`
+## Subcommand: `vrt doc-insert`
 
 ```console
-$ vrt insertmd
-Usage: vrt insertmd [options] <readme> [heading] [foldable]
+$ vrt doc-insert
+Usage: vrt doc-insert [options] <readme> [heading] [foldable]
 
 takes Markdown from stdin and insert it into a Markdown file
 
@@ -109,11 +118,11 @@ Options:
   -h, --help  display help for command
 ```
 
-## Subcommand: `vrt inserttoc`
+## Subcommand: `vrt doc-toc`
 
 ```console
-$ vrt inserttoc
-Usage: vrt inserttoc [options] <readme> [heading]
+$ vrt doc-toc
+Usage: vrt doc-toc [options] <readme> [heading]
 
 updates the TOC in a Markdown file
 
@@ -131,11 +140,50 @@ Options:
 $ vrt release-npm
 Usage: vrt release-npm [options] [path]
 
-release a npm package
+releases a npm package
 
 Arguments:
   path        root path of the Node.js project
 
 Options:
   -h, --help  display help for command
+```
+
+# Graph
+
+<!--- This chapter is generated automatically --->
+
+```mermaid
+flowchart TB
+
+subgraph 0["src"]
+subgraph 1["commands"]
+2["command.ts"]
+5["dependency-graph.ts"]
+7["markdown.ts"]
+8["release.ts"]
+B["upgrade-dependencies.ts"]
+end
+subgraph 3["lib"]
+4["utils.ts"]
+6["log.ts"]
+9["git.ts"]
+A["shell.ts"]
+end
+C["index.ts"]
+end
+2-->4
+5-->6
+7-->4
+8-->9
+8-->6
+8-->A
+9-->A
+B-->6
+B-->A
+C-->2
+C-->5
+C-->7
+C-->8
+C-->B
 ```
