@@ -56,12 +56,11 @@ describe('generateCommandDocumentation', () => {
 		find('Commands:');
 		find('```');
 
-		['ts2md', 'cmd2md', 'insertmd', 'inserttoc'].forEach(subcommand => {
+		['cmd2md', 'insertmd', 'inserttoc', 'upgrade-deps'].forEach(subcommand => {
 			find('# Subcommand: `vrt ' + subcommand);
 			find('```console');
 			find('$ vrt ' + subcommand);
 			find('Usage: vrt ' + subcommand);
-			find('Arguments:');
 			find('Options:');
 			find('```');
 		});

@@ -2,7 +2,6 @@
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { generateTsMarkdownDoc } from './commands/typedoc.js';
 import { injectMarkdown, updateTOC } from './commands/markdown.js';
 import { Command, InvalidArgumentError } from 'commander';
 import { cwd } from 'node:process';
@@ -16,15 +15,6 @@ export const program = new Command();
 program
 	.name('vrt')
 	.description('versatiles release and documentaion tool');
-
-program.command('ts2md')
-	.description('documents a TypeScript file and outputs it to stdout')
-	.argument('<typescript>', 'Filename of the TypeScript file', checkFilename)
-	.argument('<tsconfig>', 'Filename of tsconfig.json', checkFilename)
-	.action(async (tsFilename: string, tsConfig: string) => {
-		const mdDocumentation = await generateTsMarkdownDoc([tsFilename], tsConfig);
-		process.stdout.write(mdDocumentation);
-	});
 
 program.command('cmd2md')
 	.description('documents a runnable command and outputs it to stdout')

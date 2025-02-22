@@ -3,11 +3,6 @@ import { jest } from '@jest/globals';
 import type { Command } from 'commander';
 import type { injectMarkdown } from './commands/markdown.js';
 
-jest.unstable_mockModule('./commands/typedoc.js', () => ({
-	generateTsMarkdownDoc: jest.fn<typeof generateTsMarkdownDoc>().mockResolvedValue('generateTsMarkdownDoc'),
-}));
-const { generateTsMarkdownDoc } = await import('./commands/typedoc.js');
-
 jest.unstable_mockModule('./commands/command.js', () => ({
 	generateCommandDocumentation: jest.fn<typeof generateCommandDocumentation>().mockResolvedValue('generateCommandDocumentation'),
 }));
@@ -37,20 +32,6 @@ describe('release-tool CLI', () => {
 
 	afterAll(() => {
 		jest.restoreAllMocks();
-	});
-
-	describe('ts2md command', () => {
-		it('should generate markdown documentation from a TypeScript file', async () => {
-			const tsFilename = rootDir + 'src/index.ts';
-			const tsConfig = rootDir + 'tsconfig.build.json';
-
-			await run('ts2md', tsFilename, tsConfig);
-
-			expect(existsSync).toHaveBeenNthCalledWith(1, tsFilename);
-			expect(existsSync).toHaveBeenNthCalledWith(2, tsConfig);
-			expect(generateTsMarkdownDoc).toHaveBeenCalledWith([tsFilename], tsConfig);
-			expect(mockStdout).toHaveBeenCalledWith('generateTsMarkdownDoc');
-		});
 	});
 
 	describe('cmd2md command', () => {

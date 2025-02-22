@@ -45,7 +45,6 @@
     "@inquirer/select": "^4.0.9",
     "commander": "^13.1.0",
     "remark": "^15.0.1",
-    "remark-gfm": "^4.0.1",
-    "typedoc": "^0.27.8"
+    "remark-gfm": "^4.0.1"
   }
 }
