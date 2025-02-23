@@ -52,6 +52,7 @@ Options:
   -h, --help                                display help for command
 
 Commands:
+  check-package                             checks the package.json for required scripts
   deps-graph                                draws a graph of all files in the project and outputs it as mermaid
   deps-upgrade                              upgrades all dependencies to the latest version
   doc-command <command>                     documents a runnable command and outputs it
@@ -59,6 +60,18 @@ Commands:
   doc-toc <readme> [heading]                updates the TOC in a Markdown file
   release-npm [path]                        releases a npm package
   help [command]                            display help for command
+```
+
+## Subcommand: `vrt check-package`
+
+```console
+$ vrt check-package
+Usage: vrt check-package [options]
+
+checks the package.json for required scripts
+
+Options:
+  -h, --help  display help for command
 ```
 
 ## Subcommand: `vrt deps-graph`
@@ -159,32 +172,35 @@ flowchart TB
 
 subgraph 0["src"]
 subgraph 1["commands"]
-2["command.ts"]
-5["dependency-graph.ts"]
-7["markdown.ts"]
-8["release.ts"]
-B["upgrade-dependencies.ts"]
+2["check.ts"]
+5["command.ts"]
+7["dependency-graph.ts"]
+8["markdown.ts"]
+9["release.ts"]
+C["upgrade-dependencies.ts"]
 end
 subgraph 3["lib"]
-4["utils.ts"]
-6["log.ts"]
-9["git.ts"]
-A["shell.ts"]
+4["log.ts"]
+6["utils.ts"]
+A["git.ts"]
+B["shell.ts"]
 end
-C["index.ts"]
+D["index.ts"]
 end
 2-->4
 5-->6
 7-->4
-8-->9
 8-->6
-8-->A
 9-->A
-B-->6
-B-->A
-C-->2
-C-->5
-C-->7
-C-->8
+9-->4
+9-->B
+A-->B
+C-->4
 C-->B
+D-->2
+D-->5
+D-->7
+D-->8
+D-->9
+D-->C
 ```
