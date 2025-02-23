@@ -4,7 +4,7 @@ import * as tdTheme from 'typedoc-github-wiki-theme';
 import { panic, warn } from '../lib/log.js';
 
 export async function generateTypescriptDocs(options: { entryPoint?: string, outputPath?: string }) {
-	const app = await td.Application.bootstrapWithPlugins({
+	const app = await td.Application.bootstrap({
 		entryPoints: [options.entryPoint ?? './src/index.ts'],
 		gitRevision: 'main',
 		outputs: [{ name: 'markdown', path: options.outputPath ?? './docs' }],
