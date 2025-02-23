@@ -3,10 +3,10 @@ import { jest } from '@jest/globals';
 import type { Command } from 'commander';
 import type { injectMarkdown } from './commands/markdown.js';
 
-jest.unstable_mockModule('./commands/command.js', () => ({
+jest.unstable_mockModule('./commands/doc-command.js', () => ({
 	generateCommandDocumentation: jest.fn<typeof generateCommandDocumentation>().mockResolvedValue('generateCommandDocumentation'),
 }));
-const { generateCommandDocumentation } = await import('./commands/command.js');
+const { generateCommandDocumentation } = await import('./commands/doc-command.js');
 
 jest.unstable_mockModule('./commands/markdown.js', () => ({
 	injectMarkdown: jest.fn<typeof injectMarkdown>().mockReturnValue('injectMarkdown'),

@@ -3,7 +3,7 @@ import cp from 'child_process';
 import { EventEmitter } from 'node:events';
 import type { Writable } from 'node:stream';
 import { Readable } from 'node:stream';
-import { generateCommandDocumentation } from './command.js';
+import { generateCommandDocumentation } from './doc-command.js';
 import { jest } from '@jest/globals';
 
 describe('generateCommandDocumentation using mocked spawn', () => {

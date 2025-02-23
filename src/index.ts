@@ -5,11 +5,11 @@ import { resolve } from 'node:path';
 import { injectMarkdown, updateTOC } from './commands/markdown.js';
 import { Command, InvalidArgumentError } from 'commander';
 import { cwd } from 'node:process';
-import { generateCommandDocumentation } from './commands/command.js';
-import { release } from './commands/release.js';
-import { upgradeDependencies } from './commands/upgrade-dependencies.js';
-import { generateDependencyGraph } from './commands/dependency-graph.js';
-import { checkPackage } from './commands/check.js';
+import { generateCommandDocumentation } from './commands/doc-command.js';
+import { release } from './commands/release-npm.js';
+import { upgradeDependencies } from './commands/deps-upgrade.js';
+import { generateDependencyGraph } from './commands/deps-graph.js';
+import { checkPackage } from './commands/check-package.js';
 
 
 export const program = new Command();

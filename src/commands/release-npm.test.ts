@@ -32,7 +32,7 @@ const { readFileSync, writeFileSync } = await import('node:fs');
 const { check, info, panic, warn } = await import('../lib/log.js');
 const { getShell } = await import('../lib/shell.js');
 const { getGit } = await import('../lib/git.js');
-const { release } = await import('./release.js');
+const { release } = await import('./release-npm.js');
 
 describe('release function', () => {
 	let mockGit: {
