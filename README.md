@@ -58,6 +58,7 @@ Commands:
   doc-command <command>                     documents a runnable command and outputs it
   doc-insert <readme> [heading] [foldable]  takes Markdown from stdin and insert it into a Markdown file
   doc-toc <readme> [heading]                updates the TOC in a Markdown file
+  doc-typescript [options]                  generates a documentation for a TypeScript project
   release-npm [path]                        releases a npm package
   help [command]                            display help for command
 ```
@@ -146,6 +147,21 @@ Options:
   -h, --help  display help for command
 ```
 
+## Subcommand: `vrt doc-typescript`
+
+```console
+$ vrt doc-typescript
+Usage: vrt doc-typescript [options]
+
+generates a documentation for a TypeScript project
+
+Options:
+  -i <entryPoint>  entry point of the TypeScript project, default is
+                   "./src/index.ts"
+  -o <outputPath>  output path for the documentation, default is "./docs"
+  -h, --help       display help for command
+```
+
 ## Subcommand: `vrt release-npm`
 
 ```console
@@ -193,6 +209,7 @@ end
 6-->4
 6-->7
 8-->9
+A-->4
 B-->9
 C-->D
 C-->4
@@ -202,6 +219,7 @@ E-->2
 E-->5
 E-->6
 E-->8
+E-->A
 E-->B
 E-->C
 ```

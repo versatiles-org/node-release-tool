@@ -43,13 +43,12 @@ export function checkPackage(directory: string): void {
 		}
 	}
 
-	if (pack.dependencies?.['npm-check-updates']) {
-		info('dependencies npm-check-updates is probably not needed');
-	}
-
-	if (pack.devDependencies?.['npm-check-updates']) {
-		info('devDependencies npm-check-updates is probably not needed');
-	}
+	['npm-check-updates'].forEach((dep) => {
+		if (pack.dependencies?.[dep]) {
+			info(`dependencies "${dep}" is probably not needed`);
+		}
+		if (pack.devDependencies?.[dep]) {
+			info(`devDependencies "${dep}" is probably not needed`);
+		}
+	});
 }
-
-

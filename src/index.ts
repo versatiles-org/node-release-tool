@@ -10,6 +10,7 @@ import { release } from './commands/release-npm.js';
 import { upgradeDependencies } from './commands/deps-upgrade.js';
 import { generateDependencyGraph } from './commands/deps-graph.js';
 import { checkPackage } from './commands/check-package.js';
+import { generateTypescriptDocs } from './commands/doc-typescript.js';
 
 
 export const program = new Command();
@@ -67,6 +68,14 @@ program.command('doc-toc')
 		let mdFile = readFileSync(mdFilename, 'utf8');
 		mdFile = updateTOC(mdFile, heading);
 		writeFileSync(mdFilename, mdFile);
+	});
+
+program.command('doc-typescript')
+	.description('generates a documentation for a TypeScript project')
+	.option('-i <entryPoint>', 'entry point of the TypeScript project, default is "./src/index.ts"')
+	.option('-o <outputPath>', 'output path for the documentation, default is "./docs"')
+	.action(async (options) => {
+		await generateTypescriptDocs(options);
 	});
 
 program.command('release-npm')
