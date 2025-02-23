@@ -18,7 +18,7 @@
     "doc-graph": "tsx src/index.ts deps-graph | tsx src/index.ts doc-insert README.md '## Dependency Graph'",
     "lint": "eslint . --color",
     "prepack": "npm run build",
-    "release": "npm run build && tsx src/index.ts release-npm",
+    "release": "tsx src/index.ts release-npm",
     "test-coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "upgrade": "tsx src/index.ts deps-upgrade"
