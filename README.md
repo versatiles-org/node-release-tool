@@ -46,21 +46,22 @@ You need to configure the scripts in the package.json:
 $ vrt
 Usage: vrt [options] [command]
 
-versatiles release and documentaion tool
+CLI tool for releasing packages and generating documentation for
+Node.js/TypeScript projects.
 
 Options:
   -h, --help                                display help for command
 
 Commands:
-  check-package                             checks the package.json for required scripts
-  deps-graph                                draws a graph of all files in the project and outputs it as mermaid
-  deps-upgrade                              upgrades all dependencies to the latest version
-  doc-command <command>                     documents a runnable command and outputs it
-  doc-insert <readme> [heading] [foldable]  takes Markdown from stdin and insert it into a Markdown file
-  doc-toc <readme> [heading]                updates the TOC in a Markdown file
-  doc-typescript [options]                  generates a documentation for a TypeScript project
-  release-npm [path]                        releases a npm package
+  check-package                             Check package.json for required scripts and other metadata.
+  deps-graph                                Analyze project files and output a dependency graph as Mermaid markup.
+  deps-upgrade                              Upgrade all dependencies in the current project to their latest versions.
+  doc-command <command>                     Generate Markdown documentation for a specified command and output the result.
+  doc-insert <readme> [heading] [foldable]  Insert Markdown from stdin into a specified section of a Markdown file.
+  doc-toc <readme> [heading]                Generate a Table of Contents (TOC) in a Markdown file.
+  doc-typescript [options]                  Generate documentation for a TypeScript project.
   help [command]                            display help for command
+  release-npm [path]                        Publish an npm package from the specified path to the npm registry.
 ```
 
 ## Subcommand: `vrt check-package`
@@ -69,7 +70,7 @@ Commands:
 $ vrt check-package
 Usage: vrt check-package [options]
 
-checks the package.json for required scripts
+Check package.json for required scripts and other metadata.
 
 Options:
   -h, --help  display help for command
@@ -81,7 +82,7 @@ Options:
 $ vrt deps-graph
 Usage: vrt deps-graph [options]
 
-draws a graph of all files in the project and outputs it as mermaid
+Analyze project files and output a dependency graph as Mermaid markup.
 
 Options:
   -h, --help  display help for command
@@ -93,7 +94,7 @@ Options:
 $ vrt deps-upgrade
 Usage: vrt deps-upgrade [options]
 
-upgrades all dependencies to the latest version
+Upgrade all dependencies in the current project to their latest versions.
 
 Options:
   -h, --help  display help for command
@@ -105,10 +106,10 @@ Options:
 $ vrt doc-command
 Usage: vrt doc-command [options] <command>
 
-documents a runnable command and outputs it
+Generate Markdown documentation for a specified command and output the result.
 
 Arguments:
-  command     command to run
+  command     Command to document (e.g., "npm run build").
 
 Options:
   -h, --help  display help for command
@@ -120,12 +121,14 @@ Options:
 $ vrt doc-insert
 Usage: vrt doc-insert [options] <readme> [heading] [foldable]
 
-takes Markdown from stdin and insert it into a Markdown file
+Insert Markdown from stdin into a specified section of a Markdown file.
 
 Arguments:
-  readme      Markdown file, like a readme.md
-  heading     Heading in the Markdown file (default: "# API")
-  foldable    Make content foldable (default: false)
+  readme      Path to the target Markdown file (e.g., README.md).
+  heading     Heading in the Markdown file where content should be placed.
+              Default is "# API". (default: "# API")
+  foldable    Whether to wrap the inserted content in a foldable section.
+              (default: false)
 
 Options:
   -h, --help  display help for command
@@ -137,11 +140,12 @@ Options:
 $ vrt doc-toc
 Usage: vrt doc-toc [options] <readme> [heading]
 
-updates the TOC in a Markdown file
+Generate a Table of Contents (TOC) in a Markdown file.
 
 Arguments:
-  readme      Markdown file, like a readme.md
-  heading     Heading in the Markdown file (default: "# Table of Content")
+  readme      Path to the Markdown file (e.g., README.md).
+  heading     Heading in the Markdown file where TOC should be inserted. Default
+              is "# Table of Content". (default: "# Table of Content")
 
 Options:
   -h, --help  display help for command
@@ -153,13 +157,14 @@ Options:
 $ vrt doc-typescript
 Usage: vrt doc-typescript [options]
 
-generates a documentation for a TypeScript project
+Generate documentation for a TypeScript project.
 
 Options:
-  -i <entryPoint>  entry point of the TypeScript project, default is
-                   "./src/index.ts"
-  -o <outputPath>  output path for the documentation, default is "./docs"
   -h, --help       display help for command
+  -i <entryPoint>  Entry point of the TypeScript project. Default is
+                   "./src/index.ts".
+  -o <outputPath>  Output path for the generated documentation. Default is
+                   "./docs".
 ```
 
 ## Subcommand: `vrt release-npm`
@@ -168,10 +173,11 @@ Options:
 $ vrt release-npm
 Usage: vrt release-npm [options] [path]
 
-releases a npm package
+Publish an npm package from the specified path to the npm registry.
 
 Arguments:
-  path        root path of the Node.js project
+  path        Root path of the Node.js project. Defaults to the current
+              directory.
 
 Options:
   -h, --help  display help for command
