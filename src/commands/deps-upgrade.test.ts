@@ -111,8 +111,8 @@ describe('upgradeDependencies()', () => {
 		const updatedPkg = JSON.parse(newPackageContents as string);
 		expect(updatedPkg).toMatchObject({
 			dependencies: {
-				lodash: '4.17.21',   // updated from the latest in the mock data
-				typescript: '4.6.2', // updated from array of versions, the code picks the greatest
+				lodash: '^4.17.21',   // updated from the latest in the mock data
+				typescript: '^4.6.2', // updated from array of versions, the code picks the greatest
 			},
 			devDependencies: {
 				jest: '^27.0.0', // remains unchanged because it wasn't listed in the outdated mock

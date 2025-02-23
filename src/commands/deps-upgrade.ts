@@ -47,7 +47,7 @@ export async function upgradeDependencies(directory: string): Promise<void> {
 	await check('Upgrade all versions', async () => {
 		const { stdout } = await shell.run('npm outdated --all --json', false);
 		const outdated = JSON.parse(stdout) as Record<string, Entry | Entry[]>;
-		const latestVersion = new Map<string, string>();
+		const latestVersions = new Map<string, string>();
 
 		// Collect the latest version for each dependency
 		for (const [name, entry] of Object.entries(outdated)) {
@@ -59,7 +59,7 @@ export async function upgradeDependencies(directory: string): Promise<void> {
 			} else {
 				version = entry.latest;
 			}
-			latestVersion.set(name, version);
+			latestVersions.set(name, version);
 		}
 
 		// Load package.json
@@ -83,7 +83,8 @@ export async function upgradeDependencies(directory: string): Promise<void> {
 		function patch(dependencies?: Dependency): void {
 			if (!dependencies) return;
 			for (const name of Object.keys(dependencies)) {
-				dependencies[name] = latestVersion.get(name) ?? dependencies[name];
+				const version = latestVersions.get(name);
+				if (version) dependencies[name] = '^' + version;
 			}
 		}
 	});
