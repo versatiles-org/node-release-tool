@@ -1,6 +1,7 @@
 import type { Heading, Root, RootContent, PhrasingContent } from 'mdast';
 import { remark } from 'remark';
 import remarkGfm from 'remark-gfm';
+import remarkStringify from 'remark-stringify';
 import { getErrorMessage } from '../lib/utils.js';
 
 /**
@@ -42,7 +43,16 @@ export function injectMarkdown(document: string, segment: string, heading: strin
 	mergeSegments(documentAst, segmentAst, startIndex + 1, endIndex);
 
 	// Convert the modified AST back to a Markdown string and return.
-	return remark().stringify(documentAst);
+	const result = remark()
+		.use(remarkGfm, {
+			tableCellPadding: true,
+		})
+		.use(remarkStringify, {
+			bullet: '-',
+			rule: '-',
+		})
+		.stringify(documentAst);
+	return result
 }
 
 /**
