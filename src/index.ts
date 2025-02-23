@@ -9,6 +9,7 @@ import { generateCommandDocumentation } from './commands/command.js';
 import { release } from './commands/release.js';
 import { upgradeDependencies } from './commands/upgrade-dependencies.js';
 import { generateDependencyGraph } from './commands/dependency-graph.js';
+import { checkPackage } from './commands/check.js';
 
 
 export const program = new Command();
@@ -16,6 +17,12 @@ export const program = new Command();
 program
 	.name('vrt')
 	.description('versatiles release and documentaion tool');
+
+program.command('check-package')
+	.description('checks the package.json for required scripts')
+	.action(() => {
+		void checkPackage(process.cwd());
+	});
 
 program.command('deps-graph')
 	.description('draws a graph of all files in the project and outputs it as mermaid')
