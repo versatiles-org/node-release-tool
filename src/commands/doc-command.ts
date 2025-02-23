@@ -34,8 +34,14 @@ export async function generateCommandDocumentation(command: string): Promise<str
  */
 async function getCommandResults(command: string): Promise<{ markdown: string; subcommands: string[] }> {
 	return new Promise((resolve, reject) => {
-		 
-		const env = { ...process.env, NODE_ENV: undefined };
+
+		const env = {
+			...process.env,
+			NODE_ENV: undefined,
+			NODE_DISABLE_COLORS: '1',
+			NO_COLORS: '1',
+			FORCE_COLOR: '0'
+		};
 
 		// Spawn a child process to run the command with the '--help' flag.
 		const childProcess = cp.spawn('npx', [...command.split(' '), '--help'], { env });
