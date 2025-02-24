@@ -5,12 +5,12 @@
 
 Tools used for:
 
-* creating a graph of the source code as mermaid: [`vrt deps-graph`](#subcommand-vrt-deps-graph)
-* upgrading all package dependencies: [`vrt deps-upgrade`](#subcommand-vrt-deps-upgrade)
-* creating Markdown documentation of executables: [`vrt doc-command`](#subcommand-vrt-doc-command)
-* inserting Markdown into documents: [`vrt doc-insert`](#subcommand-vrt-doc-insert)
-* updating "Table of Content" in Markdown files: [`vrt doc-toc`](#subcommand-vrt-doc-toc)
-* releasing the project as npm package: [`vrt release-npm`](#subcommand-vrt-release-npm)
+- creating a graph of the source code as mermaid: [`vrt deps-graph`](#subcommand-vrt-deps-graph)
+- upgrading all package dependencies: [`vrt deps-upgrade`](#subcommand-vrt-deps-upgrade)
+- creating Markdown documentation of executables: [`vrt doc-command`](#subcommand-vrt-doc-command)
+- inserting Markdown into documents: [`vrt doc-insert`](#subcommand-vrt-doc-insert)
+- updating "Table of Content" in Markdown files: [`vrt doc-toc`](#subcommand-vrt-doc-toc)
+- releasing the project as npm package: [`vrt release-npm`](#subcommand-vrt-release-npm)
 
 # Installation
 
@@ -34,9 +34,9 @@ You need to configure the scripts in the package.json:
 }
 ```
 
-* `scripts.check` is **required** by the release command. Here you can lint, build and test your code.
-* `scripts.prepack` is **recommended** to ensure that all files are up-to-date before releasing. Here you can build code and documentation.
-* `scripts.release` is **recommended** to make it easy to release a new version.
+- `scripts.check` is **required** by the release command. Here you can lint, build and test your code.
+- `scripts.prepack` is **recommended** to ensure that all files are up-to-date before releasing. Here you can build code and documentation.
+- `scripts.release` is **recommended** to make it easy to release a new version.
 
 # Command `vrt`
 
@@ -160,11 +160,13 @@ Usage: vrt doc-typescript [options]
 Generate documentation for a TypeScript project.
 
 Options:
-  -h, --help       display help for command
-  -i <entryPoint>  Entry point of the TypeScript project. Default is
-                   "./src/index.ts".
-  -o <outputPath>  Output path for the generated documentation. Default is
-                   "./docs".
+  -f, --format <format>      Allowed are "markdown", "wiki" and "html". Default
+                             is "markdown".
+  -h, --help                 display help for command
+  -i, --input <entryPoint>   Entry point of the TypeScript project. Default is
+                             "./src/index.ts".
+  -o, --output <outputPath>  Output path for the generated documentation.
+                             Default is "./docs".
 ```
 
 ## Subcommand: `vrt release-npm`

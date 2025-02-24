@@ -1,4 +1,4 @@
- 
+
 import type { PhrasingContent, PhrasingContentMap } from 'mdast';
 import { injectMarkdown, nodeToHtml, parseMarkdown, updateTOC } from './markdown.js'; // Replace with the actual path of your module
 
@@ -53,7 +53,7 @@ describe('inject markdown', () => {
 describe('update TOC', () => {
 	it('updates the Table of Contents of a Markdown document', () => {
 		const result = updateTOC(document, '## H 2');
-		expect(result).toBe(getDoc('* [H 1](#h-1)\n* [H 3](#h-3)'));
+		expect(result).toBe(getDoc('- [H 1](#h-1)\n- [H 3](#h-3)'));
 	});
 
 	describe('getMDAnchor', () => {
@@ -63,16 +63,16 @@ describe('update TOC', () => {
 
 		function test(input: string, text: string, anchor: string): void {
 			expect(updateTOC(`# H 1\n\n# H ${input}\n`, '# H 1'))
-				.toBe(`# H 1\n\n* [H ${text}](#h-${anchor})\n\n# H ${input}\n`);
+				.toBe(`# H 1\n\n- [H ${text}](#h-${anchor})\n\n# H ${input}\n`);
 		}
 	});
 
 	it('getMDAnchor simple', () => {
-		expect(updateTOC('# H 1\n\n# H 2\n', '# H 1')).toBe('# H 1\n\n* [H 2](#h-2)\n\n# H 2\n');
+		expect(updateTOC('# H 1\n\n# H 2\n', '# H 1')).toBe('# H 1\n\n- [H 2](#h-2)\n\n# H 2\n');
 	});
 
 	it('getMDAnchor simple', () => {
-		expect(updateTOC('# H 1\n\n# H 2\n', '# H 1')).toBe('# H 1\n\n* [H 2](#h-2)\n\n# H 2\n');
+		expect(updateTOC('# H 1\n\n# H 2\n', '# H 1')).toBe('# H 1\n\n- [H 2](#h-2)\n\n# H 2\n');
 	});
 
 	it('throws error on missing segment', () => {
