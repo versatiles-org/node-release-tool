@@ -9,6 +9,7 @@ export default [
 	{
 		ignores: [
 			'**/dist/**/*.*',
+			'**/docs/**/*.*',
 			'**/coverage/**/*.*',
 		]
 	},
