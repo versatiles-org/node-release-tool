@@ -19,7 +19,7 @@ export async function generateDependencyGraph(directory: string): Promise<void> 
 
 	output = output.replace('flowchart LR', 'flowchart TB')
 
-	const matches = Array.from(output.matchAll(/subgraph (\d+)/g));
+	const matches = Array.from(output.matchAll(/subgraph ([0-9a-z]+)/gi));
 	for (const [_match, id] of matches) output += `\nstyle ${id} fill-opacity:0.2`;
 
 	process.stdout.write(Buffer.from('```mermaid\n' + output + '\n```\n'));
