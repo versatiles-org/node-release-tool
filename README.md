@@ -230,4 +230,8 @@ E-->8
 E-->A
 E-->B
 E-->C
+
+style 0 fill-opacity:0.2
+style 1 fill-opacity:0.2
+style 3 fill-opacity:0.2
 ```
