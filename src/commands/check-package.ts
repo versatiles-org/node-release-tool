@@ -5,7 +5,6 @@ import { resolve } from 'node:path';
 
 
 export function checkPackage(directory: string): void {
-
 	const pack = JSON.parse(readFileSync(resolve(directory, 'package.json'), 'utf8')) as Package;
 	const { scripts } = pack;
 

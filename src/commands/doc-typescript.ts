@@ -38,6 +38,10 @@ export async function generateTypescriptDocs(options: { entryPoint?: string, out
 		app.options.setValue('typeDeclarationFormat', 'table');
 	}
 
+	if (format === 'html') {
+		app.options.setValue('githubPages', true);
+	}
+
 	const project = await app.convert();
 	if (!project) panic('Failed to convert project');
 
