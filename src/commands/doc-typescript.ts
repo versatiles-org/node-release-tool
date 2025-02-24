@@ -1,36 +1,42 @@
 import * as td from 'typedoc';
-import * as tdMarkdown from 'typedoc-plugin-markdown';
-import * as tdTheme from 'typedoc-github-wiki-theme';
 import { panic, warn } from '../lib/log.js';
 
-export async function generateTypescriptDocs(options: { entryPoint?: string, outputPath?: string }) {
-	const app = await td.Application.bootstrap({
-		entryPoints: [options.entryPoint ?? './src/index.ts'],
+export async function generateTypescriptDocs(options: { entryPoint?: string, outputPath?: string, format?: 'markdown' | 'wiki' | 'html', quiet?: boolean }) {
+	const { entryPoint, outputPath, quiet } = options;
+	const format = options.format ?? 'markdown';
+	const isMarkdown = format !== 'html';
+
+	const plugin = [
+		isMarkdown && 'typedoc-plugin-markdown',
+		format === 'wiki' && 'typedoc-github-wiki-theme',
+		format === 'html' && 'typedoc-unhoax-theme',
+	].filter(Boolean) as string[];
+
+	const app = await td.Application.bootstrapWithPlugins({
+		entryPoints: [entryPoint ?? './src/index.ts'],
 		gitRevision: 'main',
-		outputs: [{ name: 'markdown', path: options.outputPath ?? './docs' }],
+		out: outputPath ?? './docs',
+		plugin,
+		logLevel: quiet ? 'Warn' : 'Info',
 	}, [
-		new td.ArgumentsReader(0),
 		new td.TypeDocReader(),
 		new td.PackageJsonReader(),
 		new td.TSConfigReader(),
-		new td.ArgumentsReader(300),
 	]);
 
-
-	tdMarkdown.load(app);
-	tdTheme.load(app as tdMarkdown.MarkdownApplication);
-
 	app.options.setValue('readme', 'none');
-	app.options.setValue('hidePageHeader', true);
 
-	app.options.setValue('classPropertiesFormat', 'table');
-	app.options.setValue('enumMembersFormat', 'table');
-	app.options.setValue('indexFormat', 'table');
-	app.options.setValue('interfacePropertiesFormat', 'table');
-	app.options.setValue('parametersFormat', 'table');
-	app.options.setValue('propertiesFormat', 'table');
-	app.options.setValue('propertyMembersFormat', 'table');
-	app.options.setValue('typeDeclarationFormat', 'table');
+	if (isMarkdown) {
+		app.options.setValue('hidePageHeader', true);
+		app.options.setValue('classPropertiesFormat', 'table');
+		app.options.setValue('enumMembersFormat', 'table');
+		app.options.setValue('indexFormat', 'table');
+		app.options.setValue('interfacePropertiesFormat', 'table');
+		app.options.setValue('parametersFormat', 'table');
+		app.options.setValue('propertiesFormat', 'table');
+		app.options.setValue('propertyMembersFormat', 'table');
+		app.options.setValue('typeDeclarationFormat', 'table');
+	}
 
 	const project = await app.convert();
 	if (!project) panic('Failed to convert project');

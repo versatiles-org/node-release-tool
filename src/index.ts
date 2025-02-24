@@ -118,8 +118,9 @@ program.command('doc-toc')
  */
 program.command('doc-typescript')
 	.description('Generate documentation for a TypeScript project.')
-	.option('-i <entryPoint>', 'Entry point of the TypeScript project. Default is "./src/index.ts".')
-	.option('-o <outputPath>', 'Output path for the generated documentation. Default is "./docs".')
+	.option('-i, --input <entryPoint>', 'Entry point of the TypeScript project. Default is "./src/index.ts".')
+	.option('-o, --output <outputPath>', 'Output path for the generated documentation. Default is "./docs".')
+	.option('-f, --format <format>', 'Allowed are "markdown", "wiki" and "html". Default is "markdown".')
 	.action(async (options) => {
 		await generateTypescriptDocs(options);
 	});
