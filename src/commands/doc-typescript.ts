@@ -9,7 +9,7 @@ export async function generateTypescriptDocs(options: { entryPoint?: string, out
 	const plugin = [
 		isMarkdown && 'typedoc-plugin-markdown',
 		format === 'wiki' && 'typedoc-github-wiki-theme',
-		format === 'html' && 'typedoc-unhoax-theme',
+		format === 'html' && 'typedoc-github-theme',
 	].filter(Boolean) as string[];
 
 	const app = await td.Application.bootstrapWithPlugins({
