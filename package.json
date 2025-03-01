@@ -35,7 +35,7 @@
   "devDependencies": {
     "@schemastore/package": "^0.0.10",
     "@types/jest": "^29.5.14",
-    "@types/node": "^22.13.5",
+    "@types/node": "^22.13.8",
     "@typescript-eslint/eslint-plugin": "^8.25.0",
     "@typescript-eslint/parser": "^8.25.0",
     "eslint": "^9.21.0",
@@ -51,7 +51,7 @@
     "dependency-cruiser": "^16.10.0",
     "remark": "^15.0.1",
     "remark-gfm": "^4.0.1",
-    "typedoc": "^0.27.8",
+    "typedoc": "^0.27.9",
     "typedoc-github-theme": "^0.2.1",
     "typedoc-github-wiki-theme": "^2.1.0",
     "typedoc-plugin-markdown": "^4.4.2"
