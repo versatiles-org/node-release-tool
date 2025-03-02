@@ -10,7 +10,7 @@ import { generateCommandDocumentation } from './commands/doc-command.js';
 import { release } from './commands/release-npm.js';
 import { upgradeDependencies } from './commands/deps-upgrade.js';
 import { generateDependencyGraph } from './commands/deps-graph.js';
-import { checkPackage } from './commands/check-package.js';
+import { check } from './commands/check.js';
 import { generateTypescriptDocs } from './commands/doc-typescript.js';
 
 /**
@@ -36,10 +36,10 @@ program
  * Command: check-package
  * Checks that the project's package.json includes certain required scripts/fields.
  */
-program.command('check-package')
-	.description('Check package.json for required scripts and other metadata.')
+program.command('check')
+	.description('Check repo for required scripts and other stuff.')
 	.action(() => {
-		void checkPackage(process.cwd());
+		void check(process.cwd());
 	});
 
 /**

@@ -1,8 +1,12 @@
 import { JSONSchemaForNPMPackageJsonFiles2 as Package } from '@schemastore/package';
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { panic, info, warn } from '../lib/log.js';
 import { resolve } from 'node:path';
 
+export function check(directory: string): void {
+	checkPackage(directory);
+	checkWorkflow(directory);
+}
 
 export function checkPackage(directory: string): void {
 	const pack = JSON.parse(readFileSync(resolve(directory, 'package.json'), 'utf8')) as Package;
@@ -14,6 +18,9 @@ export function checkPackage(directory: string): void {
 	if (!scripts.doc) info('scripts.doc is recommended');
 
 	if (!scripts.build) panic('scripts.build is required');
+	if (!scripts.build.includes("npm run doc")) {
+		warn(`scripts.build should include "npm run doc-graph", but is "${scripts.build}"`);
+	}
 
 	if (!scripts.check) panic('scripts.check is required');
 	if (!scripts.check.includes('npm run build')) {
@@ -52,4 +59,10 @@ export function checkPackage(directory: string): void {
 			info(`devDependencies "${dep}" is probably not needed`);
 		}
 	});
+}
+
+export function checkWorkflow(directory: string): void {
+	if (!existsSync(resolve(directory, '.github/workflows/pages.yml'))) {
+		info('GitHub Pages workflow not found');
+	}
 }

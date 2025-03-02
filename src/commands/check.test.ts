@@ -3,6 +3,7 @@ import { jest } from '@jest/globals';
 // 1. Mock the modules used by check-package.ts
 jest.unstable_mockModule('node:fs', () => ({
 	readFileSync: jest.fn(),
+	existsSync: jest.fn(() => true),
 }));
 
 jest.unstable_mockModule('../lib/log.js', () => ({
@@ -16,12 +17,12 @@ jest.unstable_mockModule('../lib/log.js', () => ({
 // 2. Import the mocked modules and the function under test
 const { readFileSync } = await import('node:fs');
 const log = await import('../lib/log.js');
-const { checkPackage } = await import('./check-package.js');
+const { check } = await import('./check.js');
 
-describe('checkPackage', () => {
+describe('check', () => {
 	const goodPackage = {
 		scripts: {
-			build: 'run build script',
+			build: 'run build script && npm run doc-graph',
 			test: 'test',
 			doc: 'npm run doc-graph',
 			check: 'npm run build && npm run test',
@@ -44,7 +45,7 @@ describe('checkPackage', () => {
 		jest.mocked(readFileSync).mockReturnValue(JSON.stringify(pkg));
 
 		try {
-			checkPackage('/some/path')
+			check('/some/path')
 		} catch (_) {
 			// ignore
 		}

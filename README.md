@@ -53,7 +53,7 @@ Options:
   -h, --help                                display help for command
 
 Commands:
-  check-package                             Check package.json for required scripts and other metadata.
+  check                                     Check repo for required scripts and other stuff.
   deps-graph                                Analyze project files and output a dependency graph as Mermaid markup.
   deps-upgrade                              Upgrade all dependencies in the current project to their latest versions.
   doc-command <command>                     Generate Markdown documentation for a specified command and output the result.
@@ -64,13 +64,13 @@ Commands:
   release-npm [path]                        Publish an npm package from the specified path to the npm registry.
 ```
 
-## Subcommand: `vrt check-package`
+## Subcommand: `vrt check`
 
 ```console
-$ vrt check-package
-Usage: vrt check-package [options]
+$ vrt check
+Usage: vrt check [options]
 
-Check package.json for required scripts and other metadata.
+Check repo for required scripts and other stuff.
 
 Options:
   -h, --help  display help for command
@@ -196,7 +196,7 @@ flowchart TB
 
 subgraph 0["src"]
 subgraph 1["commands"]
-2["check-package.ts"]
+2["check.ts"]
 5["deps-graph.ts"]
 6["deps-upgrade.ts"]
 8["doc-command.ts"]
