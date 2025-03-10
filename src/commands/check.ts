@@ -1,5 +1,5 @@
 import { JSONSchemaForNPMPackageJsonFiles2 as Package } from '@schemastore/package';
-import { existsSync, readFileSync } from "node:fs"
+import { existsSync, readFileSync } from 'node:fs'
 import { panic, info, warn } from '../lib/log.js';
 import { resolve } from 'node:path';
 
@@ -11,6 +11,8 @@ export function check(directory: string): void {
 export function checkPackage(directory: string): void {
 	const pack = JSON.parse(readFileSync(resolve(directory, 'package.json'), 'utf8')) as Package;
 	const { scripts } = pack;
+
+	const isPrivate = pack.private === true || String(pack.private).toLowerCase() === 'true';
 
 	if (!scripts) panic('scripts not found');
 
@@ -27,14 +29,16 @@ export function checkPackage(directory: string): void {
 		warn(`scripts.check should include "npm run build", but is "${scripts.check}"`);
 	}
 
-	if (!scripts.prepack) panic('scripts.prepack is required');
-	if (scripts.prepack !== 'npm run build') {
-		warn(`scripts.prepack should be "npm run build", but is "${scripts.prepack}"`);
-	}
+	if (!isPrivate) {
+		if (!scripts.prepack) panic('scripts.prepack is required');
+		if (scripts.prepack !== 'npm run build') {
+			warn(`scripts.prepack should be "npm run build", but is "${scripts.prepack}"`);
+		}
 
-	if (!scripts.release) panic('scripts.release is required');
-	if (scripts.release !== 'vrt release-npm') {
-		warn(`scripts.release should be "vrt release-npm", but is "${scripts.release}"`);
+		if (!scripts.release) panic('scripts.release is required');
+		if (scripts.release !== 'vrt release-npm') {
+			warn(`scripts.release should be "vrt release-npm", but is "${scripts.release}"`);
+		}
 	}
 
 	if (!scripts.upgrade) {
