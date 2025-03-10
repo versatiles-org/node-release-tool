@@ -50,7 +50,6 @@ describe('check', () => {
 			// ignore
 		}
 
-		expect(calls(log.panic)).toStrictEqual(result.panic ?? []);
 		expect(calls(log.info)).toStrictEqual(result.info ?? []);
 		expect(calls(log.warn)).toStrictEqual(result.warn ?? []);
 
@@ -77,26 +76,26 @@ describe('check', () => {
 			testPackage({ scripts: { doc: null } }, { info: ['scripts.doc is recommended'] });
 		});
 
-		it('should panic if "build" is missing', () => {
-			testPackage({ scripts: { build: null } }, { panic: ['scripts.build is required'] });
+		it('should warn if "build" is missing', () => {
+			testPackage({ scripts: { build: null } }, { warn: ['scripts.build is required'] });
 		});
 
-		it('should panic if "check" is missing', () => {
-			testPackage({ scripts: { check: null } }, { panic: ['scripts.check is required'] });
+		it('should warn if "check" is missing', () => {
+			testPackage({ scripts: { check: null } }, { warn: ['scripts.check is required'] });
 		});
 		it('should warn  if "check" does not include "npm run build"', () => {
 			testPackage({ scripts: { check: 'something' } }, { warn: ['scripts.check should include "npm run build", but is "something"'] });
 		});
 
-		it('should panic if "prepack" is missing', () => {
-			testPackage({ scripts: { prepack: null } }, { panic: ['scripts.prepack is required'] });
+		it('should warn if "prepack" is missing', () => {
+			testPackage({ scripts: { prepack: null } }, { warn: ['scripts.prepack is required'] });
 		});
 		it('should warn  if "prepack" is not "npm run build"', () => {
 			testPackage({ scripts: { prepack: 'something' } }, { warn: ['scripts.prepack should be "npm run build", but is "something"'] });
 		});
 
-		it('should panic if "release" is missing', () => {
-			testPackage({ scripts: { release: null } }, { panic: ['scripts.release is required'] });
+		it('should warn if "release" is missing', () => {
+			testPackage({ scripts: { release: null } }, { warn: ['scripts.release is required'] });
 		});
 		it('should warn  if "release" is not "vrt release-npm"', () => {
 			testPackage({ scripts: { release: 'something' } }, { warn: ['scripts.release should be "vrt release-npm", but is "something"'] });

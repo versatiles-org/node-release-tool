@@ -19,24 +19,24 @@ export function checkPackage(directory: string): void {
 	if (!scripts.test) info('scripts.test is recommended');
 	if (!scripts.doc) info('scripts.doc is recommended');
 
-	if (!scripts.build) panic('scripts.build is required');
-	if (!scripts.build.includes("npm run doc")) {
+	if (!scripts.build) warn('scripts.build is required');
+	else if (!scripts.build.includes("npm run doc")) {
 		warn(`scripts.build should include "npm run doc-graph", but is "${scripts.build}"`);
 	}
 
-	if (!scripts.check) panic('scripts.check is required');
-	if (!scripts.check.includes('npm run build')) {
+	if (!scripts.check) warn('scripts.check is required');
+	else if (!scripts.check.includes('npm run build')) {
 		warn(`scripts.check should include "npm run build", but is "${scripts.check}"`);
 	}
 
 	if (!isPrivate) {
-		if (!scripts.prepack) panic('scripts.prepack is required');
-		if (scripts.prepack !== 'npm run build') {
+		if (!scripts.prepack) warn('scripts.prepack is required');
+		else if (scripts.prepack !== 'npm run build') {
 			warn(`scripts.prepack should be "npm run build", but is "${scripts.prepack}"`);
 		}
 
-		if (!scripts.release) panic('scripts.release is required');
-		if (scripts.release !== 'vrt release-npm') {
+		if (!scripts.release) warn('scripts.release is required');
+		else if (scripts.release !== 'vrt release-npm') {
 			warn(`scripts.release should be "vrt release-npm", but is "${scripts.release}"`);
 		}
 	}

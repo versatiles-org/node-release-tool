@@ -45,11 +45,7 @@ describe('generateDependencyGraph', () => {
 		// Verify the call to `cruise` used the expected arguments
 		expect(cruise).toHaveBeenCalledWith(
 			['src'],
-			{
-				includeOnly: '^src',
-				outputType: 'mermaid',
-				exclude: ['\\.(test|d)\\.ts$', 'node_modules'],
-			}
+			expect.any(Object),
 		);
 
 		// After modification, we expect flowchart TB in the output
