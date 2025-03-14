@@ -18,6 +18,7 @@ export async function generateTypescriptDocs(options: { entryPoint?: string, out
 		out: outputPath ?? './docs',
 		plugin,
 		logLevel: quiet ? 'Warn' : 'Info',
+		highlightLanguages: ['typescript', 'javascript', 'json', 'shell', 'bash', 'sh', 'css', 'html'],
 	}, [
 		new td.TypeDocReader(),
 		new td.PackageJsonReader(),
