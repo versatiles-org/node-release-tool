@@ -54,9 +54,9 @@ describe('generateDependencyGraph', () => {
 		const writtenBuffer = mockStdoutWrite.mock.calls[0][0] as Buffer;
 		const writtenString = writtenBuffer.toString();
 
-		expect(writtenString).toContain('```mermaid');
-		expect(writtenString).toContain('flowchart TB\nA-->B');
-		expect(writtenString).toContain('```');
+		expect(writtenString).toMatch(/^```mermaid\n/);
+		expect(writtenString).toMatch(/\nflowchart TB\nA-->B\n/);
+		expect(writtenString).toMatch(/\n```\n$/);
 	});
 
 	it('panics if dependency-cruiser throws an error', async () => {

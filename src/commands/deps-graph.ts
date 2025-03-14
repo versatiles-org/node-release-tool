@@ -17,10 +17,12 @@ export async function generateDependencyGraph(directory: string): Promise<void> 
 	let { output } = cruiseResult;
 	if (typeof output !== 'string') panic('no output');
 
-	output = output.replace('flowchart LR', 'flowchart TB')
+	output = output.replace('flowchart LR', '---\nconfig:\n  layout: elk\n---\nflowchart TB')
 
 	const matches = Array.from(output.matchAll(/subgraph ([0-9a-z]+)/gi));
-	for (const [_match, id] of matches) output += `\nstyle ${id} fill-opacity:0.2`;
+	const subgraphIds = matches.map(([_match, id]) => id);
+	output += `\nclass ${subgraphIds.join(',')} subgraphs;`;
+	output += `\nclassDef subgraphs fill-opacity:0.1, fill:#888, color:#888, stroke:#888;`;
 
 	process.stdout.write(Buffer.from('```mermaid\n' + output + '\n```\n'));
 }
