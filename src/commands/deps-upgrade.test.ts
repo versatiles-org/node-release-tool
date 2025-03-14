@@ -120,7 +120,6 @@ describe('upgradeDependencies()', () => {
 		});
 
 		// 4) Verify the shell calls to remove node_modules and lock files:
-		expect(mockShell.run).toHaveBeenCalledWith('rm -rf node_modules');
 		expect(mockShell.run).toHaveBeenCalledWith('rm -f package-lock.json');
 
 		// 5) Check that "npm update --save" was called via shell.stdout:

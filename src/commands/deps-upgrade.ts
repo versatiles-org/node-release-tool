@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
-import { check, info } from '../lib/log.js';
+import { inspect } from 'node:util';
+import { check, info, warn } from '../lib/log.js';
 import { getShell } from '../lib/shell.js';
 
 // Represents a single version entry from the `npm outdated` command.
@@ -91,8 +92,11 @@ export async function upgradeDependencies(directory: string): Promise<void> {
 
 	// Step 2: Remove existing dependencies and lock file
 	await check('Remove all dependencies', async () => {
-		await shell.run('rm -rf node_modules');
-		await shell.run('rm -f package-lock.json');
+		try {
+			await shell.run('rm -f package-lock.json');
+		} catch (e) {
+			warn(inspect(e));
+		}
 	});
 
 	// Step 3: Reinstall/upgrade all dependencies
