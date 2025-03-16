@@ -14,7 +14,6 @@ export async function generateTypescriptDocs(options: { entryPoint?: string, out
 
 	const app = await td.Application.bootstrapWithPlugins({
 		entryPoints: [entryPoint ?? './src/index.ts'],
-		gitRevision: 'main',
 		out: outputPath ?? './docs',
 		plugin,
 		logLevel: quiet ? 'Warn' : 'Info',
