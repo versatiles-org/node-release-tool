@@ -1,13 +1,16 @@
 [![Code Coverage](https://codecov.io/gh/versatiles-org/node-release-tool/branch/main/graph/badge.svg?token=IDHAI13M0K)](https://codecov.io/gh/versatiles-org/node-release-tool)
-[![GitHub Workflow Status)](https://img.shields.io/github/actions/workflow/status/versatiles-org/node-release-tool/ci.yml)](https://github.com/versatiles-org/node-release-tool/actions/workflows/ci.yml)
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/versatiles-org/node-release-tool/ci.yml)](https://github.com/versatiles-org/node-release-tool/actions/workflows/ci.yml)
 
 # VersaTiles Release Tools
 
-Tools used for:
+Since there are a lot of JavaScript/TypeScript repositories in the VersaTiles ecosystem, we have a central toolbox to managing these projects.
+
+"Release Tools" contains tools for:
 
 - creating a graph of the source code as mermaid: [`vrt deps-graph`](#subcommand-vrt-deps-graph)
 - upgrading all package dependencies: [`vrt deps-upgrade`](#subcommand-vrt-deps-upgrade)
-- creating Markdown documentation of executables: [`vrt doc-command`](#subcommand-vrt-doc-command)
+- creating documentation of executables: [`vrt doc-command`](#subcommand-vrt-doc-command)
+- creating documentation of TypeScript code: [`vrt doc-typescript`](#subcommand-vrt-doc-typescript)
 - inserting Markdown into documents: [`vrt doc-insert`](#subcommand-vrt-doc-insert)
 - updating "Table of Content" in Markdown files: [`vrt doc-toc`](#subcommand-vrt-doc-toc)
 - releasing the project as npm package: [`vrt release-npm`](#subcommand-vrt-release-npm)
@@ -18,7 +21,7 @@ Tools used for:
 npm i -D @versatiles/release-tool
 ```
 
-# configure scripts
+# Configure Scripts
 
 You need to configure the scripts in the package.json:
 
@@ -34,9 +37,9 @@ You need to configure the scripts in the package.json:
 }
 ```
 
-- `scripts.check` is **required** by the release command. Here you can lint, build and test your code.
-- `scripts.prepack` is **recommended** to ensure that all files are up-to-date before releasing. Here you can build code and documentation.
-- `scripts.release` is **recommended** to make it easy to release a new version.
+- **scripts.check** is **required** by the release command. Here you can lint, build and test your code.
+- **scripts.prepack** is **recommended** to ensure that all files are up-to-date before releasing. Here you can build code and documentation.
+- **scripts.release** is **recommended** to make it easy to release a new version.
 
 # Command `vrt`
 
@@ -185,9 +188,9 @@ Options:
   -h, --help  display help for command
 ```
 
-# Development
+## Development
 
-## Dependency Graph
+### Dependency Graph
 
 <!--- This chapter is generated automatically --->
 

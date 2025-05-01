@@ -48,8 +48,9 @@ program.command('check')
  */
 program.command('deps-graph')
 	.description('Analyze project files and output a dependency graph as Mermaid markup.')
-	.action(() => {
-		void generateDependencyGraph(process.cwd());
+	.option('-f, --format <format>', 'Allowed are "mermaid" and "svg". Default is "mermaid".')
+	.action(async (options) => {
+		await generateDependencyGraph(process.cwd(), options.format);
 	});
 
 /**
