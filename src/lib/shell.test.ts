@@ -12,11 +12,11 @@ describe('Run', () => {
 	});
 
 	it('returns stdout', async () => {
-		expect(await shell.stdout('ls -1')).toContain('package.json\n');
+		expect(await shell.stdout('echo "message to stdout"')).toBe('message to stdout');
 	});
 
 	it('returns stderr', async () => {
-		expect(await shell.stderr('git status -h', false)).toContain('usage: git status');
+		expect(await shell.stderr('>&2 echo "message to stderr"')).toBe('message to stderr');
 	});
 
 	it('returns ok', async () => {
