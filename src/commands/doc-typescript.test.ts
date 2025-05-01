@@ -90,6 +90,7 @@ describe('generateTypescriptDocs (integration)', () => {
 			'assets/typedoc-github-style.css',
 			'functions',
 			'functions/greet.html',
+			'hierarchy.html',
 			'index.html',
 		]);
 	});
