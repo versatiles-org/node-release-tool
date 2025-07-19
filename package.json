@@ -35,20 +35,20 @@
   "devDependencies": {
     "@schemastore/package": "^0.0.10",
     "@types/jest": "^30.0.0",
-    "@types/node": "^24.0.8",
-    "@typescript-eslint/eslint-plugin": "^8.35.1",
-    "@typescript-eslint/parser": "^8.35.1",
-    "eslint": "^9.30.0",
-    "jest": "^30.0.3",
+    "@types/node": "^24.0.15",
+    "@typescript-eslint/eslint-plugin": "^8.37.0",
+    "@typescript-eslint/parser": "^8.37.0",
+    "eslint": "^9.31.0",
+    "jest": "^30.0.4",
     "ts-jest": "^29.4.0",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.35.1"
+    "typescript-eslint": "^8.37.0"
   },
   "dependencies": {
-    "@inquirer/select": "^4.2.3",
+    "@inquirer/select": "^4.2.4",
     "commander": "^14.0.0",
-    "dependency-cruiser": "^16.10.3",
+    "dependency-cruiser": "^16.10.4",
     "remark": "^15.0.1",
     "remark-gfm": "^4.0.1",
     "typedoc": "^0.28.7",
