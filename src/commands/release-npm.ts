@@ -1,11 +1,11 @@
 #!/usr/bin/env npx tsx
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'fs';
 import select from '@inquirer/select';
 import { check, info, panic, warn } from '../lib/log.js';
 import { getShell } from '../lib/shell.js';
 import { getGit } from '../lib/git.js';
-import { resolve } from 'node:path';
+import { resolve } from 'path';
 
 export async function release(directory: string, branch = 'main'): Promise<void> {
 

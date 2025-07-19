@@ -8,7 +8,7 @@ import type { Git } from '../lib/git.js';
 jest.unstable_mockModule('@inquirer/select', () => ({
 	default: jest.fn(),
 }));
-jest.unstable_mockModule('node:fs', () => ({
+jest.unstable_mockModule('fs', () => ({
 	readFileSync: jest.fn(),
 	writeFileSync: jest.fn(),
 }));
@@ -28,7 +28,7 @@ jest.unstable_mockModule('../lib/git.js', () => ({
 }));
 
 const select = (await import('@inquirer/select')).default;
-const { readFileSync, writeFileSync } = await import('node:fs');
+const { readFileSync, writeFileSync } = await import('fs');
 const { check, info, panic, warn } = await import('../lib/log.js');
 const { getShell } = await import('../lib/shell.js');
 const { getGit } = await import('../lib/git.js');

@@ -1,8 +1,8 @@
 import type { ChildProcessWithoutNullStreams, ChildProcessByStdio, SpawnOptions } from 'child_process';
 import cp from 'child_process';
-import { EventEmitter } from 'node:events';
-import type { Writable } from 'node:stream';
-import { Readable } from 'node:stream';
+import { EventEmitter } from 'events';
+import type { Writable } from 'stream';
+import { Readable } from 'stream';
 import { generateCommandDocumentation } from './doc-command.js';
 import { jest } from '@jest/globals';
 

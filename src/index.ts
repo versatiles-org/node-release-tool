@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { styleText } from 'node:util';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { resolve } from 'path';
+import { styleText } from 'util';
 import { injectMarkdown, updateTOC } from './commands/markdown.js';
 import { Command, InvalidArgumentError } from 'commander';
-import { cwd } from 'node:process';
+import { cwd } from 'process';
 import { generateCommandDocumentation } from './commands/doc-command.js';
 import { release } from './commands/release-npm.js';
 import { upgradeDependencies } from './commands/deps-upgrade.js';

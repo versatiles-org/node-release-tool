@@ -1,7 +1,7 @@
 import { JSONSchemaForNPMPackageJsonFiles2 as Package } from '@schemastore/package';
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'fs'
 import { panic, info, warn } from '../lib/log.js';
-import { resolve } from 'node:path';
+import { resolve } from 'path';
 
 export function check(directory: string): void {
 	checkPackage(directory);

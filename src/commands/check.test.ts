@@ -1,7 +1,7 @@
 import { jest } from '@jest/globals';
 
 // 1. Mock the modules used by check-package.ts
-jest.unstable_mockModule('node:fs', () => ({
+jest.unstable_mockModule('fs', () => ({
 	readFileSync: jest.fn(),
 	existsSync: jest.fn(() => true),
 }));
@@ -15,7 +15,7 @@ jest.unstable_mockModule('../lib/log.js', () => ({
 }));
 
 // 2. Import the mocked modules and the function under test
-const { readFileSync } = await import('node:fs');
+const { readFileSync } = await import('fs');
 const log = await import('../lib/log.js');
 const { check } = await import('./check.js');
 

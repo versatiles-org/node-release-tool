@@ -3,7 +3,7 @@ import { jest } from '@jest/globals';
 import { type Shell } from '../lib/shell.js';
 
 // 1. Mock the modules that deps-upgrade.ts uses:
-jest.unstable_mockModule('node:fs', () => ({
+jest.unstable_mockModule('fs', () => ({
 	readFileSync: jest.fn(),
 	writeFileSync: jest.fn(),
 }));
@@ -22,7 +22,7 @@ jest.unstable_mockModule('../lib/shell.js', () => ({
 }));
 
 // 2. Import the mocked modules and the function under test:
-const { readFileSync, writeFileSync } = await import('node:fs');
+const { readFileSync, writeFileSync } = await import('fs');
 const { check, info, warn, panic } = await import('../lib/log.js');
 const { getShell } = await import('../lib/shell.js');
 const { upgradeDependencies } = await import('./deps-upgrade.js');

@@ -1,5 +1,5 @@
-import { readFileSync, writeFileSync } from 'node:fs';
-import { inspect } from 'node:util';
+import { readFileSync, writeFileSync } from 'fs';
+import { inspect } from 'util';
 import { check, info, warn } from '../lib/log.js';
 import { getShell } from '../lib/shell.js';
 

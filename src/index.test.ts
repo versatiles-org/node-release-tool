@@ -14,12 +14,12 @@ jest.unstable_mockModule('./commands/markdown.js', () => ({
 }));
 const { updateTOC } = await import('./commands/markdown.js');
 
-jest.unstable_mockModule('node:fs', () => ({
+jest.unstable_mockModule('fs', () => ({
 	existsSync: jest.fn<typeof existsSync>().mockReturnValue(true),
 	readFileSync: jest.fn<typeof readFileSync>().mockReturnValue('readFileSync'),
 	writeFileSync: jest.fn<typeof writeFileSync>().mockReturnValue(),
 }));
-const { existsSync, readFileSync, writeFileSync } = await import('node:fs');
+const { existsSync, readFileSync, writeFileSync } = await import('fs');
 
 const mockStdout = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
 
