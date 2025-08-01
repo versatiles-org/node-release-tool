@@ -35,25 +35,25 @@
   "devDependencies": {
     "@schemastore/package": "^0.0.10",
     "@types/jest": "^30.0.0",
-    "@types/node": "^24.0.15",
-    "@typescript-eslint/eslint-plugin": "^8.37.0",
-    "@typescript-eslint/parser": "^8.37.0",
-    "eslint": "^9.31.0",
-    "jest": "^30.0.4",
+    "@types/node": "^24.1.0",
+    "@typescript-eslint/eslint-plugin": "^8.38.0",
+    "@typescript-eslint/parser": "^8.38.0",
+    "eslint": "^9.32.0",
+    "jest": "^30.0.5",
     "ts-jest": "^29.4.0",
     "tsx": "^4.20.3",
-    "typescript": "^5.8.3",
-    "typescript-eslint": "^8.37.0"
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.38.0"
   },
   "dependencies": {
-    "@inquirer/select": "^4.2.4",
+    "@inquirer/select": "^4.3.1",
     "commander": "^14.0.0",
-    "dependency-cruiser": "^16.10.4",
+    "dependency-cruiser": "^17.0.0",
     "remark": "^15.0.1",
     "remark-gfm": "^4.0.1",
-    "typedoc": "^0.28.7",
+    "typedoc": "^0.28.8",
     "typedoc-github-theme": "^0.3.0",
     "typedoc-github-wiki-theme": "^2.1.0",
-    "typedoc-plugin-markdown": "^4.7.0"
+    "typedoc-plugin-markdown": "^4.8.0"
   }
 }
