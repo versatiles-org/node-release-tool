@@ -1,37 +1,39 @@
-import { jest } from '@jest/globals';
 import type { Command } from 'commander';
-import type { injectMarkdown, updateTOC } from './commands/markdown.js';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-jest.unstable_mockModule('./commands/doc-command.js', () => ({
-	generateCommandDocumentation: jest.fn<typeof generateCommandDocumentation>().mockResolvedValue('generateCommandDocumentation'),
+vi.mock('./commands/doc-command.js', () => ({
+	generateCommandDocumentation: vi.fn().mockResolvedValue('generateCommandDocumentation'),
 }));
 const { generateCommandDocumentation } = await import('./commands/doc-command.js');
 
-jest.unstable_mockModule('./commands/markdown.js', () => ({
-	injectMarkdown: jest.fn<typeof injectMarkdown>().mockReturnValue('injectMarkdown'),
-	updateTOC: jest.fn<typeof updateTOC>().mockReturnValue('updateTOC'),
+vi.mock('./commands/markdown.js', () => ({
+	injectMarkdown: vi.fn().mockReturnValue('injectMarkdown'),
+	updateTOC: vi.fn().mockReturnValue('updateTOC'),
 }));
 
-const fs = await import('fs');
-jest.unstable_mockModule('fs', () => ({
-	...fs,
-	existsSync: jest.fn(fs.existsSync),
-	readFileSync: jest.fn(fs.readFileSync),
-	writeFileSync: jest.fn<typeof writeFileSync>().mockReturnValue(),
-}));
+
+vi.mock(import('fs'), async (importOriginal) => {
+	const fs = await importOriginal();
+	return {
+		...fs,
+		existsSync: vi.fn(fs.existsSync),
+		readFileSync: vi.fn(fs.readFileSync),
+		writeFileSync: vi.fn(() => { }),
+	} as unknown as typeof import('fs');
+});
 const { existsSync, readFileSync, writeFileSync } = await import('fs');
 
-const mockStdout = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+const mockStdout = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
 
 const rootDir = new URL('../', import.meta.url).pathname;
 
 describe('release-tool CLI', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterAll(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	describe('doc-command command', () => {
@@ -60,7 +62,7 @@ describe('release-tool CLI', () => {
 
 	async function run(...args: string[]): Promise<void> {
 		console.log({ args });
-		const moduleUrl = './index.js?t=' + Math.random();
+		const moduleUrl = './index.js?t=' + Math.random().toString(16).slice(2);
 		console.log(`Importing module from ${moduleUrl}`);
 		const module = await import(moduleUrl);
 

@@ -1,6 +1,6 @@
-
 import type { PhrasingContent, PhrasingContentMap } from 'mdast';
 import { injectMarkdown, nodeToHtml, parseMarkdown, updateTOC } from './markdown.js'; // Replace with the actual path of your module
+import { describe, it, expect } from 'vitest';
 
 const document = getDoc('C 2');
 

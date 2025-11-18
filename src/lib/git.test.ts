@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest';
 import { getGit } from './git.js';
 
 describe('Git module tests', () => {

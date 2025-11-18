@@ -1,7 +1,7 @@
 import { mkdtempSync, writeFileSync, readdirSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { describe, expect, it } from '@jest/globals';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 const { generateTypescriptDocs } = await import('./doc-typescript.js');
 

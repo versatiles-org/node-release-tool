@@ -1,5 +1,5 @@
+import { describe, expect, it, vi } from 'vitest';
 import { getShell } from './shell.js';
-import { jest } from '@jest/globals';
 
 describe('Run', () => {
 	const cwd = new URL('../../', import.meta.url).pathname;
@@ -28,7 +28,7 @@ describe('Run', () => {
 	});
 
 	it('fails on exit 1', async () => {
-		const mockError = jest.spyOn(console, 'error');
+		const mockError = vi.spyOn(console, 'error');
 		mockError.mockImplementationOnce(() => { });
 		await expect(shell.run('exit 1')).rejects.toEqual({ code: 1, signal: null, stderr: '', stdout: '' });
 		mockError.mockRestore();

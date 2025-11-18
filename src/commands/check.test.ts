@@ -1,17 +1,17 @@
-import { jest } from '@jest/globals';
+import { vi, describe, expect, beforeEach, it } from 'vitest'
 
 // 1. Mock the modules used by check-package.ts
-jest.unstable_mockModule('fs', () => ({
-	readFileSync: jest.fn(),
-	existsSync: jest.fn(() => true),
+vi.mock('fs', () => ({
+	readFileSync: vi.fn(),
+	existsSync: vi.fn(() => true),
 }));
 
-jest.unstable_mockModule('../lib/log.js', () => ({
-	panic: jest.fn((message: string) => {
+vi.mock('../lib/log.js', () => ({
+	panic: vi.fn((message: string) => {
 		throw new Error(message);
 	}),
-	info: jest.fn(),
-	warn: jest.fn(),
+	info: vi.fn(),
+	warn: vi.fn(),
 }));
 
 // 2. Import the mocked modules and the function under test
@@ -34,7 +34,7 @@ describe('check', () => {
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	function testPackage(pkg: { scripts?: object | null }, result: { info?: string[], warn?: string[], panic?: string[] }) {
@@ -42,7 +42,7 @@ describe('check', () => {
 		if (pkg.scripts !== null) {
 			pkg.scripts = { ...goodPackage.scripts, ...pkg.scripts }
 		}
-		jest.mocked(readFileSync).mockReturnValue(JSON.stringify(pkg));
+		vi.mocked(readFileSync).mockReturnValue(JSON.stringify(pkg));
 
 		try {
 			check('/some/path')
@@ -54,7 +54,7 @@ describe('check', () => {
 		expect(calls(log.warn)).toStrictEqual(result.warn ?? []);
 
 		function calls(fn: (text: string) => void): string[] {
-			return jest.mocked(fn).mock.calls.map((call) => call[0]);
+			return vi.mocked(fn).mock.calls.map((call) => call[0]);
 		}
 	}
 

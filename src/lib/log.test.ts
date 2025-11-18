@@ -1,22 +1,16 @@
- 
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-
-import type { SpiedFunction } from 'jest-mock';
+import { vi, afterEach, beforeEach, describe, expect, it, MockInstance } from 'vitest';
 import { panic, warn, info, check } from './log.js';
-import { jest } from '@jest/globals';
 
 describe('Your Module Tests', () => {
-	let processSpy: SpiedFunction<{
+	let processSpy: MockInstance<{
 		(buffer: Uint8Array | string, cb?: ((err?: Error) => void)): boolean; (str: Uint8Array | string, encoding?: BufferEncoding, cb?: ((err?: Error) => void)): boolean;
 	}>;
-	let abortSpy: SpiedFunction<(code?: number) => never>;
+	let abortSpy: MockInstance<(code?: number) => never>;
 
 	beforeEach(() => {
 		// Mock process.stderr.write before each test
-		// @ts-expect-error
-		processSpy = jest.spyOn(process.stderr, 'write').mockImplementation(() => { });
-		// @ts-expect-error
-		abortSpy = jest.spyOn(process, 'exit').mockImplementation(() => { });
+		processSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+		abortSpy = vi.spyOn(process, 'exit').mockImplementation(() => null as never);
 	});
 
 	afterEach(() => {

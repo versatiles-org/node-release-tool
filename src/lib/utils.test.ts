@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest';
 import { getErrorMessage, prettyStyleJSON } from './utils.js';
 
 describe('getErrorMessage', () => {

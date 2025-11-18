@@ -1,14 +1,14 @@
-import { jest } from '@jest/globals';
+import { vi, expect, MockInstance, afterEach, beforeEach, describe, it } from 'vitest';
 import type { IReporterOutput } from 'dependency-cruiser';
 
 // 1. Mock dependency-cruiser to control the output of `cruise`
-jest.unstable_mockModule('dependency-cruiser', () => ({
-	cruise: jest.fn(),
+vi.mock('dependency-cruiser', () => ({
+	cruise: vi.fn(),
 }));
 
 // 2. Mock the log/panic module
-jest.unstable_mockModule('../lib/log.js', () => ({
-	panic: jest.fn((message: string) => {
+vi.mock('../lib/log.js', () => ({
+	panic: vi.fn((message: string) => {
 		throw new Error(message);
 	}),
 }));
@@ -19,14 +19,14 @@ const { panic } = await import('../lib/log.js');
 const { generateDependencyGraph } = await import('./deps-graph.js');
 
 describe('generateDependencyGraph', () => {
-	let mockStdoutWrite: jest.SpiedFunction<typeof process.stdout.write>;
+	let mockStdoutWrite: MockInstance<typeof process.stdout.write>;
 
 	beforeEach(() => {
 		// Reset and clear mocks before each test
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		// Spy on process.stdout.write to check what gets written
-		mockStdoutWrite = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+		mockStdoutWrite = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
 	});
 
 	afterEach(() => {
@@ -36,7 +36,7 @@ describe('generateDependencyGraph', () => {
 
 	it('generates a mermaid diagram, replacing flowchart LR with flowchart TB', async () => {
 		// Mock a successful result from dependency-cruiser
-		jest.mocked(cruise).mockResolvedValueOnce({
+		vi.mocked(cruise).mockResolvedValueOnce({
 			output: 'flowchart LR\nA-->B',
 		} as IReporterOutput);
 
@@ -61,7 +61,7 @@ describe('generateDependencyGraph', () => {
 
 	it('panics if dependency-cruiser throws an error', async () => {
 		// Simulate a thrown error from `cruise`
-		jest.mocked(cruise).mockImplementationOnce(async () => {
+		vi.mocked(cruise).mockImplementationOnce(async () => {
 			throw new Error('Some error from dependency-cruiser');
 		});
 
@@ -75,7 +75,7 @@ describe('generateDependencyGraph', () => {
 
 	it('panics if the returned output is not a string', async () => {
 		// Mock an invalid result (missing or incorrect `output` field)
-		jest.mocked(cruise).mockResolvedValueOnce({
+		vi.mocked(cruise).mockResolvedValueOnce({
 			output: null,
 		} as unknown as IReporterOutput);
 

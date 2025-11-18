@@ -4,15 +4,14 @@ import { EventEmitter } from 'events';
 import type { Writable } from 'stream';
 import { Readable } from 'stream';
 import { generateCommandDocumentation } from './doc-command.js';
-import { jest } from '@jest/globals';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 
 describe('generateCommandDocumentation using mocked spawn', () => {
 	// Mock implementation of spawn
 
-	const spawnSpy = jest.spyOn(cp, 'spawn');
+	const spawnSpy = vi.spyOn(cp, 'spawn');
 
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	spawnSpy.mockImplementation((command: string, args: readonly string[], options: SpawnOptions): ChildProcessWithoutNullStreams => {
+	spawnSpy.mockImplementation((command: string, args: readonly string[], _options: SpawnOptions): ChildProcessWithoutNullStreams => {
 		const mockChildProcess = new EventEmitter() as ChildProcessByStdio<Writable, Readable, Readable>;
 		mockChildProcess.stdout = getReader('Example command output for ' + [command, ...args].join(' '));
 		mockChildProcess.stderr = getReader('');
@@ -33,15 +32,16 @@ describe('generateCommandDocumentation using mocked spawn', () => {
 	});
 
 	afterAll(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	it('generates documentation for a CLI command', async () => {
 		const documentation = await generateCommandDocumentation('example-command');
-		expect(documentation).toBe('```console\n$ example-command\nExample command output for npx example-command --help\n```\n');
+		expect(documentation).toBe('```console\n$ example-command\nExample command output for npm --offline exec -- example-command --help\n```\n');
 
 		const lastCall = spawnSpy.mock.calls.pop();
-		expect(lastCall?.slice(0, 2)).toStrictEqual(['npx', ['example-command', '--help']]);
+		expect(lastCall?.slice(0, 2)).toStrictEqual([
+			'npm', ['--offline', 'exec', '--', 'example-command', '--help']]);
 	});
 });
 
@@ -72,14 +72,14 @@ describe('generateCommandDocumentation', () => {
 			find('```');
 		});
 
-		function find(text: string): void {
+		function find(queryLine: string): void {
 			while (true) {
 				const line = lines.shift();
 				if (line == null) {
 					console.log(documentation.split('\n'));
-					throw new Error(`line not found: "${text}"`);
+					throw new Error(`line not found: "${queryLine}"`);
 				}
-				if (line.startsWith(text)) return;
+				if (line.startsWith(queryLine)) return;
 			}
 		}
 	}, 30e3);

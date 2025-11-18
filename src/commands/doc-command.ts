@@ -44,7 +44,7 @@ async function getCommandResults(command: string): Promise<{ markdown: string; s
 		};
 
 		// Spawn a child process to run the command with the '--help' flag.
-		const childProcess = cp.spawn('npx', [...command.split(' '), '--help'], { env });
+		const childProcess = cp.spawn('npm', ['--offline', 'exec', '--', ...command.split(' '), '--help'], { env });
 		let output = '';
 
 		// Collect output data from the process.

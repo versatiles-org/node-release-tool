@@ -20,8 +20,8 @@
     "lint": "eslint . --color",
     "prepack": "npm run build",
     "release": "tsx src/index.ts release-npm",
-    "test-coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test-coverage": "vitest --run --coverage",
+    "test": "vitest --run",
     "upgrade": "tsx src/index.ts deps-upgrade"
   },
   "author": "Michael Kreil <versatiles@michael-kreil.de>",
@@ -34,16 +34,14 @@
   "homepage": "https://github.com/versatiles-org/node-release-tool",
   "devDependencies": {
     "@schemastore/package": "^0.0.10",
-    "@types/jest": "^30.0.0",
     "@types/node": "^24.10.1",
     "@typescript-eslint/eslint-plugin": "^8.47.0",
     "@typescript-eslint/parser": "^8.47.0",
     "eslint": "^9.39.1",
-    "jest": "^29.7.0",
-    "ts-jest": "^29.4.5",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.47.0"
+    "typescript-eslint": "^8.47.0",
+    "vitest": "^4.0.10"
   },
   "dependencies": {
     "@inquirer/select": "^5.0.1",
