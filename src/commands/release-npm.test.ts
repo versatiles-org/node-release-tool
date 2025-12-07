@@ -23,6 +23,9 @@ const mockedShellInstance = {
 	run: vi.fn(async (_command: string, _errorOnCodeNonZero?: boolean) => {
 		return { code: 0, signal: '', stdout: '', stderr: '' };
 	}),
+	runInteractive: vi.fn(async (_command: string, _errorOnCodeNonZero?: boolean) => {
+		return { code: 0, signal: '' };
+	}),
 	stdout: vi.fn(async (command: string, _errorOnCodeZero?: boolean): Promise<string> => {
 		switch (command) {
 			case 'git rev-parse --abbrev-ref HEAD': return 'main'; // get current branch
@@ -140,12 +143,14 @@ describe('release function', () => {
 			['git pull -t'],
 			['npm run check'],
 			['npm i --package-lock-only'],
-			['npm publish --access public'],
 			['git add .'],
 			['git commit -m "v1.1.0"', false],
 			['git tag -f -a "v1.1.0" -m "new release: v1.1.0"'],
 			['git push --no-verify --follow-tags'],
 			['echo -e \'\\x23 Release v1.1.0\\x0a\\x0achanges:\\x0a- commit message 2\\x0a- commit message 3\\x0a\\x0a\' | gh release edit "v1.1.0" -F -'],
+		]);
+		expect(vi.mocked(mockedShellInstance.runInteractive).mock.calls).toStrictEqual([
+			['npm publish --access public'],
 		]);
 		expect(vi.mocked(mockedShellInstance.stderr).mock.calls).toStrictEqual([]);
 		expect(vi.mocked(mockedShellInstance.stdout).mock.calls).toStrictEqual([

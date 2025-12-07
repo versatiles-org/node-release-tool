@@ -48,6 +48,7 @@
     "@inquirer/select": "^5.0.1",
     "commander": "^14.0.2",
     "dependency-cruiser": "^17.3.1",
+    "npm-check-updates": "^19.1.2",
     "remark": "^15.0.1",
     "remark-gfm": "^4.0.1",
     "typedoc": "^0.28.14",
