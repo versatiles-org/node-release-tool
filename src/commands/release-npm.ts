@@ -57,7 +57,7 @@ export async function release(directory: string, branch = 'main'): Promise<void>
 
 	if (!('private' in pkg) || !pkg.private) {
 		// npm publish
-		await check('npm publish', shell.run('npm publish --access public'));
+		await check('npm publish', shell.runInteractive('npm publish --access public'));
 	}
 
 	// git push
