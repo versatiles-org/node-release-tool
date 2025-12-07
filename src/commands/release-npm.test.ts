@@ -1,14 +1,15 @@
-import type { Shell } from '../lib/shell.js';
 import type { Git } from '../lib/git.js';
-import { beforeEach, describe, expect, it,  vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@inquirer/select', () => ({
 	default: vi.fn(),
 }));
+
 vi.mock('fs', () => ({
 	readFileSync: vi.fn(),
 	writeFileSync: vi.fn(),
 }));
+
 vi.mock('../lib/log.js', () => ({
 	check: vi.fn(),
 	info: vi.fn(),
@@ -17,9 +18,28 @@ vi.mock('../lib/log.js', () => ({
 	}),
 	warn: vi.fn(),
 }));
+
+const mockedShellInstance = {
+	run: vi.fn(async (_command: string, _errorOnCodeNonZero?: boolean) => {
+		return { code: 0, signal: '', stdout: '', stderr: '' };
+	}),
+	stdout: vi.fn(async (command: string, _errorOnCodeZero?: boolean): Promise<string> => {
+		switch (command) {
+			case 'git rev-parse --abbrev-ref HEAD': return 'main'; // get current branch
+			case 'git status --porcelain': return ''; // no changes to commit
+		}
+		console.log('stdout:', command);
+		throw Error();
+	}),
+	stderr: vi.fn(async (_command: string, _errorOnCodeZero?: boolean): Promise<string> => {
+		throw Error();
+	}),
+	ok: vi.fn(async (_command: string): Promise<boolean> => true),
+};
 vi.mock('../lib/shell.js', () => ({
-	getShell: vi.fn(),
+	Shell: vi.fn(function () { return mockedShellInstance; }),
 }));
+
 vi.mock('../lib/git.js', () => ({
 	getGit: vi.fn(),
 }));
@@ -27,7 +47,6 @@ vi.mock('../lib/git.js', () => ({
 const select = (await import('@inquirer/select')).default;
 const { readFileSync, writeFileSync } = await import('fs');
 const { check, info, panic, warn } = await import('../lib/log.js');
-const { getShell } = await import('../lib/shell.js');
 const { getGit } = await import('../lib/git.js');
 const { release } = await import('./release-npm.js');
 
@@ -37,32 +56,9 @@ describe('release function', () => {
 		getCurrentGitHubCommit: Git['getCurrentGitHubCommit'];
 		getLastGitHubTag: Git['getLastGitHubTag'];
 	};
-	let mockShell: {
-		run: Shell['run'];
-		stdout: Shell['stdout'];
-		stderr: Shell['stderr'];
-		ok: Shell['ok'];
-	};
 
 	beforeEach(() => {
-		mockShell = {
-			run: vi.fn(async (_command: string, _errorOnCodeNonZero?: boolean) => {
-				return { code: 0, signal: '', stdout: '', stderr: '' };
-			}),
-			stdout: vi.fn(async (command: string, _errorOnCodeZero?: boolean): Promise<string> => {
-				switch (command) {
-					case 'git rev-parse --abbrev-ref HEAD': return 'main'; // get current branch
-					case 'git status --porcelain': return ''; // no changes to commit
-				}
-				console.log('stdout:', command);
-				throw Error();
-			}),
-			stderr: vi.fn(async (_command: string, _errorOnCodeZero?: boolean): Promise<string> => {
-				throw Error();
-			}),
-			ok: vi.fn(async (_command: string): Promise<boolean> => true),
-		};
-		vi.mocked(getShell).mockClear().mockReturnValue(mockShell);
+		vi.clearAllMocks();
 
 		mockGit = {
 			getCommitsBetween: vi.fn(async () => [
@@ -139,8 +135,8 @@ describe('release function', () => {
 		expect(vi.mocked(mockGit.getCurrentGitHubCommit).mock.calls).toStrictEqual([[]]);
 		expect(vi.mocked(mockGit.getLastGitHubTag).mock.calls).toStrictEqual([[]]);
 
-		expect(vi.mocked(mockShell.ok).mock.calls).toStrictEqual([['gh release view v1.1.0']]);
-		expect(vi.mocked(mockShell.run).mock.calls).toStrictEqual([
+		expect(vi.mocked(mockedShellInstance.ok).mock.calls).toStrictEqual([['gh release view v1.1.0']]);
+		expect(vi.mocked(mockedShellInstance.run).mock.calls).toStrictEqual([
 			['git pull -t'],
 			['npm run check'],
 			['npm i --package-lock-only'],
@@ -151,8 +147,8 @@ describe('release function', () => {
 			['git push --no-verify --follow-tags'],
 			['echo -e \'\\x23 Release v1.1.0\\x0a\\x0achanges:\\x0a- commit message 2\\x0a- commit message 3\\x0a\\x0a\' | gh release edit "v1.1.0" -F -'],
 		]);
-		expect(vi.mocked(mockShell.stderr).mock.calls).toStrictEqual([]);
-		expect(vi.mocked(mockShell.stdout).mock.calls).toStrictEqual([
+		expect(vi.mocked(mockedShellInstance.stderr).mock.calls).toStrictEqual([]);
+		expect(vi.mocked(mockedShellInstance.stdout).mock.calls).toStrictEqual([
 			['git rev-parse --abbrev-ref HEAD'],
 			['git status --porcelain'],
 		]);

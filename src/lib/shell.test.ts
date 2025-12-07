@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { getShell } from './shell.js';
+import { Shell } from './shell.js';
 
 describe('Run', () => {
 	const cwd = new URL('../../', import.meta.url).pathname;
-	const shell = getShell(cwd);
+	const shell = new Shell(cwd);
 
 	it('runs ls', async () => {
 		const ls = await shell.run('ls -1');

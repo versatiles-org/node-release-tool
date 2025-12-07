@@ -1,4 +1,4 @@
-import { getShell } from './shell.js';
+import { Shell } from './shell.js';
 
 
 export interface Commit {
@@ -12,7 +12,7 @@ export interface Git {
 }
 
 export function getGit(cwd: string): Git {
-	const shell = getShell(cwd);
+	const shell = new Shell(cwd);
 
 	return {
 		getLastGitHubTag,

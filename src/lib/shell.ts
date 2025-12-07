@@ -1,22 +1,22 @@
 import { spawn } from 'child_process';
 
-export interface Shell {
-	run: (command: string, errorOnCodeNonZero?: boolean) => Promise<{ code: number | null; signal: string | null; stdout: string; stderr: string }>;
-	stderr: (command: string, errorOnCodeZero?: boolean) => Promise<string>;
-	stdout: (command: string, errorOnCodeZero?: boolean) => Promise<string>;
-	ok: (command: string) => Promise<boolean>;
-}
+export class Shell {
+	private cwd: string;
 
-export function getShell(cwd: string): Shell {
-	async function run(command: string, errorOnCodeNonZero?: boolean): Promise<{ code: number | null; signal: string | null; stdout: string; stderr: string }> {
+	constructor(cwd: string) {
+		this.cwd = cwd;
+	}
+
+	async run(
+		command: string,
+		errorOnCodeNonZero: boolean = true
+	): Promise<{ code: number | null; signal: string | null; stdout: string; stderr: string }> {
 		try {
 			return await new Promise((resolve, reject) => {
 				const stdout: Buffer[] = [];
 				const stderr: Buffer[] = [];
-				const cp = spawn('bash', ['-c', command], { cwd })
-					.on('error', error => {
-						reject(error);
-					})
+				const cp = spawn('bash', ['-c', command], { cwd: this.cwd })
+					.on('error', error => reject(error))
 					.on('close', (code, signal) => {
 						const result = {
 							code,
@@ -24,14 +24,15 @@ export function getShell(cwd: string): Shell {
 							stdout: Buffer.concat(stdout).toString(),
 							stderr: Buffer.concat(stderr).toString(),
 						};
-						if ((errorOnCodeNonZero ?? true) && (code !== 0)) {
+						if (errorOnCodeNonZero && code !== 0) {
 							reject(result);
 						} else {
 							resolve(result);
 						}
 					});
-				cp.stdout.on('data', (chunk: Buffer) => stdout.push(chunk));
-				cp.stderr.on('data', (chunk: Buffer) => stderr.push(chunk));
+
+				cp.stdout.on('data', chunk => stdout.push(chunk));
+				cp.stderr.on('data', chunk => stderr.push(chunk));
 			});
 		} catch (error) {
 			console.error(error);
@@ -39,15 +40,18 @@ export function getShell(cwd: string): Shell {
 		}
 	}
 
-	return {
-		run,
-		stderr: async (command: string, errorOnCodeZero?: boolean): Promise<string> =>
-			(await run(command, errorOnCodeZero)).stderr.trim(),
+	async stderr(command: string, errorOnCodeZero?: boolean): Promise<string> {
+		const result = await this.run(command, errorOnCodeZero);
+		return result.stderr.trim();
+	}
 
-		stdout: async (command: string, errorOnCodeZero?: boolean): Promise<string> =>
-			(await run(command, errorOnCodeZero)).stdout.trim(),
+	async stdout(command: string, errorOnCodeZero?: boolean): Promise<string> {
+		const result = await this.run(command, errorOnCodeZero);
+		return result.stdout.trim();
+	}
 
-		ok: async (command: string): Promise<boolean> =>
-			(await run(command, false)).code === 0,
-	};
+	async ok(command: string): Promise<boolean> {
+		const result = await this.run(command, false);
+		return result.code === 0;
+	}
 }

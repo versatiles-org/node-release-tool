@@ -3,13 +3,13 @@
 import { readFileSync, writeFileSync } from 'fs';
 import select from '@inquirer/select';
 import { check, info, panic, warn } from '../lib/log.js';
-import { getShell } from '../lib/shell.js';
+import { Shell } from '../lib/shell.js';
 import { getGit } from '../lib/git.js';
 import { resolve } from 'path';
 
 export async function release(directory: string, branch = 'main'): Promise<void> {
 
-	const shell = getShell(directory);
+	const shell = new Shell(directory);
 	const { getCommitsBetween, getCurrentGitHubCommit, getLastGitHubTag } = getGit(directory);
 
 	info('starting release process');

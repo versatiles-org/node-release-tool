@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'fs';
 import { inspect } from 'util';
 import { check, info, warn } from '../lib/log.js';
-import { getShell } from '../lib/shell.js';
+import { Shell } from '../lib/shell.js';
 
 // Represents a single version entry from the `npm outdated` command.
 interface Entry {
@@ -42,7 +42,7 @@ interface Package {
  * @returns A promise that resolves when the process is complete.
  */
 export async function upgradeDependencies(directory: string): Promise<void> {
-	const shell = getShell(directory);
+	const shell = new Shell(directory);
 
 	// Step 1: Check and upgrade all versions
 	await check('Upgrade all versions', async () => {
