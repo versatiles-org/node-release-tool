@@ -40,6 +40,30 @@ export class Shell {
 		}
 	}
 
+	// Runs a command interactively, so the user can interact with stdin/stdout/stderr directly.
+	async runInteractive(
+		command: string,
+		errorOnCodeNonZero: boolean = true
+	): Promise<{ code: number | null; signal: string | null }> {
+		return await new Promise((resolve, reject) => {
+			const cp = spawn('bash', ['-c', command], {
+				cwd: this.cwd,
+				stdio: 'inherit', // give full TTY passthrough
+			});
+
+			cp.on('error', reject);
+
+			cp.on('close', (code, signal) => {
+				const result = { code, signal };
+				if (errorOnCodeNonZero && code !== 0) {
+					reject(result);
+				} else {
+					resolve(result);
+				}
+			});
+		});
+	}
+
 	async stderr(command: string, errorOnCodeZero?: boolean): Promise<string> {
 		const result = await this.run(command, errorOnCodeZero);
 		return result.stderr.trim();
