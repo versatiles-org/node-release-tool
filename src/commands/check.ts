@@ -21,7 +21,7 @@ export function checkPackage(directory: string): void {
 
 	if (!scripts.build) warn('scripts.build is required');
 	else if (!scripts.build.includes("npm run doc")) {
-		warn(`scripts.build should include "npm run doc-graph", but is "${scripts.build}"`);
+		warn(`scripts.build should include "npm run doc", but is "${scripts.build}"`);
 	}
 
 	if (!scripts.check) warn('scripts.check is required');
