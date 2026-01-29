@@ -1,4 +1,4 @@
-import ncu from 'npm-check-updates'
+import ncu from 'npm-check-updates';
 import { check, info } from '../lib/log.js';
 import { Shell } from '../lib/shell.js';
 
@@ -26,7 +26,7 @@ export async function upgradeDependencies(directory: string): Promise<void> {
 	});
 
 	const shell = new Shell(directory);
-	
+
 	await check('Remove lock file and node_modules', shell.stdout('rm -f package-lock.json && rm -rf node_modules'));
 
 	await check('Reinstall all dependencies', shell.stdout('npm i'));

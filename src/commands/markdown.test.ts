@@ -32,7 +32,9 @@ describe('inject markdown', () => {
 
 	it('handles foldable segments', () => {
 		const result = injectMarkdown(document, '# Foldable heading\n\nFoldable content', '## H 2', true);
-		expect(result).toBe(getDoc('<details>\n\n<summary><h3>Foldable heading</h3></summary>\n\nFoldable content\n\n</details>'));
+		expect(result).toBe(
+			getDoc('<details>\n\n<summary><h3>Foldable heading</h3></summary>\n\nFoldable content\n\n</details>'),
+		);
 	});
 
 	it('injects at the end', () => {
@@ -40,13 +42,15 @@ describe('inject markdown', () => {
 	});
 
 	it('throws error on missing segment', () => {
-		expect(() => injectMarkdown(document, '# Foldable heading\n\nFoldable content', '# H 5'))
-			.toThrow('Error while searching for segment "# H 5": section not found');
+		expect(() => injectMarkdown(document, '# Foldable heading\n\nFoldable content', '# H 5')).toThrow(
+			'Error while searching for segment "# H 5": section not found',
+		);
 	});
 
 	it('throws error on multiple segment', () => {
-		expect(() => injectMarkdown('# H 1\n\n# H 1\n\n', 'content', '# H 1'))
-			.toThrow('Error while searching for segment "# H 1": too many sections found');
+		expect(() => injectMarkdown('# H 1\n\n# H 1\n\n', 'content', '# H 1')).toThrow(
+			'Error while searching for segment "# H 1": too many sections found',
+		);
 	});
 });
 
@@ -62,8 +66,9 @@ describe('update TOC', () => {
 		it('html', () => test('<i>test  123</i>', 'test  123', 'test-123'));
 
 		function test(input: string, text: string, anchor: string): void {
-			expect(updateTOC(`# H 1\n\n# H ${input}\n`, '# H 1'))
-				.toBe(`# H 1\n\n- [H ${text}](#h-${anchor})\n\n# H ${input}\n`);
+			expect(updateTOC(`# H 1\n\n# H ${input}\n`, '# H 1')).toBe(
+				`# H 1\n\n- [H ${text}](#h-${anchor})\n\n# H ${input}\n`,
+			);
 		}
 	});
 
@@ -76,8 +81,7 @@ describe('update TOC', () => {
 	});
 
 	it('throws error on missing segment', () => {
-		expect(() => updateTOC(document, '# H 2'))
-			.toThrow('Error while searching for segment "# H 2": section not found');
+		expect(() => updateTOC(document, '# H 2')).toThrow('Error while searching for segment "# H 2": section not found');
 	});
 });
 
@@ -124,7 +128,6 @@ describe('markdown to html', () => {
 		testMdToHtml('![alt](url "title")', 'image', '<img src="url" alt="alt" title="title" />');
 	});
 
-
 	function testMdToHtml(markdown: string, type: keyof PhrasingContentMap, result: string): void {
 		const ast = parseMarkdown(markdown);
 		expect(ast.children.length).toBe(1);
@@ -136,13 +139,12 @@ describe('markdown to html', () => {
 			content = paragraph as PhrasingContent;
 		} else {
 			if (!('children' in paragraph)) throw Error();
-			content = paragraph.children.find(c => c.type === type);
+			content = paragraph.children.find((c) => c.type === type);
 		}
 
 		if (content == null) {
 			throw new Error(JSON.stringify(paragraph, null, '  '));
 		}
-
 
 		expect(content.type).toBe(type);
 		if (content.type !== type) throw Error();

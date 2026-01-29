@@ -43,10 +43,7 @@ describe('generateDependencyGraph', () => {
 		await expect(generateDependencyGraph('src')).resolves.toBeUndefined();
 
 		// Verify the call to `cruise` used the expected arguments
-		expect(cruise).toHaveBeenCalledWith(
-			['src'],
-			expect.any(Object),
-		);
+		expect(cruise).toHaveBeenCalledWith(['src'], expect.any(Object));
 
 		// After modification, we expect flowchart TB in the output
 		expect(mockStdoutWrite).toHaveBeenCalledTimes(1);

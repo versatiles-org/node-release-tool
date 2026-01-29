@@ -29,7 +29,7 @@ describe('Run', () => {
 
 	it('fails on exit 1', async () => {
 		const mockError = vi.spyOn(console, 'error');
-		mockError.mockImplementationOnce(() => { });
+		mockError.mockImplementationOnce(() => {});
 		await expect(shell.run('exit 1')).rejects.toEqual({ code: 1, signal: null, stderr: '', stdout: '' });
 		mockError.mockRestore();
 	});

@@ -15,32 +15,41 @@ describe('generateTypescriptDocs (integration)', () => {
 
 		// Write a minimal TS file
 		indexTsPath = join(testDir, 'index.ts');
-		writeFileSync(indexTsPath, [
-			'/**',
-			'* Greets a person by name.',
-			'*/',
-			'export function greet(name: string): string {',
-			'  return `Hello, ${name}!`;',
-			'}'
-		].join('\n'));
+		writeFileSync(
+			indexTsPath,
+			[
+				'/**',
+				'* Greets a person by name.',
+				'*/',
+				'export function greet(name: string): string {',
+				'  return `Hello, ${name}!`;',
+				'}',
+			].join('\n'),
+		);
 
 		// Write a minimal tsconfig.json
-		writeFileSync(join(testDir, 'tsconfig.json'), JSON.stringify({
-			compilerOptions: {
-				target: 'ES2019',
-				module: 'CommonJS',
-				strict: true,
-				declaration: true,
-				outDir: 'dist'
-			},
-			include: ['./*.ts'],
-		}));
+		writeFileSync(
+			join(testDir, 'tsconfig.json'),
+			JSON.stringify({
+				compilerOptions: {
+					target: 'ES2019',
+					module: 'CommonJS',
+					strict: true,
+					declaration: true,
+					outDir: 'dist',
+				},
+				include: ['./*.ts'],
+			}),
+		);
 
 		// Write a minimal package.json
-		writeFileSync(join(testDir, 'package.json'), JSON.stringify({
-			name: 'test-project',
-		}));
-	})
+		writeFileSync(
+			join(testDir, 'package.json'),
+			JSON.stringify({
+				name: 'test-project',
+			}),
+		);
+	});
 
 	async function generateFiles(format: 'markdown' | 'wiki' | 'html'): Promise<string[]> {
 		// Invoke doc generator
@@ -58,20 +67,12 @@ describe('generateTypescriptDocs (integration)', () => {
 
 	it('should generate TypeDoc output as "markdown"', async () => {
 		const files = await generateFiles('markdown');
-		expect(files).toStrictEqual([
-			'README.md',
-			'functions',
-			'functions/greet.md',
-		]);
+		expect(files).toStrictEqual(['README.md', 'functions', 'functions/greet.md']);
 	});
 
 	it('should generate TypeDoc output as "wiki"', async () => {
 		const files = await generateFiles('wiki');
-		expect(files).toStrictEqual([
-			'Function.greet.md',
-			'Home.md',
-			'_Sidebar.md',
-		]);
+		expect(files).toStrictEqual(['Function.greet.md', 'Home.md', '_Sidebar.md']);
 	});
 
 	it('should generate TypeDoc output as "html"', async () => {

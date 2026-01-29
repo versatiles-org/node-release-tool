@@ -11,14 +11,13 @@ vi.mock('./commands/markdown.js', () => ({
 	updateTOC: vi.fn().mockReturnValue('updateTOC'),
 }));
 
-
 vi.mock(import('fs'), async (importOriginal) => {
 	const fs = await importOriginal();
 	return {
 		...fs,
 		existsSync: vi.fn(fs.existsSync),
 		readFileSync: vi.fn(fs.readFileSync),
-		writeFileSync: vi.fn(() => { }),
+		writeFileSync: vi.fn(() => {}),
 	} as unknown as typeof import('fs');
 });
 const { existsSync, readFileSync, writeFileSync } = await import('fs');
@@ -65,7 +64,7 @@ describe('release-tool CLI', () => {
 		console.log(`Importing module from ${moduleUrl}`);
 		const module = await import(moduleUrl);
 
-		const program = (module.program) as Command;
+		const program = module.program as Command;
 		await program.parseAsync(['node', 'vrt', ...args]);
 	}
 });

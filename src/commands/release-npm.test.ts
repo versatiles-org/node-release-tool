@@ -31,8 +31,10 @@ const mockedShellInstance = {
 	}),
 	stdout: vi.fn(async (command: string, _errorOnCodeZero?: boolean): Promise<string> => {
 		switch (command) {
-			case 'git rev-parse --abbrev-ref HEAD': return 'main'; // get current branch
-			case 'git status --porcelain': return ''; // no changes to commit
+			case 'git rev-parse --abbrev-ref HEAD':
+				return 'main'; // get current branch
+			case 'git status --porcelain':
+				return ''; // no changes to commit
 		}
 		console.log('stdout:', command);
 		throw Error();
@@ -43,7 +45,9 @@ const mockedShellInstance = {
 	ok: vi.fn(async (_command: string): Promise<boolean> => true),
 };
 vi.mock('../lib/shell.js', () => ({
-	Shell: vi.fn(function () { return mockedShellInstance; }),
+	Shell: vi.fn(function () {
+		return mockedShellInstance;
+	}),
 }));
 
 vi.mock('../lib/git.js', () => ({
@@ -72,30 +76,39 @@ describe('release function', () => {
 				{ sha: 'dddddddddddddddddddddddddddddddddddddddd', message: 'commit message 2', tag: undefined },
 			]),
 			getCurrentGitHubCommit: vi.fn(async () => ({
-				sha: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', message: 'commit message 1', tag: undefined,
+				sha: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+				message: 'commit message 1',
+				tag: undefined,
 			})),
 			getLastGitHubTag: vi.fn(async () => ({
-				sha: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', version: '1.0.1',
+				sha: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+				version: '1.0.1',
 			})),
 		};
 		vi.mocked(getGit).mockClear().mockReturnValue(mockGit);
 
-		vi.mocked(readFileSync).mockClear().mockReturnValue(JSON.stringify({ version: '1.0.0', scripts: { check: '', prepack: '' } }));
+		vi.mocked(readFileSync)
+			.mockClear()
+			.mockReturnValue(JSON.stringify({ version: '1.0.0', scripts: { check: '', prepack: '' } }));
 
 		vi.mocked(select).mockClear().mockResolvedValue('1.1.0');
 
-		vi.mocked(check).mockClear().mockImplementation(async function <T>(message: string, promise: Promise<T> | (() => Promise<T>)): Promise<T> {
-			return (typeof promise == 'function' ? promise() : promise);
-		});
+		vi.mocked(check)
+			.mockClear()
+			.mockImplementation(async function <T>(message: string, promise: Promise<T> | (() => Promise<T>)): Promise<T> {
+				return typeof promise == 'function' ? promise() : promise;
+			});
 	});
 
 	it('should execute the release process', async () => {
 		await release('/test/directory', 'main');
 
 		expect(vi.mocked(info).mock.calls).toStrictEqual([['starting release process'], ['Finished']]);
-		expect(vi.mocked(warn).mock.calls).toStrictEqual([['versions differ in package.json (1.0.0) and last GitHub tag (1.0.1)']]);
+		expect(vi.mocked(warn).mock.calls).toStrictEqual([
+			['versions differ in package.json (1.0.0) and last GitHub tag (1.0.1)'],
+		]);
 		expect(vi.mocked(panic).mock.calls).toStrictEqual([]);
-		expect(vi.mocked(check).mock.calls.map(v => v[0])).toStrictEqual([
+		expect(vi.mocked(check).mock.calls.map((v) => v[0])).toStrictEqual([
 			'get branch name',
 			'are all changes committed?',
 			'git pull',
@@ -113,31 +126,32 @@ describe('release function', () => {
 			'edit release',
 		]);
 
-		expect(vi.mocked(readFileSync).mock.calls)
-			.toStrictEqual([
-				['/test/directory/package.json', 'utf8'],
-				['/test/directory/package.json', 'utf8'],
-			]);
-		expect(vi.mocked(writeFileSync).mock.calls.map(v => [v[0], JSON.parse(v[1] as string) as unknown]))
-			.toStrictEqual([
-				['/test/directory/package.json', { version: '1.1.0', scripts: { check: '', prepack: '' } }],
-			]);
+		expect(vi.mocked(readFileSync).mock.calls).toStrictEqual([
+			['/test/directory/package.json', 'utf8'],
+			['/test/directory/package.json', 'utf8'],
+		]);
+		expect(vi.mocked(writeFileSync).mock.calls.map((v) => [v[0], JSON.parse(v[1] as string) as unknown])).toStrictEqual(
+			[['/test/directory/package.json', { version: '1.1.0', scripts: { check: '', prepack: '' } }]],
+		);
 
-		expect(vi.mocked(select).mock.calls).toStrictEqual([[{
-			choices: [
-				{ value: '1.0.0' },
-				{ name: '1.0.\x1b[1m1\x1b[22m', value: '1.0.1' },
-				{ name: '1.\x1b[1m1.0\x1b[22m', value: '1.1.0' },
-				{ name: '\x1b[1m2.0.0\x1b[22m', value: '2.0.0' },
+		expect(vi.mocked(select).mock.calls).toStrictEqual([
+			[
+				{
+					choices: [
+						{ value: '1.0.0' },
+						{ name: '1.0.\x1b[1m1\x1b[22m', value: '1.0.1' },
+						{ name: '1.\x1b[1m1.0\x1b[22m', value: '1.1.0' },
+						{ name: '\x1b[1m2.0.0\x1b[22m', value: '2.0.0' },
+					],
+					default: '1.0.1',
+					message: 'What should be the new version?',
+				},
 			],
-			default: '1.0.1',
-			message: 'What should be the new version?',
-		}]]);
+		]);
 
-		expect(vi.mocked(mockGit.getCommitsBetween).mock.calls).toStrictEqual([[
-			'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-			'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
-		]]);
+		expect(vi.mocked(mockGit.getCommitsBetween).mock.calls).toStrictEqual([
+			['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'],
+		]);
 		expect(vi.mocked(mockGit.getCurrentGitHubCommit).mock.calls).toStrictEqual([[]]);
 		expect(vi.mocked(mockGit.getLastGitHubTag).mock.calls).toStrictEqual([[]]);
 
@@ -152,11 +166,18 @@ describe('release function', () => {
 			['git push --no-verify --follow-tags'],
 		]);
 		expect(vi.mocked(mockedShellInstance.exec).mock.calls).toStrictEqual([
-			['gh', ['release', 'edit', 'v1.1.0', '--notes', '# Release v1.1.0\n\nchanges:\n- commit message 2\n- commit message 3\n\n']],
+			[
+				'gh',
+				[
+					'release',
+					'edit',
+					'v1.1.0',
+					'--notes',
+					'# Release v1.1.0\n\nchanges:\n- commit message 2\n- commit message 3\n\n',
+				],
+			],
 		]);
-		expect(vi.mocked(mockedShellInstance.runInteractive).mock.calls).toStrictEqual([
-			['npm publish --access public'],
-		]);
+		expect(vi.mocked(mockedShellInstance.runInteractive).mock.calls).toStrictEqual([['npm publish --access public']]);
 		expect(vi.mocked(mockedShellInstance.stderr).mock.calls).toStrictEqual([]);
 		expect(vi.mocked(mockedShellInstance.stdout).mock.calls).toStrictEqual([
 			['git rev-parse --abbrev-ref HEAD'],

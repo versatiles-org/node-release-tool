@@ -10,7 +10,7 @@ export class Shell {
 
 	async run(
 		command: string,
-		errorOnCodeNonZero: boolean = true
+		errorOnCodeNonZero: boolean = true,
 	): Promise<{ code: number | null; signal: string | null; stdout: string; stderr: string }> {
 		debug(`$ ${command}`);
 		return this.exec('bash', ['-c', command], errorOnCodeNonZero, true);
@@ -21,7 +21,7 @@ export class Shell {
 		command: string,
 		args: string[],
 		errorOnCodeNonZero: boolean = true,
-		skipLog: boolean = false
+		skipLog: boolean = false,
 	): Promise<{ code: number | null; signal: string | null; stdout: string; stderr: string }> {
 		if (!skipLog) {
 			debug(`$ ${command} ${args.join(' ')}`);
@@ -30,7 +30,7 @@ export class Shell {
 			const stdout: Buffer[] = [];
 			const stderr: Buffer[] = [];
 			const cp = spawn(command, args, { cwd: this.cwd })
-				.on('error', error => reject(error))
+				.on('error', (error) => reject(error))
 				.on('close', (code, signal) => {
 					const result = {
 						code,
@@ -39,8 +39,8 @@ export class Shell {
 						stderr: Buffer.concat(stderr).toString(),
 					};
 					if (isVerbose()) {
-						if (result.stdout) result.stdout.split('\n').forEach(line => debug(`  stdout: ${line}`));
-						if (result.stderr) result.stderr.split('\n').forEach(line => debug(`  stderr: ${line}`));
+						if (result.stdout) result.stdout.split('\n').forEach((line) => debug(`  stdout: ${line}`));
+						if (result.stderr) result.stderr.split('\n').forEach((line) => debug(`  stderr: ${line}`));
 						debug(`  exit code: ${code}`);
 					}
 					if (errorOnCodeNonZero && code !== 0) {
@@ -50,15 +50,15 @@ export class Shell {
 					}
 				});
 
-			cp.stdout.on('data', chunk => stdout.push(chunk));
-			cp.stderr.on('data', chunk => stderr.push(chunk));
+			cp.stdout.on('data', (chunk) => stdout.push(chunk));
+			cp.stderr.on('data', (chunk) => stderr.push(chunk));
 		});
 	}
 
 	// Runs a command interactively, so the user can interact with stdin/stdout/stderr directly.
 	async runInteractive(
 		command: string,
-		errorOnCodeNonZero: boolean = true
+		errorOnCodeNonZero: boolean = true,
 	): Promise<{ code: number | null; signal: string | null }> {
 		return await new Promise((resolve, reject) => {
 			const cp = spawn('bash', ['-c', command], {

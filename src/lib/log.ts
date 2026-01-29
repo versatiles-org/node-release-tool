@@ -9,7 +9,8 @@ export function isVerbose(): boolean {
 }
 
 export function panic(text: string): never {
-	process.stderr.write(`\x1b[1;31m! ERROR: ${text}\x1b[0m\n`); abort();
+	process.stderr.write(`\x1b[1;31m! ERROR: ${text}\x1b[0m\n`);
+	abort();
 }
 export function warn(text: string): void {
 	process.stderr.write(`\x1b[1;33m! warning: ${text}\x1b[0m\n`);
@@ -28,7 +29,7 @@ export function abort(): never {
 	process.exit(1);
 }
 
-export async function check<T>(message: string, promise: (Promise<T>) | (() => Promise<T>)): Promise<T> {
+export async function check<T>(message: string, promise: Promise<T> | (() => Promise<T>)): Promise<T> {
 	process.stderr.write(`\x1b[0;90m\u2B95 ${message}\x1b[0m`);
 	try {
 		const result: T = await (typeof promise === 'function' ? promise() : promise);

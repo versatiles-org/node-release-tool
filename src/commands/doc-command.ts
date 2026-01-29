@@ -12,17 +12,21 @@ export async function generateCommandDocumentation(command: string): Promise<str
 	let { markdown, subcommands } = await getCommandResults(command);
 
 	// Iterate over each subcommand to generate its documentation.
-	markdown += (await Promise.all(subcommands.map(async subcommand => {
-		const fullCommand = `${command} ${subcommand}`;
-		try {
-			// Get documentation for each subcommand.
-			const { markdown: subcommandMarkdown } = await getCommandResults(fullCommand);
-			return `\n# Subcommand: \`${fullCommand}\`\n\n${subcommandMarkdown}`;
-		} catch (error) {
-			// Handle errors in generating subcommand documentation.
-			throw new Error(`Error generating documentation for subcommand '${fullCommand}': ${getErrorMessage(error)}`);
-		}
-	}))).join('');
+	markdown += (
+		await Promise.all(
+			subcommands.map(async (subcommand) => {
+				const fullCommand = `${command} ${subcommand}`;
+				try {
+					// Get documentation for each subcommand.
+					const { markdown: subcommandMarkdown } = await getCommandResults(fullCommand);
+					return `\n# Subcommand: \`${fullCommand}\`\n\n${subcommandMarkdown}`;
+				} catch (error) {
+					// Handle errors in generating subcommand documentation.
+					throw new Error(`Error generating documentation for subcommand '${fullCommand}': ${getErrorMessage(error)}`);
+				}
+			}),
+		)
+	).join('');
 
 	return markdown;
 }
@@ -34,13 +38,12 @@ export async function generateCommandDocumentation(command: string): Promise<str
  */
 async function getCommandResults(command: string): Promise<{ markdown: string; subcommands: string[] }> {
 	return new Promise((resolve, reject) => {
-
 		const env = {
 			...process.env,
 			NODE_ENV: undefined,
 			NODE_DISABLE_COLORS: '1',
 			NO_COLORS: '1',
-			FORCE_COLOR: '0'
+			FORCE_COLOR: '0',
 		};
 
 		// Spawn a child process to run the command with the '--help' flag.
@@ -48,13 +51,13 @@ async function getCommandResults(command: string): Promise<{ markdown: string; s
 		let output = '';
 
 		// Collect output data from the process.
-		childProcess.stdout.on('data', data => output += String(data));
-		childProcess.stderr.on('data', data => {
+		childProcess.stdout.on('data', (data) => (output += String(data)));
+		childProcess.stderr.on('data', (data) => {
 			console.error(`stderr: ${data}`);
 		});
 
 		// Handle process errors.
-		childProcess.on('error', error => {
+		childProcess.on('error', (error) => {
 			reject(new Error(`Failed to start subprocess: ${error.message}`));
 		});
 
@@ -81,9 +84,9 @@ async function getCommandResults(command: string): Promise<{ markdown: string; s
  */
 function extractSubcommands(result: string): string[] {
 	return result
-		.replace(/.*\nCommands:/msgi, '') // Remove everything before the "Commands:" section.
-		.replace(/\n[a-z]+:.*/msi, '')    // Remove everything after the subcommands list.
-		.split('\n')                      // Split by newline to process each line.
+		.replace(/.*\nCommands:/gims, '') // Remove everything before the "Commands:" section.
+		.replace(/\n[a-z]+:.*/ims, '') // Remove everything after the subcommands list.
+		.split('\n') // Split by newline to process each line.
 		.flatMap((line): string[] => {
 			// Extract subcommand names from each line.
 			const extract = /^ {2}([^ ]{2,})/.exec(line);

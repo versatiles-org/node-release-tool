@@ -3,9 +3,7 @@
 	"compilerOptions": {
 		"outDir": "dist",
 		"noEmit": false,
-		"sourceMap": true,
+		"sourceMap": true
 	},
-	"exclude": [
-		"src/**/*.test.ts"
-	]
+	"exclude": ["src/**/*.test.ts"]
 }

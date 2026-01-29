@@ -1,5 +1,5 @@
 import { JSONSchemaForNPMPackageJsonFiles2 as Package } from '@schemastore/package';
-import { existsSync, readFileSync } from 'fs'
+import { existsSync, readFileSync } from 'fs';
 import { panic, info, warn } from '../lib/log.js';
 import { resolve } from 'path';
 
@@ -20,7 +20,7 @@ export function checkPackage(directory: string): void {
 	if (!scripts.doc) info('scripts.doc is recommended');
 
 	if (!scripts.build) warn('scripts.build is required');
-	else if (!scripts.build.includes("npm run doc")) {
+	else if (!scripts.build.includes('npm run doc')) {
 		warn(`scripts.build should include "npm run doc", but is "${scripts.build}"`);
 	}
 

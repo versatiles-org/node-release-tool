@@ -1,8 +1,9 @@
 import { Shell } from './shell.js';
 
-
 export interface Commit {
-	sha: string; message: string; tag?: string;
+	sha: string;
+	message: string;
+	tag?: string;
 }
 
 export interface Git {
@@ -24,22 +25,22 @@ export function getGit(cwd: string): Git {
 		const commits: Commit[] = await getAllCommits();
 
 		const result = commits
-			.map(commit => ({
+			.map((commit) => ({
 				sha: commit.sha,
 				version: commit.tag?.match(/^v(\d+\.\d+\.\d+(?:-[\w.]+)?(?:\+[\w.]+)?)$/)?.[1],
 			}))
-			.find(r => r.version) as { sha: string; version: string } | undefined;
+			.find((r) => r.version) as { sha: string; version: string } | undefined;
 
 		return result;
 	}
 
 	async function getAllCommits(): Promise<Commit[]> {
-		const result: string = await shell.stdout('git log --pretty=format:\'⍃%H⍄%s⍄%D⍄\'');
+		const result: string = await shell.stdout("git log --pretty=format:'⍃%H⍄%s⍄%D⍄'");
 
 		return result
 			.split('⍃')
-			.filter(line => line.length > 2)
-			.map(line => {
+			.filter((line) => line.length > 2)
+			.map((line) => {
 				const obj: string[] = line.split('⍄');
 				return {
 					sha: obj[0],
@@ -56,10 +57,10 @@ export function getGit(cwd: string): Git {
 	async function getCommitsBetween(shaLast?: string, shaCurrent?: string): Promise<Commit[]> {
 		let commits: Commit[] = await getAllCommits();
 
-		const start = commits.findIndex(commit => commit.sha === shaCurrent);
+		const start = commits.findIndex((commit) => commit.sha === shaCurrent);
 		if (start >= 0) commits = commits.slice(start);
 
-		const end = commits.findIndex(commit => commit.sha === shaLast);
+		const end = commits.findIndex((commit) => commit.sha === shaLast);
 		if (end >= 0) commits = commits.slice(0, end);
 
 		return commits;

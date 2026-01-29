@@ -3,7 +3,8 @@ import { panic, warn, info, check } from './log.js';
 
 describe('Your Module Tests', () => {
 	let processSpy: MockInstance<{
-		(buffer: Uint8Array | string, cb?: ((err?: Error) => void)): boolean; (str: Uint8Array | string, encoding?: BufferEncoding, cb?: ((err?: Error) => void)): boolean;
+		(buffer: Uint8Array | string, cb?: (err?: Error) => void): boolean;
+		(str: Uint8Array | string, encoding?: BufferEncoding, cb?: (err?: Error) => void): boolean;
 	}>;
 	let abortSpy: MockInstance<(code?: number) => never>;
 

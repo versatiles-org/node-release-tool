@@ -15,7 +15,9 @@ const mockedShellInstance = {
 	stdout: vi.fn(async () => ''),
 };
 vi.mock('../lib/shell.js', () => ({
-	Shell: vi.fn(function () { return mockedShellInstance; }),
+	Shell: vi.fn(function () {
+		return mockedShellInstance;
+	}),
 }));
 
 const ncu = (await import('npm-check-updates')).default;
@@ -27,9 +29,11 @@ describe('upgradeDependencies', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 
-		vi.mocked(check).mockImplementation(async <T>(_message: string, promise: Promise<T> | (() => Promise<T>)): Promise<T> => {
-			return typeof promise === 'function' ? promise() : promise;
-		});
+		vi.mocked(check).mockImplementation(
+			async <T>(_message: string, promise: Promise<T> | (() => Promise<T>)): Promise<T> => {
+				return typeof promise === 'function' ? promise() : promise;
+			},
+		);
 	});
 
 	it('should upgrade dependencies successfully', async () => {
@@ -46,7 +50,7 @@ describe('upgradeDependencies', () => {
 		});
 
 		// Verify check was called for each step
-		expect(vi.mocked(check).mock.calls.map(c => c[0])).toStrictEqual([
+		expect(vi.mocked(check).mock.calls.map((c) => c[0])).toStrictEqual([
 			'Upgrade all dependencies',
 			'Remove lock file and node_modules',
 			'Reinstall all dependencies',

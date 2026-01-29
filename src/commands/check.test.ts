@@ -1,4 +1,4 @@
-import { vi, describe, expect, beforeEach, it } from 'vitest'
+import { vi, describe, expect, beforeEach, it } from 'vitest';
 
 // 1. Mock the modules used by check-package.ts
 vi.mock('fs', () => ({
@@ -37,15 +37,18 @@ describe('check', () => {
 		vi.clearAllMocks();
 	});
 
-	function testPackage(pkg: { scripts?: object | null }, result: { info?: string[], warn?: string[], panic?: string[] }) {
+	function testPackage(
+		pkg: { scripts?: object | null },
+		result: { info?: string[]; warn?: string[]; panic?: string[] },
+	) {
 		if (!pkg) pkg = goodPackage;
 		if (pkg.scripts !== null) {
-			pkg.scripts = { ...goodPackage.scripts, ...pkg.scripts }
+			pkg.scripts = { ...goodPackage.scripts, ...pkg.scripts };
 		}
 		vi.mocked(readFileSync).mockReturnValue(JSON.stringify(pkg));
 
 		try {
-			check('/some/path')
+			check('/some/path');
 		} catch (_) {
 			// ignore
 		}
@@ -67,7 +70,6 @@ describe('check', () => {
 	});
 
 	describe('scripts', () => {
-
 		it('should info  if "test" is missing', () => {
 			testPackage({ scripts: { test: null } }, { info: ['scripts.test is recommended'] });
 		});
@@ -84,28 +86,40 @@ describe('check', () => {
 			testPackage({ scripts: { check: null } }, { warn: ['scripts.check is required'] });
 		});
 		it('should warn  if "check" does not include "npm run build"', () => {
-			testPackage({ scripts: { check: 'something' } }, { warn: ['scripts.check should include "npm run build", but is "something"'] });
+			testPackage(
+				{ scripts: { check: 'something' } },
+				{ warn: ['scripts.check should include "npm run build", but is "something"'] },
+			);
 		});
 
 		it('should warn if "prepack" is missing', () => {
 			testPackage({ scripts: { prepack: null } }, { warn: ['scripts.prepack is required'] });
 		});
 		it('should warn  if "prepack" is not "npm run build"', () => {
-			testPackage({ scripts: { prepack: 'something' } }, { warn: ['scripts.prepack should be "npm run build", but is "something"'] });
+			testPackage(
+				{ scripts: { prepack: 'something' } },
+				{ warn: ['scripts.prepack should be "npm run build", but is "something"'] },
+			);
 		});
 
 		it('should warn if "release" is missing', () => {
 			testPackage({ scripts: { release: null } }, { warn: ['scripts.release is required'] });
 		});
 		it('should warn  if "release" is not "vrt release-npm"', () => {
-			testPackage({ scripts: { release: 'something' } }, { warn: ['scripts.release should be "vrt release-npm", but is "something"'] });
+			testPackage(
+				{ scripts: { release: 'something' } },
+				{ warn: ['scripts.release should be "vrt release-npm", but is "something"'] },
+			);
 		});
 
 		it('should panic if "upgrade" is missing', () => {
 			testPackage({ scripts: { upgrade: null } }, { warn: ['scripts.upgrade is recommended'] });
 		});
 		it('should warn  if "upgrade" is not "vrt deps-upgrade"', () => {
-			testPackage({ scripts: { upgrade: 'something' } }, { info: ['scripts.upgrade should be "vrt deps-upgrade", but is "something"'] });
+			testPackage(
+				{ scripts: { upgrade: 'something' } },
+				{ info: ['scripts.upgrade should be "vrt deps-upgrade", but is "something"'] },
+			);
 		});
-	})
+	});
 });

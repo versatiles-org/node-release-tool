@@ -1,7 +1,12 @@
 import * as td from 'typedoc';
 import { panic, warn } from '../lib/log.js';
 
-export async function generateTypescriptDocs(options: { entryPoint?: string, outputPath?: string, format?: 'markdown' | 'wiki' | 'html', quiet?: boolean }) {
+export async function generateTypescriptDocs(options: {
+	entryPoint?: string;
+	outputPath?: string;
+	format?: 'markdown' | 'wiki' | 'html';
+	quiet?: boolean;
+}) {
 	const { entryPoint, outputPath, quiet } = options;
 	const format = options.format ?? 'markdown';
 	const isMarkdown = format !== 'html';
@@ -12,18 +17,17 @@ export async function generateTypescriptDocs(options: { entryPoint?: string, out
 		format === 'html' && 'typedoc-github-theme',
 	].filter(Boolean) as string[];
 
-	const app = await td.Application.bootstrapWithPlugins({
-		entryPoints: [entryPoint ?? './src/index.ts'],
-		out: outputPath ?? './docs',
-		plugin,
-		logLevel: quiet ? 'Warn' : 'Info',
-		highlightLanguages: ['typescript', 'javascript', 'json', 'shell', 'bash', 'sh', 'css', 'html'],
-		groupOrder: ['Classes', 'Variables', 'Functions', '*'],
-	}, [
-		new td.TypeDocReader(),
-		new td.PackageJsonReader(),
-		new td.TSConfigReader(),
-	]);
+	const app = await td.Application.bootstrapWithPlugins(
+		{
+			entryPoints: [entryPoint ?? './src/index.ts'],
+			out: outputPath ?? './docs',
+			plugin,
+			logLevel: quiet ? 'Warn' : 'Info',
+			highlightLanguages: ['typescript', 'javascript', 'json', 'shell', 'bash', 'sh', 'css', 'html'],
+			groupOrder: ['Classes', 'Variables', 'Functions', '*'],
+		},
+		[new td.TypeDocReader(), new td.PackageJsonReader(), new td.TSConfigReader()],
+	);
 
 	app.options.setValue('readme', 'none');
 

@@ -13,7 +13,7 @@ function blockquoteHandler(node: Blockquote, _parent: unknown, state: State, inf
 	tracker.shift(2);
 	let value = state.indentLines(
 		state.containerFlow(node, tracker.current()),
-		(line, _index, blank) => '>' + (blank ? '' : ' ') + line
+		(line, _index, blank) => '>' + (blank ? '' : ' ') + line,
 	);
 	exit();
 	// Unescape GitHub alert markers that remark-stringify escapes
@@ -72,7 +72,7 @@ export function injectMarkdown(document: string, segment: string, heading: strin
 			},
 		})
 		.stringify(documentAst);
-	return result
+	return result;
 }
 
 /**
@@ -89,7 +89,7 @@ export function updateTOC(main: string, heading: string): string {
 
 	// Build the TOC by iterating over each heading in the document.
 	const toc = mainAst.children
-		.flatMap(c => {
+		.flatMap((c) => {
 			// Skip non-heading nodes and the specified heading.
 			if (c.type !== 'heading' || extractTextFromMDAsHTML(c) === headingText) return [];
 			// Format each heading as a TOC entry.
@@ -116,13 +116,13 @@ export function updateTOC(main: string, heading: string): string {
 function findSegmentStartIndex(mainAst: Root, headingAst: Root): number {
 	// Verify the structure of the headingAst.
 	if (headingAst.children.length !== 1) throw Error('headingAst.children.length !== 1');
-	if (headingAst.children[0].type !== 'heading') throw Error('headingAst.children[0].type !== \'heading\'');
+	if (headingAst.children[0].type !== 'heading') throw Error("headingAst.children[0].type !== 'heading'");
 	const sectionDepth = headingAst.children[0].depth;
 	const sectionText = extractTextFromMDAsHTML(headingAst);
 
 	// Search for the index of the heading in the main document AST.
 	const indexes: number[] = mainAst.children.flatMap((c, index) => {
-		if ((c.type === 'heading') && (c.depth === sectionDepth) && extractTextFromMDAsHTML(c).startsWith(sectionText)) {
+		if (c.type === 'heading' && c.depth === sectionDepth && extractTextFromMDAsHTML(c).startsWith(sectionText)) {
 			return [index];
 		}
 		return [];
@@ -161,7 +161,7 @@ function findNextHeadingIndex(mainAst: Root, startIndex: number, depth: number):
  */
 function getHeadingDepth(mainAst: Root, index: number): number {
 	const node = mainAst.children[index];
-	if (node.type !== 'heading') throw Error('node.type !== \'heading\'');
+	if (node.type !== 'heading') throw Error("node.type !== 'heading'");
 	return node.depth;
 }
 
@@ -171,8 +171,8 @@ function getHeadingDepth(mainAst: Root, index: number): number {
  * @param depth The depth to which the segment should be indented.
  */
 function indentSegmentToDepth(segmentAst: Root, depth: number): void {
-	segmentAst.children.forEach(node => {
-		if (node.type == 'heading') return node.depth += depth;
+	segmentAst.children.forEach((node) => {
+		if (node.type == 'heading') return (node.depth += depth);
 	});
 }
 
@@ -227,14 +227,16 @@ function getMDAnchor(node: Heading): string {
 			}
 			case 'text':
 			case 'inlineCode':
-				text += c.value; break;
+				text += c.value;
+				break;
 			default:
 				throw Error('unknown type: ' + c.type);
 		}
 	}
 
 	// Format the text to create a suitable anchor ID.
-	text = text.toLowerCase()
+	text = text
+		.toLowerCase()
 		.replace(/[()]+/g, '')
 		.replace(/[^a-z0-9]+/g, '-')
 		.replace(/^-+|-+$/g, '');
@@ -275,7 +277,7 @@ function convertToFoldable(ast: Root): void {
 	ast.children = children;
 
 	function closeDetails(depth: number): void {
-		while ((openDetails.length > 0) && (openDetails[0] >= depth)) {
+		while (openDetails.length > 0 && openDetails[0] >= depth) {
 			children.push({ type: 'html', value: '</details>' });
 			openDetails.shift();
 		}
@@ -310,9 +312,12 @@ export function nodeToHtml(node: PhrasingContent): string {
 			if (node.title ?? '') attributes.push(`title="${node.title}"`);
 			return `<img ${attributes.join(' ')} />`;
 		}
-		case 'footnoteReference': throw new Error('Not implemented yet: "footnoteReference" case');
-		case 'imageReference': throw new Error('Not implemented yet: "imageReference" case');
-		case 'linkReference': throw new Error('Not implemented yet: "linkReference" case');
+		case 'footnoteReference':
+			throw new Error('Not implemented yet: "footnoteReference" case');
+		case 'imageReference':
+			throw new Error('Not implemented yet: "imageReference" case');
+		case 'linkReference':
+			throw new Error('Not implemented yet: "linkReference" case');
 		default:
 			throw Error('unknown type');
 	}
@@ -323,7 +328,7 @@ function nodesToHtml(children: PhrasingContent[]): string {
 }
 
 function textToHtml(text: string): string {
-	return text.replace(/[^a-z0-9 ,.\-:_?@äöüß]/gi, c => `&#${c.charCodeAt(0)};`);
+	return text.replace(/[^a-z0-9 ,.\-:_?@äöüß]/gi, (c) => `&#${c.charCodeAt(0)};`);
 }
 
 export function parseMarkdown(document: string): Root {

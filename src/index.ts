@@ -42,7 +42,8 @@ program
  * Command: check-package
  * Checks that the project's package.json includes certain required scripts/fields.
  */
-program.command('check')
+program
+	.command('check')
 	.description('Check repo for required scripts and other stuff.')
 	.action(() => {
 		void check(process.cwd());
@@ -52,7 +53,8 @@ program.command('check')
  * Command: deps-graph
  * Analyzes the project’s files to produce a dependency graph (in Mermaid format).
  */
-program.command('deps-graph')
+program
+	.command('deps-graph')
 	.description('Analyze project files and output a dependency graph as Mermaid markup.')
 	.action(() => {
 		void generateDependencyGraph(process.cwd());
@@ -62,7 +64,8 @@ program.command('deps-graph')
  * Command: deps-upgrade
  * Upgrades project dependencies in package.json to their latest versions and reinstalls them.
  */
-program.command('deps-upgrade')
+program
+	.command('deps-upgrade')
 	.description('Upgrade all dependencies in the current project to their latest versions.')
 	.action(() => {
 		void upgradeDependencies(process.cwd());
@@ -72,7 +75,8 @@ program.command('deps-upgrade')
  * Command: doc-command
  * Generates Markdown documentation for a given CLI command.
  */
-program.command('doc-command')
+program
+	.command('doc-command')
 	.description('Generate Markdown documentation for a specified command and output the result.')
 	.argument('<command>', 'Command to document (e.g., "npm run build").')
 	.action(async (command: string) => {
@@ -85,7 +89,8 @@ program.command('doc-command')
  * Inserts Markdown content from stdin into a specified Markdown file under a given heading.
  * Optionally makes the inserted content foldable.
  */
-program.command('doc-insert')
+program
+	.command('doc-insert')
 	.description('Insert Markdown from stdin into a specified section of a Markdown file.')
 	.argument('<readme>', 'Path to the target Markdown file (e.g., README.md).', checkFilename)
 	.argument('[heading]', 'Heading in the Markdown file where content should be placed. Default is "# API".', '# API')
@@ -95,8 +100,7 @@ program.command('doc-insert')
 		for await (const data of process.stdin) {
 			buffers.push(data);
 		}
-		const mdContent = '<!--- This chapter is generated automatically --->\n'
-			+ Buffer.concat(buffers).toString();
+		const mdContent = '<!--- This chapter is generated automatically --->\n' + Buffer.concat(buffers).toString();
 
 		let mdFile = readFileSync(mdFilename, 'utf8');
 		mdFile = injectMarkdown(mdFile, mdContent, heading, foldable);
@@ -107,10 +111,15 @@ program.command('doc-insert')
  * Command: doc-toc
  * Updates or generates a Table of Contents in a Markdown file under a specified heading.
  */
-program.command('doc-toc')
+program
+	.command('doc-toc')
 	.description('Generate a Table of Contents (TOC) in a Markdown file.')
 	.argument('<readme>', 'Path to the Markdown file (e.g., README.md).', checkFilename)
-	.argument('[heading]', 'Heading in the Markdown file where TOC should be inserted. Default is "# Table of Content".', '# Table of Content')
+	.argument(
+		'[heading]',
+		'Heading in the Markdown file where TOC should be inserted. Default is "# Table of Content".',
+		'# Table of Content',
+	)
 	.action((mdFilename: string, heading: string) => {
 		let mdFile = readFileSync(mdFilename, 'utf8');
 		mdFile = updateTOC(mdFile, heading);
@@ -122,7 +131,8 @@ program.command('doc-toc')
  * Generates documentation for a TypeScript project.
  * Allows specifying entry point and output location.
  */
-program.command('doc-typescript')
+program
+	.command('doc-typescript')
 	.description('Generate documentation for a TypeScript project.')
 	.option('-i, --input <entryPoint>', 'Entry point of the TypeScript project. Default is "./src/index.ts".')
 	.option('-o, --output <outputPath>', 'Output path for the generated documentation. Default is "./docs".')
@@ -135,7 +145,8 @@ program.command('doc-typescript')
  * Command: release-npm
  * Releases/publishes an npm package from a specified project path to the npm registry.
  */
-program.command('release-npm')
+program
+	.command('release-npm')
 	.description('Publish an npm package from the specified path to the npm registry.')
 	.option('-n, --dry-run', 'Show what would be done without making any changes')
 	.argument('[path]', 'Root path of the Node.js project. Defaults to the current directory.')

@@ -24,7 +24,6 @@ function isValidPackageJson(pkg: unknown): pkg is PackageJson {
 }
 
 export async function release(directory: string, branch = 'main', dryRun = false): Promise<void> {
-
 	const shell = new Shell(directory);
 	const { getCommitsBetween, getCurrentGitHubCommit, getLastGitHubTag } = getGit(directory);
 
@@ -54,7 +53,8 @@ export async function release(directory: string, branch = 'main', dryRun = false
 	const versionLastGithub = tag?.version;
 
 	const versionLastPackage = String(pkg.version);
-	if (versionLastPackage !== versionLastGithub) warn(`versions differ in package.json (${versionLastPackage}) and last GitHub tag (${versionLastGithub})`);
+	if (versionLastPackage !== versionLastGithub)
+		warn(`versions differ in package.json (${versionLastPackage}) and last GitHub tag (${versionLastGithub})`);
 
 	// get current sha
 	const { sha: shaCurrent } = await check('get current github commit', getCurrentGitHubCommit());
@@ -69,7 +69,7 @@ export async function release(directory: string, branch = 'main', dryRun = false
 		info('Dry-run mode - the following actions would be performed:');
 		info(`  Version: ${versionLastPackage} -> ${nextVersion}`);
 		info('  Release notes:');
-		releaseNotes.split('\n').forEach(line => info(`    ${line}`));
+		releaseNotes.split('\n').forEach((line) => info(`    ${line}`));
 		info('  Commands that would be executed:');
 		info('    npm run check');
 		info('    npm i --package-lock-only');
@@ -132,8 +132,9 @@ export async function release(directory: string, branch = 'main', dryRun = false
 
 	async function getReleaseNotes(version: string, hashLast: string | undefined, hashCurrent: string): Promise<string> {
 		const commits = await getCommitsBetween(hashLast, hashCurrent);
-		let notes = commits.reverse()
-			.map(commit => '- ' + commit.message.replace(/\s+/g, ' '))
+		let notes = commits
+			.reverse()
+			.map((commit) => '- ' + commit.message.replace(/\s+/g, ' '))
 			.join('\n');
 		notes = `# Release v${version}\n\nchanges:\n${notes}\n\n`;
 		return notes;
@@ -142,34 +143,37 @@ export async function release(directory: string, branch = 'main', dryRun = false
 	async function getNewVersion(versionPackage: string): Promise<string> {
 		// ask for new version
 
-		const choices = [
-			{ value: versionPackage },
-			{ ...bump(2) },
-			{ ...bump(1) },
-			{ ...bump(0) }
-		]
+		const choices = [{ value: versionPackage }, { ...bump(2) }, { ...bump(1) }, { ...bump(0) }];
 
-		const versionNew: string = (await select({
+		const versionNew: string = await select({
 			message: 'What should be the new version?',
 			choices,
 			default: choices[1].value,
-		}));
+		});
 		if (!versionNew) throw Error();
 
 		return versionNew;
 
 		function bump(index: 0 | 1 | 2): { name: string; value: string } {
-			const p = versionPackage.split('.').map(v => parseInt(v, 10));
+			const p = versionPackage.split('.').map((v) => parseInt(v, 10));
 			if (p.length !== 3) throw Error();
 			switch (index) {
-				case 0: p[0]++; p[1] = 0; p[2] = 0; break;
-				case 1: p[1]++; p[2] = 0; break;
-				case 2: p[2]++; break;
+				case 0:
+					p[0]++;
+					p[1] = 0;
+					p[2] = 0;
+					break;
+				case 1:
+					p[1]++;
+					p[2] = 0;
+					break;
+				case 2:
+					p[2]++;
+					break;
 			}
-			const name = p.map((n, i) => (i == index) ? `\x1b[1m${n}` : `${n}`).join('.') + '\x1b[22m';
+			const name = p.map((n, i) => (i == index ? `\x1b[1m${n}` : `${n}`)).join('.') + '\x1b[22m';
 			const value = p.join('.');
 			return { name, value };
 		}
 	}
 }
-

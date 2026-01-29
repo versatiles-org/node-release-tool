@@ -1,4 +1,3 @@
-
 import { cruise } from 'dependency-cruiser';
 import { panic } from '../lib/log.js';
 
@@ -8,7 +7,7 @@ export async function generateDependencyGraph(directory: string): Promise<void> 
 		cruiseResult = await cruise([directory], {
 			includeOnly: '^src',
 			outputType: 'mermaid',
-			exclude: ["\\.(test|d)\\.ts$", "node_modules", "__mocks__/"],
+			exclude: ['\\.(test|d)\\.ts$', 'node_modules', '__mocks__/'],
 		});
 	} catch (pError) {
 		panic(String(pError));
@@ -17,7 +16,7 @@ export async function generateDependencyGraph(directory: string): Promise<void> 
 	let { output } = cruiseResult;
 	if (typeof output !== 'string') panic('no output');
 
-	output = output.replace('flowchart LR', '---\nconfig:\n  layout: elk\n---\nflowchart TB')
+	output = output.replace('flowchart LR', '---\nconfig:\n  layout: elk\n---\nflowchart TB');
 
 	const matches = Array.from(output.matchAll(/subgraph ([0-9a-z]+)/gi));
 	const subgraphIds = matches.map(([_match, id]) => id);

@@ -1,4 +1,3 @@
-
 export function getErrorMessage(error: unknown): string {
 	if (error == null) return 'unknown';
 	if (typeof error === 'object') {
@@ -23,14 +22,26 @@ export function prettyStyleJSON(inputData: unknown): string {
 
 		if (typeof data === 'object') {
 			if (Array.isArray(data)) {
-				return '[\n\t' + prefix + data.map((value: unknown) =>
-					recursive(value, prefix + '\t', path + '[]'),
-				).join(',\n\t' + prefix) + '\n' + prefix + ']';
+				return (
+					'[\n\t' +
+					prefix +
+					data.map((value: unknown) => recursive(value, prefix + '\t', path + '[]')).join(',\n\t' + prefix) +
+					'\n' +
+					prefix +
+					']'
+				);
 			}
 			if (data) {
-				return '{\n\t' + prefix + Object.entries(data).map(([key, value]) =>
-					'"' + key + '": ' + recursive(value, prefix + '\t', path + '.' + key),
-				).join(',\n\t' + prefix) + '\n' + prefix + '}';
+				return (
+					'{\n\t' +
+					prefix +
+					Object.entries(data)
+						.map(([key, value]) => '"' + key + '": ' + recursive(value, prefix + '\t', path + '.' + key))
+						.join(',\n\t' + prefix) +
+					'\n' +
+					prefix +
+					'}'
+				);
 			}
 		}
 
