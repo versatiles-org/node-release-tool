@@ -23,6 +23,5 @@ export async function check<T>(message: string, promise: (Promise<T>) | (() => P
 	} catch (error) {
 		process.stderr.write(`\r\x1b[0;91m\u2718 ${message}\x1b[0m\n`);
 		panic((error as Error).message);
-		throw error;
 	}
 }
