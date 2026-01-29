@@ -131,9 +131,10 @@ program.command('doc-typescript')
  */
 program.command('release-npm')
 	.description('Publish an npm package from the specified path to the npm registry.')
+	.option('-n, --dry-run', 'Show what would be done without making any changes')
 	.argument('[path]', 'Root path of the Node.js project. Defaults to the current directory.')
-	.action((path: string | null) => {
-		void release(resolve(process.cwd(), path ?? '.'), 'main');
+	.action((path: string | null, options: { dryRun?: boolean }) => {
+		void release(resolve(process.cwd(), path ?? '.'), 'main', options.dryRun ?? false);
 	});
 
 if (process.env.NODE_ENV !== 'test') {

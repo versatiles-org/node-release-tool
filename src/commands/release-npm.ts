@@ -7,12 +7,12 @@ import { Shell } from '../lib/shell.js';
 import { getGit } from '../lib/git.js';
 import { resolve } from 'path';
 
-export async function release(directory: string, branch = 'main'): Promise<void> {
+export async function release(directory: string, branch = 'main', dryRun = false): Promise<void> {
 
 	const shell = new Shell(directory);
 	const { getCommitsBetween, getCurrentGitHubCommit, getLastGitHubTag } = getGit(directory);
 
-	info('starting release process');
+	info(dryRun ? 'starting release process (dry-run)' : 'starting release process');
 
 	// git: check if in the correct branch
 	const currentBranch = await check('get branch name', shell.stdout('git rev-parse --abbrev-ref HEAD'));
@@ -46,14 +46,34 @@ export async function release(directory: string, branch = 'main'): Promise<void>
 	// handle version
 	const nextVersion = await getNewVersion(versionLastPackage);
 
+	// prepare release notes
+	const releaseNotes = await check('prepare release notes', getReleaseNotes(nextVersion, shaLast, shaCurrent));
+
+	if (dryRun) {
+		info('Dry-run mode - the following actions would be performed:');
+		info(`  Version: ${versionLastPackage} -> ${nextVersion}`);
+		info('  Release notes:');
+		releaseNotes.split('\n').forEach(line => info(`    ${line}`));
+		info('  Commands that would be executed:');
+		info('    npm run check');
+		info('    npm i --package-lock-only');
+		if (!('private' in pkg) || !pkg.private) {
+			info('    npm publish --access public');
+		}
+		info('    git add .');
+		info(`    git commit -m "v${nextVersion}"`);
+		info(`    git tag -f -a "v${nextVersion}" -m "new release: v${nextVersion}"`);
+		info('    git push --no-verify --follow-tags');
+		info(`    gh release create/edit "v${nextVersion}"`);
+		info('Dry-run complete - no changes were made');
+		return;
+	}
+
 	// test
 	await check('run checks', shell.run('npm run check'));
 
 	// update version
 	await check('update version', setNextVersion(nextVersion));
-
-	// prepare release notes
-	const releaseNotes = await check('prepare release notes', getReleaseNotes(nextVersion, shaLast, shaCurrent));
 
 	if (!('private' in pkg) || !pkg.private) {
 		// npm publish
