@@ -41,11 +41,12 @@ describe('Your Module Tests', () => {
 		expect(processSpy).toHaveBeenCalledWith(expect.stringContaining('\u2714 test check'));
 	});
 
-	it('check should catch error, write error message, and rethrow', async () => {
+	it('check should catch error, write error message, and call panic', async () => {
 		const error = new Error('test error');
 		const promise = Promise.reject(error);
-		await expect(check('test check', promise)).rejects.toThrow();
+		await check('test check', promise);
 		expect(processSpy).toHaveBeenCalledWith(expect.stringContaining('\u2718 test check'));
 		expect(processSpy).toHaveBeenCalledWith(expect.stringContaining('! ERROR: test error'));
+		expect(abortSpy).toHaveBeenCalled();
 	});
 });
