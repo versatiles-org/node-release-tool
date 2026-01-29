@@ -51,6 +51,7 @@ Node.js/TypeScript projects.
 
 Options:
   -h, --help                                display help for command
+  -v, --verbose                             Enable verbose output
 
 Commands:
   check                                     Check repo for required scripts and other stuff.
@@ -61,7 +62,7 @@ Commands:
   doc-toc <readme> [heading]                Generate a Table of Contents (TOC) in a Markdown file.
   doc-typescript [options]                  Generate documentation for a TypeScript project.
   help [command]                            display help for command
-  release-npm [path]                        Publish an npm package from the specified path to the npm registry.
+  release-npm [options] [path]              Publish an npm package from the specified path to the npm registry.
 ```
 
 ## Subcommand: `vrt check`
@@ -178,11 +179,12 @@ Usage: vrt release-npm [options] [path]
 Publish an npm package from the specified path to the npm registry.
 
 Arguments:
-  path        Root path of the Node.js project. Defaults to the current
-              directory.
+  path           Root path of the Node.js project. Defaults to the current
+                 directory.
 
 Options:
-  -h, --help  display help for command
+  -h, --help     display help for command
+  -n, --dry-run  Show what would be done without making any changes
 ```
 
 # Development
@@ -220,6 +222,7 @@ end
 5-->4
 6-->4
 6-->7
+7-->4
 8-->9
 A-->4
 B-->9
@@ -234,6 +237,7 @@ E-->8
 E-->A
 E-->B
 E-->C
+E-->4
 
 class 0,1,3 subgraphs;
 classDef subgraphs fill-opacity:0.1, fill:#888, color:#888, stroke:#888;
