@@ -203,41 +203,45 @@ flowchart TB
 subgraph 0["src"]
 subgraph 1["commands"]
 2["check.ts"]
-5["deps-graph.ts"]
-6["deps-upgrade.ts"]
-8["doc-command.ts"]
-A["doc-typescript.ts"]
-B["markdown.ts"]
-C["release-npm.ts"]
+6["deps-graph.ts"]
+7["deps-upgrade.ts"]
+9["doc-command.ts"]
+B["doc-typescript.ts"]
+C["markdown.ts"]
+D["release-npm.ts"]
 end
 subgraph 3["lib"]
 4["log.ts"]
-7["shell.ts"]
-9["utils.ts"]
-D["git.ts"]
+5["errors.ts"]
+8["shell.ts"]
+A["utils.ts"]
+E["git.ts"]
 end
-E["index.ts"]
+F["index.ts"]
 end
 2-->4
-5-->4
+4-->5
 6-->4
-6-->7
 7-->4
-8-->9
-A-->4
-B-->9
-C-->D
-C-->4
-C-->7
-D-->7
-E-->2
-E-->5
-E-->6
+7-->8
+8-->4
+9-->A
+B-->4
+C-->5
+C-->A
+D-->5
+D-->E
+D-->4
+D-->8
 E-->8
-E-->A
-E-->B
-E-->C
-E-->4
+F-->2
+F-->6
+F-->7
+F-->9
+F-->B
+F-->C
+F-->D
+F-->4
 
 class 0,1,3 subgraphs;
 classDef subgraphs fill-opacity:0.1, fill:#888, color:#888, stroke:#888;
