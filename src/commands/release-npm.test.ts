@@ -26,6 +26,9 @@ const mockedShellInstance = {
 	runInteractive: vi.fn(async (_command: string, _errorOnCodeNonZero?: boolean) => {
 		return { code: 0, signal: '' };
 	}),
+	exec: vi.fn(async (_command: string, _args: string[], _errorOnCodeNonZero?: boolean) => {
+		return { code: 0, signal: '', stdout: '', stderr: '' };
+	}),
 	stdout: vi.fn(async (command: string, _errorOnCodeZero?: boolean): Promise<string> => {
 		switch (command) {
 			case 'git rev-parse --abbrev-ref HEAD': return 'main'; // get current branch
