@@ -133,7 +133,7 @@ program.command('release-npm')
 	.description('Publish an npm package from the specified path to the npm registry.')
 	.argument('[path]', 'Root path of the Node.js project. Defaults to the current directory.')
 	.action((path: string | null) => {
-		void release(resolve(path ?? '.', process.cwd()), 'main');
+		void release(resolve(process.cwd(), path ?? '.'), 'main');
 	});
 
 if (process.env.NODE_ENV !== 'test') {
