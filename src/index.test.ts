@@ -61,7 +61,6 @@ describe('release-tool CLI', () => {
 	});
 
 	async function run(...args: string[]): Promise<void> {
-		console.log({ args });
 		const moduleUrl = './index.js?t=' + Math.random().toString(16).slice(2);
 		console.log(`Importing module from ${moduleUrl}`);
 		const module = await import(moduleUrl);
