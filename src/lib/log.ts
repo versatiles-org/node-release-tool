@@ -11,7 +11,7 @@ export function info(text: string): void {
 
 export function abort(): never {
 	info('abort');
-	process.exit();
+	process.exit(1);
 }
 
 export async function check<T>(message: string, promise: (Promise<T>) | (() => Promise<T>)): Promise<T> {
