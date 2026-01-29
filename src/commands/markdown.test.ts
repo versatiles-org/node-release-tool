@@ -150,6 +150,17 @@ describe('markdown to html', () => {
 	}
 });
 
+describe('github markdown alerts', () => {
+	for (const type of ['NOTE', 'WARNING', 'TIP', 'IMPORTANT', 'CAUTION']) {
+		it(`should handle ${type} alert in document injection`, () => {
+			const doc = '# H 1\n\n## Content\n\nSome text\n';
+			const alert = `> [!${type}]\n> This is a ${type.toLowerCase()}`;
+			const result = injectMarkdown(doc, alert, '## Content');
+			expect(result).toBe(`# H 1\n\n## Content\n\n> [!${type}]\n> This is a ${type.toLowerCase()}\n`);
+		});
+	}
+});
+
 function getDoc(content: string): string {
 	return `# H 1\n\nC 1\n\n## H 2\n\n${content}\n\n# H 3\n\nC 3\n`;
 }

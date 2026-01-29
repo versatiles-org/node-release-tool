@@ -1,8 +1,25 @@
-import type { Heading, Root, RootContent, PhrasingContent } from 'mdast';
+import type { Blockquote, Heading, Root, RootContent, PhrasingContent } from 'mdast';
+import type { State, Info } from 'mdast-util-to-markdown';
 import { remark } from 'remark';
 import remarkGfm from 'remark-gfm';
 import remarkStringify from 'remark-stringify';
 import { getErrorMessage } from '../lib/utils.js';
+
+// Custom blockquote handler that preserves GitHub alert syntax
+function blockquoteHandler(node: Blockquote, _parent: unknown, state: State, info: Info): string {
+	const exit = state.enter('blockquote');
+	const tracker = state.createTracker(info);
+	tracker.move('> ');
+	tracker.shift(2);
+	let value = state.indentLines(
+		state.containerFlow(node, tracker.current()),
+		(line, _index, blank) => '>' + (blank ? '' : ' ') + line
+	);
+	exit();
+	// Unescape GitHub alert markers that remark-stringify escapes
+	value = value.replace(/^(>\s*)\\\[!(NOTE|WARNING|TIP|IMPORTANT|CAUTION)\]/m, '$1[!$2]');
+	return value;
+}
 
 /**
  * Injects a Markdown segment under a specified heading in a Markdown document.
@@ -50,6 +67,9 @@ export function injectMarkdown(document: string, segment: string, heading: strin
 		.use(remarkStringify, {
 			bullet: '-',
 			rule: '-',
+			handlers: {
+				blockquote: blockquoteHandler,
+			},
 		})
 		.stringify(documentAst);
 	return result
