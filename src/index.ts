@@ -12,6 +12,7 @@ import { upgradeDependencies } from './commands/deps-upgrade.js';
 import { generateDependencyGraph } from './commands/deps-graph.js';
 import { check } from './commands/check.js';
 import { generateTypescriptDocs } from './commands/doc-typescript.js';
+import { setVerbose } from './lib/log.js';
 
 /**
  * Main CLI program, configured with custom text styling for titles, commands, options, etc.
@@ -30,7 +31,12 @@ program.configureHelp({
 
 program
 	.name('vrt')
-	.description('CLI tool for releasing packages and generating documentation for Node.js/TypeScript projects.');
+	.description('CLI tool for releasing packages and generating documentation for Node.js/TypeScript projects.')
+	.option('-v, --verbose', 'Enable verbose output')
+	.hook('preAction', (thisCommand) => {
+		const opts = thisCommand.opts();
+		if (opts.verbose) setVerbose(true);
+	});
 
 /**
  * Command: check-package

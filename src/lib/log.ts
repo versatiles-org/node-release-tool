@@ -1,3 +1,12 @@
+let verboseMode = false;
+
+export function setVerbose(enabled: boolean): void {
+	verboseMode = enabled;
+}
+
+export function isVerbose(): boolean {
+	return verboseMode;
+}
 
 export function panic(text: string): never {
 	process.stderr.write(`\x1b[1;31m! ERROR: ${text}\x1b[0m\n`); abort();
@@ -7,6 +16,11 @@ export function warn(text: string): void {
 }
 export function info(text: string): void {
 	process.stderr.write(`\x1b[0mi ${text}\n`);
+}
+export function debug(text: string): void {
+	if (verboseMode) {
+		process.stderr.write(`\x1b[0;90m  ${text}\x1b[0m\n`);
+	}
 }
 
 export function abort(): never {

@@ -1,4 +1,5 @@
 import { spawn } from 'child_process';
+import { debug, isVerbose } from './log.js';
 
 export class Shell {
 	private cwd: string;
@@ -11,15 +12,20 @@ export class Shell {
 		command: string,
 		errorOnCodeNonZero: boolean = true
 	): Promise<{ code: number | null; signal: string | null; stdout: string; stderr: string }> {
-		return this.exec('bash', ['-c', command], errorOnCodeNonZero);
+		debug(`$ ${command}`);
+		return this.exec('bash', ['-c', command], errorOnCodeNonZero, true);
 	}
 
 	// Execute a command with arguments directly, avoiding shell escaping issues
 	async exec(
 		command: string,
 		args: string[],
-		errorOnCodeNonZero: boolean = true
+		errorOnCodeNonZero: boolean = true,
+		skipLog: boolean = false
 	): Promise<{ code: number | null; signal: string | null; stdout: string; stderr: string }> {
+		if (!skipLog) {
+			debug(`$ ${command} ${args.join(' ')}`);
+		}
 		return await new Promise((resolve, reject) => {
 			const stdout: Buffer[] = [];
 			const stderr: Buffer[] = [];
@@ -32,6 +38,11 @@ export class Shell {
 						stdout: Buffer.concat(stdout).toString(),
 						stderr: Buffer.concat(stderr).toString(),
 					};
+					if (isVerbose()) {
+						if (result.stdout) result.stdout.split('\n').forEach(line => debug(`  stdout: ${line}`));
+						if (result.stderr) result.stderr.split('\n').forEach(line => debug(`  stderr: ${line}`));
+						debug(`  exit code: ${code}`);
+					}
 					if (errorOnCodeNonZero && code !== 0) {
 						reject(result);
 					} else {
