@@ -67,14 +67,11 @@ export async function release(directory: string, branch = 'main'): Promise<void>
 	await check('git push', shell.run('git push --no-verify --follow-tags'));
 
 	// github release
-	const releaseNotesPipe = `echo -e '${releaseNotes.replace(
-		/[^a-z0-9,.?!:_<> -]/gi,
-		c => '\\x' + ('00' + c.charCodeAt(0).toString(16)).slice(-2),
-	)}'`;
-	if (await check('check github release', shell.ok('gh release view v' + nextVersion))) {
-		await check('edit release', shell.run(`${releaseNotesPipe} | gh release edit "v${nextVersion}" -F -`));
+	const releaseTag = `v${nextVersion}`;
+	if (await check('check github release', shell.ok(`gh release view ${releaseTag}`))) {
+		await check('edit release', shell.exec('gh', ['release', 'edit', releaseTag, '--notes', releaseNotes]));
 	} else {
-		await check('create release', shell.run(`${releaseNotesPipe} | gh release create "v${nextVersion}" -F -`));
+		await check('create release', shell.exec('gh', ['release', 'create', releaseTag, '--notes', releaseNotes]));
 	}
 
 	info('Finished');

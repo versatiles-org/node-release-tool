@@ -150,7 +150,9 @@ describe('release function', () => {
 			['git commit -m "v1.1.0"', false],
 			['git tag -f -a "v1.1.0" -m "new release: v1.1.0"'],
 			['git push --no-verify --follow-tags'],
-			['echo -e \'\\x23 Release v1.1.0\\x0a\\x0achanges:\\x0a- commit message 2\\x0a- commit message 3\\x0a\\x0a\' | gh release edit "v1.1.0" -F -'],
+		]);
+		expect(vi.mocked(mockedShellInstance.exec).mock.calls).toStrictEqual([
+			['gh', ['release', 'edit', 'v1.1.0', '--notes', '# Release v1.1.0\n\nchanges:\n- commit message 2\n- commit message 3\n\n']],
 		]);
 		expect(vi.mocked(mockedShellInstance.runInteractive).mock.calls).toStrictEqual([
 			['npm publish --access public'],
