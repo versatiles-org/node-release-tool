@@ -12,7 +12,7 @@
   "scripts": {
     "build": "npm run build-node && npm run doc",
     "build-node": "rm -rf dist && tsc -p tsconfig.build.json && chmod +x dist/index.js",
-    "check": "npm run lint && npm run build && npm run test",
+    "check": "npm run lint && npm run build && npm run test && npm run format:check",
     "dev": "tsx src/index.ts",
     "doc": "npm run doc-command && npm run doc-graph",
     "doc-command": "tsx src/index.ts doc-command vrt | tsx src/index.ts doc-insert README.md '# Command'",
