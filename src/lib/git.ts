@@ -26,7 +26,7 @@ export function getGit(cwd: string): Git {
 		const result = commits
 			.map(commit => ({
 				sha: commit.sha,
-				version: commit.tag?.match(/^v(\d+\.\d+\.\d+)$/)?.[1],
+				version: commit.tag?.match(/^v(\d+\.\d+\.\d+(?:-[\w.]+)?(?:\+[\w.]+)?)$/)?.[1],
 			}))
 			.find(r => r.version) as { sha: string; version: string } | undefined;
 
