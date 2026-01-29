@@ -1,3 +1,5 @@
+import { VrtError } from './errors.js';
+
 let verboseMode = false;
 
 export function setVerbose(enabled: boolean): void {
@@ -37,6 +39,9 @@ export async function check<T>(message: string, promise: Promise<T> | (() => Pro
 		return result;
 	} catch (error) {
 		process.stderr.write(`\r\x1b[0;91m\u2718 ${message}\x1b[0m\n`);
-		panic((error as Error).message);
+		if (error instanceof VrtError) {
+			panic(`[${error.code}] ${error.message}`);
+		}
+		panic((error as Error).message ?? String(error));
 	}
 }

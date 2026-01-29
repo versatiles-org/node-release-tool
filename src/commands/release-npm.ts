@@ -2,6 +2,7 @@
 
 import { readFileSync, writeFileSync } from 'fs';
 import select from '@inquirer/select';
+import { releaseError, validationError } from '../lib/errors.js';
 import { check, info, panic, warn } from '../lib/log.js';
 import { Shell } from '../lib/shell.js';
 import { getGit } from '../lib/git.js';
@@ -116,7 +117,7 @@ export async function release(directory: string, branch = 'main', dryRun = false
 
 	async function checkThatNoUncommittedChanges(): Promise<void> {
 		if ((await shell.stdout('git status --porcelain')).length < 3) return;
-		throw Error('please commit all changes before releasing');
+		throw releaseError('please commit all changes before releasing');
 	}
 
 	async function setNextVersion(version: string): Promise<void> {
@@ -150,13 +151,13 @@ export async function release(directory: string, branch = 'main', dryRun = false
 			choices,
 			default: choices[1].value,
 		});
-		if (!versionNew) throw Error();
+		if (!versionNew) throw releaseError('no version selected');
 
 		return versionNew;
 
 		function bump(index: 0 | 1 | 2): { name: string; value: string } {
 			const p = versionPackage.split('.').map((v) => parseInt(v, 10));
-			if (p.length !== 3) throw Error();
+			if (p.length !== 3) throw validationError('invalid version format, expected x.y.z');
 			switch (index) {
 				case 0:
 					p[0]++;

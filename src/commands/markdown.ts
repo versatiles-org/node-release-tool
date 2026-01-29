@@ -3,6 +3,7 @@ import type { State, Info } from 'mdast-util-to-markdown';
 import { remark } from 'remark';
 import remarkGfm from 'remark-gfm';
 import remarkStringify from 'remark-stringify';
+import { markdownError, notImplementedError } from '../lib/errors.js';
 import { getErrorMessage } from '../lib/utils.js';
 
 // Custom blockquote handler that preserves GitHub alert syntax
@@ -44,7 +45,7 @@ export function injectMarkdown(document: string, segment: string, heading: strin
 		startIndex = findSegmentStartIndex(documentAst, headingAst);
 	} catch (error) {
 		// Handle errors during the search for the start index.
-		throw new Error(`Error while searching for segment "${heading}": ${getErrorMessage(error)}`);
+		throw markdownError(`Error while searching for segment "${heading}": ${getErrorMessage(error)}`);
 	}
 
 	// Get the depth of the specified heading to maintain the structure.
@@ -115,8 +116,8 @@ export function updateTOC(main: string, heading: string): string {
  */
 function findSegmentStartIndex(mainAst: Root, headingAst: Root): number {
 	// Verify the structure of the headingAst.
-	if (headingAst.children.length !== 1) throw Error('headingAst.children.length !== 1');
-	if (headingAst.children[0].type !== 'heading') throw Error("headingAst.children[0].type !== 'heading'");
+	if (headingAst.children.length !== 1) throw markdownError('headingAst.children.length !== 1');
+	if (headingAst.children[0].type !== 'heading') throw markdownError("headingAst.children[0].type !== 'heading'");
 	const sectionDepth = headingAst.children[0].depth;
 	const sectionText = extractTextFromMDAsHTML(headingAst);
 
@@ -129,8 +130,8 @@ function findSegmentStartIndex(mainAst: Root, headingAst: Root): number {
 	});
 
 	// Handle the cases of no match or multiple matches.
-	if (indexes.length < 1) throw Error('section not found');
-	if (indexes.length > 1) throw Error('too many sections found');
+	if (indexes.length < 1) throw markdownError('section not found');
+	if (indexes.length > 1) throw markdownError('too many sections found');
 
 	return indexes[0];
 }
@@ -161,7 +162,7 @@ function findNextHeadingIndex(mainAst: Root, startIndex: number, depth: number):
  */
 function getHeadingDepth(mainAst: Root, index: number): number {
 	const node = mainAst.children[index];
-	if (node.type !== 'heading') throw Error("node.type !== 'heading'");
+	if (node.type !== 'heading') throw markdownError("node.type !== 'heading'");
 	return node.depth;
 }
 
@@ -205,7 +206,7 @@ function extractTextFromMDAsHTML(node: Root | RootContent): string {
 		case 'html':
 			return '';
 		default:
-			throw Error('unknown type: ' + node.type);
+			throw markdownError('unknown type: ' + node.type);
 	}
 }
 
@@ -230,7 +231,7 @@ function getMDAnchor(node: Heading): string {
 				text += c.value;
 				break;
 			default:
-				throw Error('unknown type: ' + c.type);
+				throw markdownError('unknown type: ' + c.type);
 		}
 	}
 
@@ -268,7 +269,7 @@ function convertToFoldable(ast: Root): void {
 
 				break;
 			default:
-				throw Error(`unknown type "${c.type}"`);
+				throw markdownError(`unknown type "${c.type}"`);
 		}
 	});
 
@@ -313,13 +314,13 @@ export function nodeToHtml(node: PhrasingContent): string {
 			return `<img ${attributes.join(' ')} />`;
 		}
 		case 'footnoteReference':
-			throw new Error('Not implemented yet: "footnoteReference" case');
+			throw notImplementedError('footnoteReference');
 		case 'imageReference':
-			throw new Error('Not implemented yet: "imageReference" case');
+			throw notImplementedError('imageReference');
 		case 'linkReference':
-			throw new Error('Not implemented yet: "linkReference" case');
+			throw notImplementedError('linkReference');
 		default:
-			throw Error('unknown type');
+			throw markdownError('unknown type');
 	}
 }
 
