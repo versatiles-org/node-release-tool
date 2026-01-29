@@ -191,47 +191,117 @@ function mergeSegments(mainAst: Root, segmentAst: Root, startIndex: number, endI
 
 /**
  * Extracts the textual content from a node in the AST.
- * @param node The AST node.
- * @returns The extracted text content.
- * @throws Error if the node type is unknown.
+ * Recursively processes nodes with children and extracts text values.
+ *
+ * @param node The AST node (Root or any RootContent type).
+ * @returns The extracted text content as HTML-escaped string.
  */
 function extractTextFromMDAsHTML(node: Root | RootContent): string {
 	switch (node.type) {
+		// Nodes with direct text value
 		case 'inlineCode':
 		case 'text':
 			return textToHtml(node.value);
+
+		// Nodes with children to recurse into
 		case 'heading':
 		case 'root':
-			return node.children.map(extractTextFromMDAsHTML).join('');
+		case 'paragraph':
+		case 'blockquote':
+		case 'listItem':
+		case 'tableCell':
+		case 'tableRow':
+		case 'link':
+		case 'emphasis':
+		case 'strong':
+		case 'delete':
+			return node.children.map((child) => extractTextFromMDAsHTML(child as RootContent)).join('');
+
+		// Nodes with children but need special handling
+		case 'list':
+			return node.children.map((child) => extractTextFromMDAsHTML(child as RootContent)).join('');
+		case 'table':
+			return node.children.map((child) => extractTextFromMDAsHTML(child as RootContent)).join('');
+
+		// Nodes with alt text
+		case 'image':
+			return node.alt ? textToHtml(node.alt) : '';
+
+		// Nodes that don't contribute text content
 		case 'html':
+		case 'code':
+		case 'thematicBreak':
+		case 'break':
+		case 'definition':
+		case 'footnoteDefinition':
+		case 'footnoteReference':
+		case 'imageReference':
+		case 'linkReference':
+		case 'yaml':
 			return '';
-		default:
-			throw markdownError('unknown type: ' + node.type);
+
+		default: {
+			// TypeScript exhaustive check - this ensures we handle all types
+			const _exhaustiveCheck: never = node;
+			throw markdownError(`unhandled node type: ${(node as RootContent).type}`);
+		}
 	}
 }
 
 /**
  * Generates an anchor ID for a Markdown heading based on its text content.
+ * Handles all PhrasingContent types that can appear in a heading.
+ *
  * @param node The heading node.
- * @returns The generated anchor ID.
- * @throws Error if the child node type is unknown.
+ * @returns The generated anchor ID, formatted for use in URLs.
  */
 function getMDAnchor(node: Heading): string {
 	let text = '';
 	for (const c of node.children) {
 		// Handle different types of child nodes to construct the anchor text.
 		switch (c.type) {
+			// Check for explicit ID in HTML
 			case 'html': {
 				const match = /<a\s.*id\s*=\s*['"]([^'"]+)/i.exec(c.value);
 				if (match) return match[1];
 				break;
 			}
+
+			// Nodes with direct text value
 			case 'text':
 			case 'inlineCode':
 				text += c.value;
 				break;
-			default:
-				throw markdownError('unknown type: ' + c.type);
+
+			// Nodes with children - recurse to extract text
+			case 'emphasis':
+			case 'strong':
+			case 'delete':
+			case 'link':
+				for (const child of c.children) {
+					if (child.type === 'text' || child.type === 'inlineCode') {
+						text += child.value;
+					}
+				}
+				break;
+
+			// Image - use alt text
+			case 'image':
+				if (c.alt) text += c.alt;
+				break;
+
+			// Nodes that don't contribute to anchor text
+			case 'break':
+			case 'footnoteReference':
+			case 'imageReference':
+			case 'linkReference':
+				break;
+
+			default: {
+				// TypeScript exhaustive check
+				const _exhaustiveCheck: never = c;
+				throw markdownError(`unhandled phrasing content type: ${(c as PhrasingContent).type}`);
+			}
 		}
 	}
 
@@ -247,6 +317,8 @@ function getMDAnchor(node: Heading): string {
 
 /**
  * Converts a segment of the AST into a foldable HTML element.
+ * Headings become collapsible `<details>` sections.
+ *
  * @param ast The AST of the segment to be converted.
  */
 function convertToFoldable(ast: Root): void {
@@ -255,21 +327,61 @@ function convertToFoldable(ast: Root): void {
 
 	ast.children.forEach((c: RootContent) => {
 		switch (c.type) {
-			case 'html':
-			case 'list':
-			case 'paragraph':
-				children.push(c);
-				break;
+			// Headings start new foldable sections
 			case 'heading':
 				closeDetails(c.depth);
-
 				children.push({ type: 'html', value: '<details>' });
 				children.push({ type: 'html', value: `<summary>${lineToHtml(c)}</summary>` });
 				openDetails.unshift(c.depth);
-
 				break;
-			default:
-				throw markdownError(`unknown type "${c.type}"`);
+
+			// Block content that gets included in sections
+			case 'html':
+			case 'list':
+			case 'paragraph':
+			case 'blockquote':
+			case 'code':
+			case 'table':
+			case 'thematicBreak':
+				children.push(c);
+				break;
+
+			// Definition content - include as-is
+			case 'definition':
+			case 'footnoteDefinition':
+				children.push(c);
+				break;
+
+			// YAML frontmatter - include as-is
+			case 'yaml':
+				children.push(c);
+				break;
+
+			// Inline/phrasing content that shouldn't appear at root level
+			// but handle gracefully if present
+			case 'text':
+			case 'inlineCode':
+			case 'emphasis':
+			case 'strong':
+			case 'delete':
+			case 'link':
+			case 'image':
+			case 'break':
+			case 'footnoteReference':
+			case 'imageReference':
+			case 'linkReference':
+			case 'listItem':
+			case 'tableCell':
+			case 'tableRow':
+				// These shouldn't normally appear at root level, but pass through
+				children.push(c);
+				break;
+
+			default: {
+				// TypeScript exhaustive check
+				const _exhaustiveCheck: never = c;
+				throw markdownError(`unhandled root content type: ${(c as RootContent).type}`);
+			}
 		}
 	});
 
@@ -289,6 +401,14 @@ function lineToHtml(heading: Heading): string {
 	return `<h${heading.depth}>${nodesToHtml(heading.children)}</h${heading.depth}>`;
 }
 
+/**
+ * Converts a PhrasingContent node to its HTML representation.
+ * Handles all PhrasingContent types defined in mdast.
+ *
+ * @param node The phrasing content node to convert.
+ * @returns The HTML string representation.
+ * @throws {VrtError} For reference types that require resolution (footnote, image, link references).
+ */
 export function nodeToHtml(node: PhrasingContent): string {
 	switch (node.type) {
 		case 'html':
@@ -313,14 +433,19 @@ export function nodeToHtml(node: PhrasingContent): string {
 			if (node.title ?? '') attributes.push(`title="${node.title}"`);
 			return `<img ${attributes.join(' ')} />`;
 		}
+		// Reference types require definition resolution which is not supported
 		case 'footnoteReference':
-			throw notImplementedError('footnoteReference');
+			throw notImplementedError('footnoteReference - requires definition resolution');
 		case 'imageReference':
-			throw notImplementedError('imageReference');
+			throw notImplementedError('imageReference - requires definition resolution');
 		case 'linkReference':
-			throw notImplementedError('linkReference');
-		default:
-			throw markdownError('unknown type');
+			throw notImplementedError('linkReference - requires definition resolution');
+
+		default: {
+			// TypeScript exhaustive check
+			const _exhaustiveCheck: never = node;
+			throw markdownError(`unhandled phrasing content type: ${(node as PhrasingContent).type}`);
+		}
 	}
 }
 
