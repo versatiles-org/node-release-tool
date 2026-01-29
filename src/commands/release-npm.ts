@@ -7,6 +7,22 @@ import { Shell } from '../lib/shell.js';
 import { getGit } from '../lib/git.js';
 import { resolve } from 'path';
 
+interface PackageJson {
+	version: string;
+	scripts: {
+		check?: string;
+		prepack?: string;
+	};
+	private?: boolean;
+}
+
+function isValidPackageJson(pkg: unknown): pkg is PackageJson {
+	if (typeof pkg !== 'object' || pkg === null) return false;
+	if (!('version' in pkg) || typeof pkg.version !== 'string') return false;
+	if (!('scripts' in pkg) || typeof pkg.scripts !== 'object' || pkg.scripts === null) return false;
+	return true;
+}
+
 export async function release(directory: string, branch = 'main', dryRun = false): Promise<void> {
 
 	const shell = new Shell(directory);
@@ -25,12 +41,12 @@ export async function release(directory: string, branch = 'main', dryRun = false
 	await check('git pull', shell.run('git pull -t'));
 
 	// check package.json
-	const pkg: unknown = JSON.parse(readFileSync(resolve(directory, 'package.json'), 'utf8'));
-	if (typeof pkg !== 'object' || pkg === null) panic('package.json is not valid');
-	if (!('version' in pkg) || (typeof pkg.version !== 'string')) panic('package.json is missing "version"');
-	if (!('scripts' in pkg) || (typeof pkg.scripts !== 'object') || (pkg.scripts == null)) panic('package.json is missing "scripts"');
-	if (!('check' in pkg.scripts)) panic('missing npm script "check" in package.json');
-	if (!('prepack' in pkg.scripts)) panic('missing npm script "prepack" in package.json');
+	const pkgRaw: unknown = JSON.parse(readFileSync(resolve(directory, 'package.json'), 'utf8'));
+	if (!isValidPackageJson(pkgRaw)) panic('package.json is not valid');
+	if (!('check' in pkgRaw.scripts)) panic('missing npm script "check" in package.json');
+	if (!('prepack' in pkgRaw.scripts)) panic('missing npm script "prepack" in package.json');
+
+	const pkg = pkgRaw;
 
 	// get last version
 	const tag = await check('get last github tag', getLastGitHubTag());
