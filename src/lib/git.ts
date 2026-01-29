@@ -1,17 +1,56 @@
 import { Shell } from './shell.js';
 
+/**
+ * Represents a Git commit with its SHA, message, and optional tag.
+ */
 export interface Commit {
+	/** The full SHA hash of the commit. */
 	sha: string;
+	/** The commit message (first line / subject). */
 	message: string;
+	/** The tag associated with this commit, if any. */
 	tag?: string;
 }
 
+/**
+ * Interface for Git operations used by the release tool.
+ */
 export interface Git {
+	/**
+	 * Gets the most recent semver tag from the repository.
+	 * @returns The SHA and version string of the last tag, or undefined if no semver tags exist.
+	 */
 	getLastGitHubTag: () => Promise<{ sha: string; version: string } | undefined>;
+
+	/**
+	 * Gets the current (most recent) commit.
+	 * @returns The current commit object.
+	 */
 	getCurrentGitHubCommit: () => Promise<Commit>;
+
+	/**
+	 * Gets all commits between two commit SHAs.
+	 * @param shaLast - The older commit SHA (exclusive).
+	 * @param shaCurrent - The newer commit SHA (inclusive).
+	 * @returns Array of commits between the two SHAs.
+	 */
 	getCommitsBetween: (shaLast?: string, shaCurrent?: string) => Promise<Commit[]>;
 }
 
+/**
+ * Creates a Git interface for the specified directory.
+ * Provides methods to query commit history and tags.
+ *
+ * @param cwd - The working directory of the Git repository.
+ * @returns An object with methods to interact with the Git repository.
+ *
+ * @example
+ * ```ts
+ * const git = getGit('/path/to/repo');
+ * const lastTag = await git.getLastGitHubTag();
+ * const commits = await git.getCommitsBetween(lastTag?.sha, 'HEAD');
+ * ```
+ */
 export function getGit(cwd: string): Git {
 	const shell = new Shell(cwd);
 
@@ -21,6 +60,10 @@ export function getGit(cwd: string): Git {
 		getCommitsBetween,
 	};
 
+	/**
+	 * Finds the most recent commit tagged with a semver version (vX.Y.Z format).
+	 * Supports pre-release and build metadata suffixes.
+	 */
 	async function getLastGitHubTag(): Promise<{ sha: string; version: string } | undefined> {
 		const commits: Commit[] = await getAllCommits();
 
@@ -34,6 +77,10 @@ export function getGit(cwd: string): Git {
 		return result;
 	}
 
+	/**
+	 * Retrieves all commits from the repository's history.
+	 * Parses the git log output to extract SHA, message, and tag information.
+	 */
 	async function getAllCommits(): Promise<Commit[]> {
 		const result: string = await shell.stdout("git log --pretty=format:'⍃%H⍄%s⍄%D⍄'");
 
@@ -50,10 +97,18 @@ export function getGit(cwd: string): Git {
 			});
 	}
 
+	/**
+	 * Returns the most recent commit in the repository.
+	 */
 	async function getCurrentGitHubCommit(): Promise<Commit> {
 		return (await getAllCommits())[0];
 	}
 
+	/**
+	 * Gets commits between two SHA hashes.
+	 * If shaCurrent is provided, starts from that commit.
+	 * If shaLast is provided, stops before that commit.
+	 */
 	async function getCommitsBetween(shaLast?: string, shaCurrent?: string): Promise<Commit[]> {
 		let commits: Commit[] = await getAllCommits();
 
