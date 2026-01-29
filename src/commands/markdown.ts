@@ -205,7 +205,6 @@ function extractTextFromMDAsHTML(node: Root | RootContent): string {
 		case 'html':
 			return '';
 		default:
-			console.log(node);
 			throw Error('unknown type: ' + node.type);
 	}
 }
@@ -230,7 +229,6 @@ function getMDAnchor(node: Heading): string {
 			case 'inlineCode':
 				text += c.value; break;
 			default:
-				console.log(c);
 				throw Error('unknown type: ' + c.type);
 		}
 	}
@@ -316,7 +314,6 @@ export function nodeToHtml(node: PhrasingContent): string {
 		case 'imageReference': throw new Error('Not implemented yet: "imageReference" case');
 		case 'linkReference': throw new Error('Not implemented yet: "linkReference" case');
 		default:
-			console.log(node);
 			throw Error('unknown type');
 	}
 }
