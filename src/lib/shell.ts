@@ -53,10 +53,29 @@ export class Shell {
 	/**
 	 * Runs a shell command through bash and captures its output.
 	 *
-	 * **Security note:** This method passes the command string to `bash -c`.
-	 * Only use with trusted, hardcoded command strings. Never pass unsanitized user input.
+	 * @remarks
+	 * **⚠️ SECURITY WARNING: Command Injection Risk**
 	 *
-	 * @param command - The shell command to execute.
+	 * This method passes the command string directly to `bash -c`, which means
+	 * shell metacharacters (`;`, `|`, `$()`, `` ` ``, etc.) are interpreted.
+	 *
+	 * **NEVER** pass unsanitized user input to this method:
+	 * ```ts
+	 * // DANGEROUS - command injection vulnerability!
+	 * shell.run(`git checkout ${userInput}`);  // userInput could be "; rm -rf /"
+	 *
+	 * // SAFE - use exec() with array arguments instead
+	 * shell.exec('git', ['checkout', userInput]);
+	 * ```
+	 *
+	 * Only use this method with:
+	 * - Hardcoded command strings
+	 * - Values that have been strictly validated (e.g., version numbers matching `/^\d+\.\d+\.\d+$/`)
+	 *
+	 * For commands with dynamic arguments, prefer {@link Shell.exec} which passes
+	 * arguments directly without shell interpretation.
+	 *
+	 * @param command - The shell command to execute. Must be a trusted string.
 	 * @param errorOnCodeNonZero - If true (default), rejects the promise on non-zero exit code.
 	 * @returns A promise resolving to the command result with exit code, signal, stdout, and stderr.
 	 * @throws Rejects with the result object if errorOnCodeNonZero is true and exit code is non-zero.
@@ -120,7 +139,11 @@ export class Shell {
 	 * The user can interact with the command's stdin/stdout/stderr directly.
 	 * Useful for commands that require user input (e.g., npm publish with OTP).
 	 *
-	 * @param command - The shell command to execute.
+	 * @remarks
+	 * **⚠️ SECURITY WARNING:** Same command injection risks as {@link Shell.run}.
+	 * Never pass unsanitized user input. See {@link Shell.run} for details.
+	 *
+	 * @param command - The shell command to execute. Must be a trusted string.
 	 * @param errorOnCodeNonZero - If true (default), rejects the promise on non-zero exit code.
 	 * @returns A promise resolving to the exit code and signal (no captured output).
 	 * @throws Rejects with the result object if errorOnCodeNonZero is true and exit code is non-zero.
@@ -148,7 +171,11 @@ export class Shell {
 	/**
 	 * Runs a command and returns only the trimmed stderr output.
 	 *
-	 * @param command - The shell command to execute.
+	 * @remarks
+	 * **⚠️ SECURITY WARNING:** Uses {@link Shell.run} internally.
+	 * Never pass unsanitized user input. See {@link Shell.run} for details.
+	 *
+	 * @param command - The shell command to execute. Must be a trusted string.
 	 * @param errorOnCodeZero - If true (default), rejects on non-zero exit code.
 	 * @returns A promise resolving to the trimmed stderr string.
 	 */
@@ -160,7 +187,11 @@ export class Shell {
 	/**
 	 * Runs a command and returns only the trimmed stdout output.
 	 *
-	 * @param command - The shell command to execute.
+	 * @remarks
+	 * **⚠️ SECURITY WARNING:** Uses {@link Shell.run} internally.
+	 * Never pass unsanitized user input. See {@link Shell.run} for details.
+	 *
+	 * @param command - The shell command to execute. Must be a trusted string.
 	 * @param errorOnCodeZero - If true (default), rejects on non-zero exit code.
 	 * @returns A promise resolving to the trimmed stdout string.
 	 */
@@ -173,7 +204,11 @@ export class Shell {
 	 * Runs a command and returns whether it succeeded (exit code 0).
 	 * Never throws on non-zero exit codes.
 	 *
-	 * @param command - The shell command to execute.
+	 * @remarks
+	 * **⚠️ SECURITY WARNING:** Uses {@link Shell.run} internally.
+	 * Never pass unsanitized user input. See {@link Shell.run} for details.
+	 *
+	 * @param command - The shell command to execute. Must be a trusted string.
 	 * @returns A promise resolving to true if exit code is 0, false otherwise.
 	 */
 	async ok(command: string): Promise<boolean> {
