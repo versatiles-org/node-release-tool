@@ -47,6 +47,12 @@ export async function release(directory: string, branch = 'main', dryRun = false
 	if (!('prepack' in pkgRaw.scripts)) panic('missing npm script "prepack" in package.json');
 
 	const pkg = pkgRaw;
+	const isPrivatePackage = pkg.private === true;
+
+	// npm: verify authentication (skip for private packages)
+	if (!isPrivatePackage) {
+		await check('verify npm authentication', verifyNpmAuth());
+	}
 
 	// get last version
 	const tag = await check('get last github tag', getLastGitHubTag());
@@ -74,7 +80,7 @@ export async function release(directory: string, branch = 'main', dryRun = false
 		info('  Commands that would be executed:');
 		info('    npm run check');
 		info('    npm i --package-lock-only');
-		if (!('private' in pkg) || !pkg.private) {
+		if (!isPrivatePackage) {
 			info('    npm publish --access public');
 		}
 		info('    git add .');
@@ -92,7 +98,7 @@ export async function release(directory: string, branch = 'main', dryRun = false
 	// update version
 	await check('update version', setNextVersion(nextVersion));
 
-	if (!('private' in pkg) || !pkg.private) {
+	if (!isPrivatePackage) {
 		// npm publish
 		await check('npm publish', shell.runInteractive('npm publish --access public'));
 	}
@@ -114,6 +120,21 @@ export async function release(directory: string, branch = 'main', dryRun = false
 	info('Finished');
 
 	return;
+
+	async function verifyNpmAuth(): Promise<void> {
+		try {
+			const username = await shell.stdout('npm whoami');
+			if (!username || username.trim().length === 0) {
+				throw releaseError('npm authentication failed: no username returned');
+			}
+			info(`authenticated as npm user: ${username.trim()}`);
+		} catch {
+			throw releaseError(
+				'npm authentication required. Please run "npm login" first.\n' +
+					'If you are using a CI environment, ensure NPM_TOKEN is set.',
+			);
+		}
+	}
 
 	async function checkThatNoUncommittedChanges(): Promise<void> {
 		if ((await shell.stdout('git status --porcelain')).length < 3) return;

@@ -35,6 +35,8 @@ const mockedShellInstance = {
 				return 'main'; // get current branch
 			case 'git status --porcelain':
 				return ''; // no changes to commit
+			case 'npm whoami':
+				return 'test-user'; // npm authentication
 		}
 		console.log('stdout:', command);
 		throw Error();
@@ -103,7 +105,11 @@ describe('release function', () => {
 	it('should execute the release process', async () => {
 		await release('/test/directory', 'main');
 
-		expect(vi.mocked(info).mock.calls).toStrictEqual([['starting release process'], ['Finished']]);
+		expect(vi.mocked(info).mock.calls).toStrictEqual([
+			['starting release process'],
+			['authenticated as npm user: test-user'],
+			['Finished'],
+		]);
 		expect(vi.mocked(warn).mock.calls).toStrictEqual([
 			['versions differ in package.json (1.0.0) and last GitHub tag (1.0.1)'],
 		]);
@@ -112,6 +118,7 @@ describe('release function', () => {
 			'get branch name',
 			'are all changes committed?',
 			'git pull',
+			'verify npm authentication',
 			'get last github tag',
 			'get current github commit',
 			'prepare release notes',
@@ -182,6 +189,7 @@ describe('release function', () => {
 		expect(vi.mocked(mockedShellInstance.stdout).mock.calls).toStrictEqual([
 			['git rev-parse --abbrev-ref HEAD'],
 			['git status --porcelain'],
+			['npm whoami'],
 		]);
 	});
 
