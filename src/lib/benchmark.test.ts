@@ -85,11 +85,11 @@ describe('benchmark (async)', () => {
 
 	it('measures async execution duration', async () => {
 		const { durationMs } = await benchmark(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 10));
+			await new Promise((resolve) => setTimeout(resolve, 50));
 			return 'done';
 		});
 
-		expect(durationMs).toBeGreaterThanOrEqual(10);
+		expect(durationMs).toBeGreaterThanOrEqual(50);
 	});
 
 	it('provides formatted duration', async () => {
