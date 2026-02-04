@@ -6,6 +6,7 @@ vi.mock('@inquirer/select', () => ({
 }));
 
 vi.mock('fs', () => ({
+	existsSync: vi.fn(() => true),
 	readFileSync: vi.fn(),
 	writeFileSync: vi.fn(),
 }));
@@ -95,7 +96,12 @@ describe('release function', () => {
 
 		vi.mocked(readFileSync)
 			.mockClear()
-			.mockReturnValue(JSON.stringify({ version: '1.0.0', scripts: { check: '', prepack: '' } }));
+			.mockImplementation((path: string) => {
+				if (path.toString().includes('CHANGELOG.md')) {
+					return '# Changelog\n\n## [0.9.0] - 2024-01-01\n\n- old entry\n';
+				}
+				return JSON.stringify({ version: '1.0.0', scripts: { check: '', prepack: '' } });
+			});
 
 		vi.mocked(select).mockClear().mockResolvedValue('1.1.0');
 
@@ -113,6 +119,7 @@ describe('release function', () => {
 			['starting release process'],
 			['authenticated as npm user: test-user'],
 			['prepared release notes'],
+			['updated CHANGELOG.md'],
 			['Finished'],
 		]);
 		expect(vi.mocked(warn).mock.calls).toStrictEqual([
@@ -141,10 +148,24 @@ describe('release function', () => {
 		expect(vi.mocked(readFileSync).mock.calls).toStrictEqual([
 			['/test/directory/package.json', 'utf8'],
 			['/test/directory/package.json', 'utf8'],
+			['/test/directory/CHANGELOG.md', 'utf8'],
 		]);
-		expect(
-			vi.mocked(writeFileSync).mock.calls.map((v) => [v[0], JSON.parse(v[1] as string) as unknown]),
-		).toStrictEqual([['/test/directory/package.json', { version: '1.1.0', scripts: { check: '', prepack: '' } }]]);
+
+		// Check package.json write
+		const packageJsonWrite = vi
+			.mocked(writeFileSync)
+			.mock.calls.find((c) => c[0].toString().includes('package.json'));
+		expect(packageJsonWrite).toBeDefined();
+		expect(JSON.parse(packageJsonWrite![1] as string)).toStrictEqual({
+			version: '1.1.0',
+			scripts: { check: '', prepack: '' },
+		});
+
+		// Check CHANGELOG.md write
+		const changelogWrite = vi.mocked(writeFileSync).mock.calls.find((c) => c[0].toString().includes('CHANGELOG.md'));
+		expect(changelogWrite).toBeDefined();
+		expect(changelogWrite![1]).toContain('## [1.1.0]');
+		expect(changelogWrite![1]).toContain('## [0.9.0]');
 
 		expect(vi.mocked(select).mock.calls).toStrictEqual([
 			[
