@@ -1,12 +1,50 @@
 import * as td from 'typedoc';
 import { panic, warn } from '../lib/log.js';
 
-export async function generateTypescriptDocs(options: {
+/**
+ * Output format for generated TypeScript documentation.
+ */
+export type DocFormat = 'markdown' | 'wiki' | 'html';
+
+/**
+ * Options for generating TypeScript documentation.
+ */
+export interface TypescriptDocOptions {
+	/** Path to the entry point file (default: './src/index.ts') */
 	entryPoint?: string;
+	/** Output directory for generated docs (default: './docs') */
 	outputPath?: string;
-	format?: 'markdown' | 'wiki' | 'html';
+	/** Documentation format: 'markdown', 'wiki', or 'html' (default: 'markdown') */
+	format?: DocFormat;
+	/** Suppress info-level logging (default: false) */
 	quiet?: boolean;
-}) {
+}
+
+/**
+ * Generates TypeScript documentation using TypeDoc.
+ *
+ * Supports multiple output formats:
+ * - `markdown`: Standard Markdown files using typedoc-plugin-markdown
+ * - `wiki`: GitHub Wiki compatible Markdown using typedoc-github-wiki-theme
+ * - `html`: HTML documentation using typedoc-github-theme
+ *
+ * @param options - Configuration options for documentation generation
+ * @throws {VrtError} If project conversion fails or validation errors occur
+ *
+ * @example
+ * ```ts
+ * // Generate markdown docs from default entry point
+ * await generateTypescriptDocs({ format: 'markdown' });
+ *
+ * // Generate HTML docs to custom directory
+ * await generateTypescriptDocs({
+ *   entryPoint: './src/main.ts',
+ *   outputPath: './api-docs',
+ *   format: 'html'
+ * });
+ * ```
+ */
+export async function generateTypescriptDocs(options: TypescriptDocOptions): Promise<void> {
 	const { entryPoint, outputPath, quiet } = options;
 	const format = options.format ?? 'markdown';
 	const isMarkdown = format !== 'html';

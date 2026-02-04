@@ -17,15 +17,38 @@ import { check, info, panic, warn } from '../lib/log.js';
 import { withRetry } from '../lib/retry.js';
 import { Shell } from '../lib/shell.js';
 
+/**
+ * Represents the required structure of package.json for releases.
+ */
 interface PackageJson {
+	/** Current package version (semver format) */
 	version: string;
+	/** npm scripts configuration */
 	scripts: {
+		/** Script to run all checks before release */
 		check?: string;
+		/** Script to run before npm pack/publish */
 		prepack?: string;
 	};
+	/** Whether the package is private (not published to npm) */
 	private?: boolean;
 }
 
+/**
+ * Options for the release process.
+ */
+export interface ReleaseOptions {
+	/** The project directory containing package.json (default: current directory) */
+	directory?: string;
+	/** The git branch to release from (default: 'main') */
+	branch?: string;
+	/** If true, simulate the release without making changes (default: false) */
+	dryRun?: boolean;
+}
+
+/**
+ * Type guard to validate package.json structure.
+ */
 function isValidPackageJson(pkg: unknown): pkg is PackageJson {
 	if (typeof pkg !== 'object' || pkg === null) return false;
 	if (!('version' in pkg) || typeof pkg.version !== 'string') return false;
@@ -33,6 +56,38 @@ function isValidPackageJson(pkg: unknown): pkg is PackageJson {
 	return true;
 }
 
+/**
+ * Executes the npm release process.
+ *
+ * This function performs a complete release workflow:
+ * 1. Validates git state (correct branch, no uncommitted changes)
+ * 2. Pulls latest changes from remote
+ * 3. Verifies npm authentication
+ * 4. Prompts for new version (with suggestion based on conventional commits)
+ * 5. Runs project checks
+ * 6. Updates package.json version
+ * 7. Updates CHANGELOG.md
+ * 8. Publishes to npm (if not private)
+ * 9. Creates git commit and tag
+ * 10. Pushes to remote and creates GitHub release
+ *
+ * @param directory - The project directory containing package.json
+ * @param branch - The git branch to release from (default: 'main')
+ * @param dryRun - If true, simulate the release without making changes
+ * @throws {VrtError} If any step in the release process fails
+ *
+ * @example
+ * ```ts
+ * // Standard release from main branch
+ * await release('/path/to/project');
+ *
+ * // Dry run to preview release
+ * await release('/path/to/project', 'main', true);
+ *
+ * // Release from a different branch
+ * await release('/path/to/project', 'release');
+ * ```
+ */
 export async function release(directory: string, branch = 'main', dryRun = false): Promise<void> {
 	const shell = new Shell(directory);
 	const { getCommitsBetween, getCurrentGitHubCommit, getLastGitHubTag } = getGit(directory);

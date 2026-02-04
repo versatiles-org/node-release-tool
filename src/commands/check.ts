@@ -1,13 +1,30 @@
 import { JSONSchemaForNPMPackageJsonFiles2 as Package } from '@schemastore/package';
 import { existsSync, readFileSync } from 'fs';
-import { info, panic, warn } from '../lib/log.js';
 import { resolve } from 'path';
+import { info, panic, warn } from '../lib/log.js';
 
+/**
+ * Runs all project checks including package.json and workflow validation.
+ *
+ * @param directory - The project directory to check
+ */
 export function check(directory: string): void {
 	checkPackage(directory);
 	checkWorkflow(directory);
 }
 
+/**
+ * Validates package.json configuration for VersaTiles projects.
+ *
+ * Checks for:
+ * - Required scripts (build, check, prepack, release)
+ * - Recommended scripts (test, doc, upgrade, doc-graph)
+ * - Script configurations following best practices
+ * - Unnecessary dependencies
+ *
+ * @param directory - The project directory containing package.json
+ * @throws {VrtError} If package.json is missing required scripts
+ */
 export function checkPackage(directory: string): void {
 	const pack = JSON.parse(readFileSync(resolve(directory, 'package.json'), 'utf8')) as Package;
 	const { scripts } = pack;
@@ -65,6 +82,13 @@ export function checkPackage(directory: string): void {
 	});
 }
 
+/**
+ * Validates GitHub Actions workflow configuration.
+ *
+ * Checks for the presence of expected workflow files.
+ *
+ * @param directory - The project directory to check
+ */
 export function checkWorkflow(directory: string): void {
 	if (!existsSync(resolve(directory, '.github/workflows/pages.yml'))) {
 		info('GitHub Pages workflow not found');
