@@ -108,6 +108,69 @@ describe('parseConventionalCommit', () => {
 			expect(parsed.type).toBe(type);
 		}
 	});
+
+	it('handles empty message', () => {
+		const commit = { ...baseCommit, message: '' };
+		const parsed = parseConventionalCommit(commit);
+
+		expect(parsed.type).toBeUndefined();
+		expect(parsed.description).toBe('');
+		expect(parsed.breaking).toBe(false);
+	});
+
+	it('handles message with only whitespace', () => {
+		const commit = { ...baseCommit, message: '   ' };
+		const parsed = parseConventionalCommit(commit);
+
+		expect(parsed.type).toBeUndefined();
+		expect(parsed.description).toBe('');
+	});
+
+	it('handles type with extra spaces before colon', () => {
+		const commit = { ...baseCommit, message: 'feat : add feature' };
+		const parsed = parseConventionalCommit(commit);
+
+		// Should not match because of space before colon
+		expect(parsed.type).toBeUndefined();
+	});
+
+	it('handles scope with special characters', () => {
+		const commit = { ...baseCommit, message: 'fix(api-v2): fix endpoint' };
+		const parsed = parseConventionalCommit(commit);
+
+		expect(parsed.type).toBe('fix');
+		expect(parsed.scope).toBe('api-v2');
+	});
+
+	it('handles uppercase type', () => {
+		const commit = { ...baseCommit, message: 'FEAT: add feature' };
+		const parsed = parseConventionalCommit(commit);
+
+		expect(parsed.type).toBe('feat');
+	});
+
+	it('handles description with colon', () => {
+		const commit = { ...baseCommit, message: 'feat: add feature: part 2' };
+		const parsed = parseConventionalCommit(commit);
+
+		expect(parsed.type).toBe('feat');
+		expect(parsed.description).toBe('add feature: part 2');
+	});
+
+	it('detects breaking change case insensitive', () => {
+		const commit = { ...baseCommit, message: 'feat: new api breaking change' };
+		const parsed = parseConventionalCommit(commit);
+
+		expect(parsed.breaking).toBe(true);
+	});
+
+	it('preserves original commit properties', () => {
+		const commit = { sha: 'xyz789', message: 'feat: test', tag: 'v1.0.0' };
+		const parsed = parseConventionalCommit(commit);
+
+		expect(parsed.sha).toBe('xyz789');
+		expect(parsed.tag).toBe('v1.0.0');
+	});
 });
 
 describe('getSuggestedBump', () => {
@@ -138,6 +201,30 @@ describe('getSuggestedBump', () => {
 		const commits = [makeCommit(), makeCommit()];
 		expect(getSuggestedBump(commits)).toBe('patch');
 	});
+
+	it('returns patch for empty commits array', () => {
+		expect(getSuggestedBump([])).toBe('patch');
+	});
+
+	it('prioritizes breaking over feat', () => {
+		const commits = [makeCommit('feat'), makeCommit('feat', true), makeCommit('feat')];
+		expect(getSuggestedBump(commits)).toBe('major');
+	});
+
+	it('returns minor for single feat commit', () => {
+		const commits = [makeCommit('feat')];
+		expect(getSuggestedBump(commits)).toBe('minor');
+	});
+
+	it('returns patch for docs only', () => {
+		const commits = [makeCommit('docs'), makeCommit('docs')];
+		expect(getSuggestedBump(commits)).toBe('patch');
+	});
+
+	it('returns patch for ci only', () => {
+		const commits = [makeCommit('ci')];
+		expect(getSuggestedBump(commits)).toBe('patch');
+	});
 });
 
 describe('groupCommitsByType', () => {
@@ -162,5 +249,40 @@ describe('groupCommitsByType', () => {
 	it('returns empty map for empty input', () => {
 		const groups = groupCommitsByType([]);
 		expect(groups.size).toBe(0);
+	});
+
+	it('handles single commit', () => {
+		const commits = [makeCommit('feat')];
+		const groups = groupCommitsByType(commits);
+
+		expect(groups.size).toBe(1);
+		expect(groups.get('feat')?.length).toBe(1);
+	});
+
+	it('handles all commits being same type', () => {
+		const commits = [makeCommit('fix'), makeCommit('fix'), makeCommit('fix')];
+		const groups = groupCommitsByType(commits);
+
+		expect(groups.size).toBe(1);
+		expect(groups.get('fix')?.length).toBe(3);
+	});
+
+	it('handles all commits being non-conventional', () => {
+		const commits = [makeCommit(), makeCommit(), makeCommit()];
+		const groups = groupCommitsByType(commits);
+
+		expect(groups.size).toBe(1);
+		expect(groups.get('other')?.length).toBe(3);
+	});
+
+	it('preserves commit order within groups', () => {
+		const commit1 = { ...makeCommit('feat'), description: 'first' };
+		const commit2 = { ...makeCommit('feat'), description: 'second' };
+		const commits = [commit1, commit2];
+		const groups = groupCommitsByType(commits);
+
+		const featCommits = groups.get('feat')!;
+		expect(featCommits[0].description).toBe('first');
+		expect(featCommits[1].description).toBe('second');
 	});
 });

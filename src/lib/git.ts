@@ -56,7 +56,8 @@ export function parseConventionalCommit(commit: Commit): ParsedCommit {
 	const message = commit.message.trim();
 
 	// Pattern: type(scope)!: description OR type!: description OR type(scope): description OR type: description
-	const conventionalPattern = /^(\w+)(?:\(([^)]+)\))?(!)?\s*:\s*(.+)$/;
+	// Note: No space allowed before colon per Conventional Commits spec
+	const conventionalPattern = /^(\w+)(?:\(([^)]+)\))?(!)?:\s*(.+)$/;
 	const match = message.match(conventionalPattern);
 
 	if (!match) {

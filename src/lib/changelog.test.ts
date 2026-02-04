@@ -75,6 +75,53 @@ describe('generateChangelogEntry', () => {
 		expect(entry).toContain('## [1.0.0] - 2024-01-15');
 		expect(entry).not.toContain('###');
 	});
+
+	it('normalizes whitespace in descriptions', () => {
+		const commits = [makeCommit('feat', 'add   multiple   spaces')];
+		const entry = generateChangelogEntry('1.0.0', commits, fixedDate);
+
+		expect(entry).toContain('- add multiple spaces');
+	});
+
+	it('handles all conventional commit types', () => {
+		const commits = [
+			makeCommit('feat', 'feature'),
+			makeCommit('fix', 'fix'),
+			makeCommit('docs', 'docs'),
+			makeCommit('style', 'style'),
+			makeCommit('refactor', 'refactor'),
+			makeCommit('perf', 'perf'),
+			makeCommit('test', 'test'),
+			makeCommit('build', 'build'),
+			makeCommit('ci', 'ci'),
+			makeCommit('chore', 'chore'),
+			makeCommit('revert', 'revert'),
+		];
+		const entry = generateChangelogEntry('1.0.0', commits, fixedDate);
+
+		expect(entry).toContain('### Features');
+		expect(entry).toContain('### Bug Fixes');
+		expect(entry).toContain('### Documentation');
+		expect(entry).toContain('### Performance Improvements');
+		expect(entry).toContain('### Code Refactoring');
+	});
+
+	it('does not duplicate breaking changes in type sections', () => {
+		const commits = [makeCommit('feat', 'breaking feature', true)];
+		const entry = generateChangelogEntry('1.0.0', commits, fixedDate);
+
+		expect(entry).toContain('### Breaking Changes');
+		// Should not appear in Features section since it's breaking
+		const featuresSection = entry.split('### Features')[1];
+		expect(featuresSection).toBeUndefined();
+	});
+
+	it('handles version with prerelease tag', () => {
+		const commits = [makeCommit('feat', 'feature')];
+		const entry = generateChangelogEntry('1.0.0-beta.1', commits, fixedDate);
+
+		expect(entry).toContain('## [1.0.0-beta.1] - 2024-01-15');
+	});
 });
 
 describe('updateChangelog', () => {
@@ -169,5 +216,47 @@ Custom header text here.
 		const result = updateChangelog(testDir, '1.0.0', commits, fixedDate);
 
 		expect(result.path).toBe(changelogPath);
+	});
+
+	it('handles changelog without version sections', () => {
+		const existingContent = `# Changelog
+
+Just some text without any version sections.
+`;
+		writeFileSync(changelogPath, existingContent);
+
+		const commits = [makeCommit('feat', 'new feature')];
+		updateChangelog(testDir, '1.0.0', commits, fixedDate);
+
+		const content = readFileSync(changelogPath, 'utf8');
+		expect(content).toContain('## [1.0.0]');
+		expect(content).toContain('Just some text');
+	});
+
+	it('handles empty existing changelog', () => {
+		writeFileSync(changelogPath, '');
+
+		const commits = [makeCommit('feat', 'feature')];
+		const result = updateChangelog(testDir, '1.0.0', commits, fixedDate);
+
+		expect(result.created).toBe(false);
+		const content = readFileSync(changelogPath, 'utf8');
+		expect(content).toContain('## [1.0.0]');
+	});
+
+	it('handles multiple consecutive releases', () => {
+		const commits1 = [makeCommit('feat', 'feature 1')];
+		updateChangelog(testDir, '1.0.0', commits1, new Date('2024-01-15'));
+
+		const commits2 = [makeCommit('fix', 'fix 1')];
+		updateChangelog(testDir, '1.0.1', commits2, new Date('2024-01-16'));
+
+		const content = readFileSync(changelogPath, 'utf8');
+		const v101Index = content.indexOf('## [1.0.1]');
+		const v100Index = content.indexOf('## [1.0.0]');
+
+		expect(v101Index).toBeLessThan(v100Index);
+		expect(content).toContain('- feature 1');
+		expect(content).toContain('- fix 1');
 	});
 });

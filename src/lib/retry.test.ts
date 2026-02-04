@@ -107,4 +107,41 @@ describe('withRetry', () => {
 
 		expect(fn).toHaveBeenCalledTimes(1);
 	});
+
+	it('should preserve error message from last failure', async () => {
+		const fn = vi
+			.fn()
+			.mockRejectedValueOnce(new Error('first error'))
+			.mockRejectedValueOnce(new Error('second error'))
+			.mockRejectedValue(new Error('last error'));
+
+		await expect(withRetry(fn, { maxRetries: 2, initialDelayMs: 1 })).rejects.toThrow('last error');
+	});
+
+	it('should handle undefined rejection', async () => {
+		const fn = vi.fn().mockRejectedValueOnce(undefined).mockResolvedValue('success');
+
+		const result = await withRetry(fn, { initialDelayMs: 1 });
+
+		expect(result).toBe('success');
+	});
+
+	it('should handle null rejection', async () => {
+		const fn = vi.fn().mockRejectedValueOnce(null).mockResolvedValue('success');
+
+		const result = await withRetry(fn, { initialDelayMs: 1 });
+
+		expect(result).toBe('success');
+	});
+
+	it('should work with async functions that return different types', async () => {
+		const fn = vi
+			.fn()
+			.mockRejectedValueOnce(new Error('fail'))
+			.mockResolvedValue({ data: [1, 2, 3] });
+
+		const result = await withRetry(fn, { initialDelayMs: 1 });
+
+		expect(result).toEqual({ data: [1, 2, 3] });
+	});
 });
