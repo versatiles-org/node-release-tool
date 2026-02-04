@@ -1,4 +1,4 @@
-import { vi, describe, expect, beforeEach, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // 1. Mock the modules used by check-package.ts
 vi.mock('fs', () => ({

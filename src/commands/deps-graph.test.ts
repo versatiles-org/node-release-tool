@@ -1,4 +1,4 @@
-import { vi, expect, MockInstance, afterEach, beforeEach, describe, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, MockInstance, vi } from 'vitest';
 import type { IReporterOutput } from 'dependency-cruiser';
 
 // 1. Mock dependency-cruiser to control the output of `cruise`

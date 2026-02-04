@@ -1,4 +1,4 @@
-import type { ChildProcessWithoutNullStreams, ChildProcessByStdio, SpawnOptions } from 'child_process';
+import type { ChildProcessByStdio, ChildProcessWithoutNullStreams, SpawnOptions } from 'child_process';
 import cp from 'child_process';
 import { EventEmitter } from 'events';
 import type { Writable } from 'stream';

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { VrtError, validationError, markdownError, gitError, releaseError, notImplementedError } from './errors.js';
+import { gitError, markdownError, notImplementedError, releaseError, validationError, VrtError } from './errors.js';
 
 describe('VrtError', () => {
 	it('should create an error with default code', () => {

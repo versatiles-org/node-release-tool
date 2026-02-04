@@ -1,5 +1,5 @@
-import type { Blockquote, Heading, Root, RootContent, PhrasingContent } from 'mdast';
-import type { State, Info } from 'mdast-util-to-markdown';
+import type { Blockquote, Heading, PhrasingContent, Root, RootContent } from 'mdast';
+import type { Info, State } from 'mdast-util-to-markdown';
 import { remark } from 'remark';
 import remarkGfm from 'remark-gfm';
 import remarkStringify from 'remark-stringify';

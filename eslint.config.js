@@ -42,6 +42,20 @@ export default [
 					caughtErrorsIgnorePattern: '^_',
 				},
 			],
+			// Catch unhandled promises
+			'@typescript-eslint/no-floating-promises': 'error',
+			// Enforce reasonable complexity
+			complexity: ['warn', { max: 15 }],
+			// Sort imports for consistency
+			'sort-imports': [
+				'error',
+				{
+					ignoreCase: true,
+					ignoreDeclarationSort: true,
+					ignoreMemberSort: false,
+					memberSyntaxSortOrder: ['none', 'all', 'multiple', 'single'],
+				},
+			],
 		},
 	},
 ];

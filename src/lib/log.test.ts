@@ -1,5 +1,5 @@
-import { vi, afterEach, beforeEach, describe, expect, it, MockInstance } from 'vitest';
-import { panic, warn, info, check } from './log.js';
+import { afterEach, beforeEach, describe, expect, it, MockInstance, vi } from 'vitest';
+import { check, info, panic, warn } from './log.js';
 
 describe('Your Module Tests', () => {
 	let processSpy: MockInstance<{
