@@ -95,10 +95,7 @@ describe('release function', () => {
 
 		vi.mocked(check)
 			.mockClear()
-			.mockImplementation(async function <T>(
-				message: string,
-				promise: Promise<T> | (() => Promise<T>),
-			): Promise<T> {
+			.mockImplementation(async function <T>(message: string, promise: Promise<T> | (() => Promise<T>)): Promise<T> {
 				return typeof promise == 'function' ? promise() : promise;
 			});
 	});
@@ -180,9 +177,7 @@ describe('release function', () => {
 				],
 			],
 		]);
-		expect(vi.mocked(mockedShellInstance.runInteractive).mock.calls).toStrictEqual([
-			['npm publish --access public'],
-		]);
+		expect(vi.mocked(mockedShellInstance.runInteractive).mock.calls).toStrictEqual([['npm publish --access public']]);
 		expect(vi.mocked(mockedShellInstance.stderr).mock.calls).toStrictEqual([]);
 		expect(vi.mocked(mockedShellInstance.stdout).mock.calls).toStrictEqual([
 			['git rev-parse --abbrev-ref HEAD'],

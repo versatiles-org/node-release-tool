@@ -131,11 +131,7 @@ export async function release(directory: string, branch = 'main', dryRun = false
 		await shell.run('npm i --package-lock-only');
 	}
 
-	async function getReleaseNotes(
-		version: string,
-		hashLast: string | undefined,
-		hashCurrent: string,
-	): Promise<string> {
+	async function getReleaseNotes(version: string, hashLast: string | undefined, hashCurrent: string): Promise<string> {
 		const commits = await getCommitsBetween(hashLast, hashCurrent);
 		let notes = commits
 			.reverse()
