@@ -11,6 +11,7 @@
   ],
   "scripts": {
     "build": "npm run build-node && npm run doc",
+    "prepare": "husky",
     "build-node": "rm -rf dist && tsc -p tsconfig.build.json && chmod +x dist/index.js",
     "check": "npm run lint && npm run build && npm run test && npm run format:check",
     "dev": "tsx src/index.ts",
@@ -44,6 +45,8 @@
     "@typescript-eslint/parser": "^8.54.0",
     "@vitest/coverage-v8": "^4.0.18",
     "eslint": "^9.39.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "prettier": "^3.8.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
@@ -61,5 +64,9 @@
     "typedoc-github-theme": "^0.3.1",
     "typedoc-github-wiki-theme": "^2.1.0",
     "typedoc-plugin-markdown": "^4.9.0"
+  },
+  "lint-staged": {
+    "*.{ts,js,json,md,yml,yaml}": "prettier --write",
+    "*.ts": "eslint --fix"
   }
 }
