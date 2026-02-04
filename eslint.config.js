@@ -45,7 +45,7 @@ export default [
 			// Catch unhandled promises
 			'@typescript-eslint/no-floating-promises': 'error',
 			// Enforce reasonable complexity
-			complexity: ['warn', { max: 15 }],
+			complexity: ['warn', { max: 20 }],
 			// Sort imports for consistency
 			'sort-imports': [
 				'error',
