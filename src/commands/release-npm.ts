@@ -3,6 +3,7 @@
 import { readFileSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
 import select from '@inquirer/select';
+import { updateChangelog } from '../lib/changelog.js';
 import { releaseError, validationError } from '../lib/errors.js';
 import {
 	COMMIT_TYPES,
@@ -98,6 +99,7 @@ export async function release(directory: string, branch = 'main', dryRun = false
 		info('  Commands that would be executed:');
 		info('    npm run check');
 		info('    npm i --package-lock-only');
+		info('    Update CHANGELOG.md');
 		if (!isPrivatePackage) {
 			info('    npm publish --access public');
 		}
@@ -115,6 +117,14 @@ export async function release(directory: string, branch = 'main', dryRun = false
 
 	// update version
 	await check('update version', setNextVersion(nextVersion));
+
+	// update changelog
+	const changelogResult = updateChangelog(directory, nextVersion, parsedCommits);
+	if (changelogResult.created) {
+		info('created CHANGELOG.md');
+	} else {
+		info('updated CHANGELOG.md');
+	}
 
 	if (!isPrivatePackage) {
 		// npm publish (with retry for transient network failures)
