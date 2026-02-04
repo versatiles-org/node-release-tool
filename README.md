@@ -218,6 +218,7 @@ A["utils.ts"]
 E["changelog.ts"]
 F["git.ts"]
 G["retry.ts"]
+I["benchmark.ts"]
 end
 H["index.ts"]
 end
