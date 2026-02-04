@@ -81,7 +81,9 @@ describe('update TOC', () => {
 	});
 
 	it('throws error on missing segment', () => {
-		expect(() => updateTOC(document, '# H 2')).toThrow('Error while searching for segment "# H 2": section not found');
+		expect(() => updateTOC(document, '# H 2')).toThrow(
+			'Error while searching for segment "# H 2": section not found',
+		);
 	});
 });
 

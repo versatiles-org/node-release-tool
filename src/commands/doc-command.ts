@@ -22,7 +22,9 @@ export async function generateCommandDocumentation(command: string): Promise<str
 					return `\n# Subcommand: \`${fullCommand}\`\n\n${subcommandMarkdown}`;
 				} catch (error) {
 					// Handle errors in generating subcommand documentation.
-					throw new Error(`Error generating documentation for subcommand '${fullCommand}': ${getErrorMessage(error)}`);
+					throw new Error(
+						`Error generating documentation for subcommand '${fullCommand}': ${getErrorMessage(error)}`,
+					);
 				}
 			}),
 		)
