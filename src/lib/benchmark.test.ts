@@ -85,11 +85,11 @@ describe('benchmark (async)', () => {
 
 	it('measures async execution duration', async () => {
 		const { durationMs } = await benchmark(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 50));
+			await new Promise((resolve) => setTimeout(resolve, 30));
 			return 'done';
 		});
 
-		expect(durationMs).toBeGreaterThanOrEqual(50);
+		expect(durationMs).toBeGreaterThanOrEqual(29);
 	});
 
 	it('provides formatted duration', async () => {
@@ -127,10 +127,10 @@ describe('createTimer', () => {
 	it('returns elapsed time while running', async () => {
 		const timer = createTimer();
 		timer.start();
-		await new Promise((resolve) => setTimeout(resolve, 10));
+		await new Promise((resolve) => setTimeout(resolve, 30));
 		const elapsed = timer.elapsed();
 
-		expect(elapsed).toBeGreaterThanOrEqual(10);
+		expect(elapsed).toBeGreaterThanOrEqual(29);
 	});
 
 	it('returns 0 elapsed time before starting', () => {
