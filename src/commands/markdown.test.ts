@@ -1,4 +1,4 @@
-import type { PhrasingContent, PhrasingContentMap } from 'mdast';
+import type { FootnoteReference, ImageReference, LinkReference, PhrasingContent, PhrasingContentMap } from 'mdast';
 import { injectMarkdown, nodeToHtml, parseMarkdown, updateTOC } from './markdown.js'; // Replace with the actual path of your module
 import { describe, expect, it } from 'vitest';
 
@@ -163,6 +163,36 @@ describe('github markdown alerts', () => {
 			expect(result).toBe(`# H 1\n\n## Content\n\n> [!${type}]\n> This is a ${type.toLowerCase()}\n`);
 		});
 	}
+});
+
+describe('nodeToHtml reference handling', () => {
+	it('throws notImplementedError for footnoteReference', () => {
+		const node: FootnoteReference = {
+			type: 'footnoteReference',
+			identifier: 'fn1',
+			label: 'fn1',
+		};
+		expect(() => nodeToHtml(node)).toThrow('footnoteReference - requires definition resolution');
+	});
+
+	it('throws notImplementedError for imageReference', () => {
+		const node: ImageReference = {
+			type: 'imageReference',
+			identifier: 'img1',
+			referenceType: 'shortcut',
+		};
+		expect(() => nodeToHtml(node)).toThrow('imageReference - requires definition resolution');
+	});
+
+	it('throws notImplementedError for linkReference', () => {
+		const node: LinkReference = {
+			type: 'linkReference',
+			identifier: 'link1',
+			referenceType: 'shortcut',
+			children: [],
+		};
+		expect(() => nodeToHtml(node)).toThrow('linkReference - requires definition resolution');
+	});
 });
 
 function getDoc(content: string): string {
