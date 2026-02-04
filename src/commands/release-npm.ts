@@ -4,7 +4,14 @@ import { readFileSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
 import select from '@inquirer/select';
 import { releaseError, validationError } from '../lib/errors.js';
-import { getGit } from '../lib/git.js';
+import {
+	COMMIT_TYPES,
+	getGit,
+	getSuggestedBump,
+	groupCommitsByType,
+	parseConventionalCommit,
+	type ParsedCommit,
+} from '../lib/git.js';
 import { check, info, panic, warn } from '../lib/log.js';
 import { withRetry } from '../lib/retry.js';
 import { Shell } from '../lib/shell.js';
@@ -72,11 +79,16 @@ export async function release(directory: string, branch = 'main', dryRun = false
 	// get current sha
 	const { sha: shaCurrent } = await check('get current github commit', getCurrentGitHubCommit());
 
-	// handle version
-	const nextVersion = await getNewVersion(versionLastPackage);
+	// get and parse commits for conventional commit support
+	const commits = await check('get commits since last release', getCommitsBetween(shaLast, shaCurrent));
+	const parsedCommits = commits.map(parseConventionalCommit);
 
-	// prepare release notes
-	const releaseNotes = await check('prepare release notes', getReleaseNotes(nextVersion, shaLast, shaCurrent));
+	// handle version (with suggested bump based on conventional commits)
+	const nextVersion = await getNewVersion(versionLastPackage, parsedCommits);
+
+	// prepare release notes (grouped by conventional commit type)
+	const releaseNotes = getReleaseNotes(nextVersion, parsedCommits);
+	info('prepared release notes');
 
 	if (dryRun) {
 		info('Dry-run mode - the following actions would be performed:');
@@ -180,25 +192,77 @@ export async function release(directory: string, branch = 'main', dryRun = false
 		await shell.run('npm i --package-lock-only');
 	}
 
-	async function getReleaseNotes(version: string, hashLast: string | undefined, hashCurrent: string): Promise<string> {
-		const commits = await getCommitsBetween(hashLast, hashCurrent);
-		let notes = commits
-			.reverse()
-			.map((commit) => '- ' + commit.message.replace(/\s+/g, ' '))
-			.join('\n');
-		notes = `# Release v${version}\n\nchanges:\n${notes}\n\n`;
+	function getReleaseNotes(version: string, commits: ParsedCommit[]): string {
+		const reversed = [...commits].reverse();
+		const grouped = groupCommitsByType(reversed);
+
+		let notes = `# Release v${version}\n\n`;
+
+		// Order: breaking changes first, then features, fixes, and others
+		const typeOrder: (keyof typeof COMMIT_TYPES | 'other')[] = [
+			'feat',
+			'fix',
+			'perf',
+			'refactor',
+			'docs',
+			'test',
+			'build',
+			'ci',
+			'chore',
+			'style',
+			'revert',
+			'other',
+		];
+
+		// Add breaking changes section if any
+		const breakingCommits = reversed.filter((c) => c.breaking);
+		if (breakingCommits.length > 0) {
+			notes += '## Breaking Changes\n\n';
+			for (const commit of breakingCommits) {
+				notes += `- ${commit.description.replace(/\s+/g, ' ')}\n`;
+			}
+			notes += '\n';
+		}
+
+		// Add grouped commits
+		for (const type of typeOrder) {
+			const typeCommits = grouped.get(type);
+			if (!typeCommits || typeCommits.length === 0) continue;
+
+			// Skip commits already shown in breaking changes
+			const nonBreaking = typeCommits.filter((c) => !c.breaking);
+			if (nonBreaking.length === 0) continue;
+
+			const label = type === 'other' ? 'Other Changes' : COMMIT_TYPES[type];
+			notes += `## ${label}\n\n`;
+			for (const commit of nonBreaking) {
+				const scope = commit.scope ? `**${commit.scope}:** ` : '';
+				notes += `- ${scope}${commit.description.replace(/\s+/g, ' ')}\n`;
+			}
+			notes += '\n';
+		}
+
 		return notes;
 	}
 
-	async function getNewVersion(versionPackage: string): Promise<string> {
-		// ask for new version
+	async function getNewVersion(versionPackage: string, commits: ParsedCommit[]): Promise<string> {
+		// Determine suggested bump based on conventional commits
+		const suggestedBump = getSuggestedBump(commits);
+		// choices: [current, patch, minor, major] -> indices [0, 1, 2, 3]
+		const suggestedIndex = suggestedBump === 'major' ? 3 : suggestedBump === 'minor' ? 2 : 1;
 
 		const choices = [{ value: versionPackage }, { ...bump(2) }, { ...bump(1) }, { ...bump(0) }];
+
+		// Add recommendation label to suggested version
+		const suggestedChoice = choices[suggestedIndex];
+		if (suggestedChoice && 'name' in suggestedChoice) {
+			suggestedChoice.name += ' (recommended)';
+		}
 
 		const versionNew: string = await select({
 			message: 'What should be the new version?',
 			choices,
-			default: choices[1].value,
+			default: suggestedChoice?.value ?? choices[1].value,
 		});
 		if (!versionNew) throw releaseError('no version selected');
 

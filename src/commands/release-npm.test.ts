@@ -52,9 +52,13 @@ vi.mock('../lib/shell.js', () => ({
 	}),
 }));
 
-vi.mock('../lib/git.js', () => ({
-	getGit: vi.fn(),
-}));
+vi.mock('../lib/git.js', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../lib/git.js')>();
+	return {
+		...actual,
+		getGit: vi.fn(),
+	};
+});
 
 const select = (await import('@inquirer/select')).default;
 const { readFileSync, writeFileSync } = await import('fs');
@@ -108,6 +112,7 @@ describe('release function', () => {
 		expect(vi.mocked(info).mock.calls).toStrictEqual([
 			['starting release process'],
 			['authenticated as npm user: test-user'],
+			['prepared release notes'],
 			['Finished'],
 		]);
 		expect(vi.mocked(warn).mock.calls).toStrictEqual([
@@ -121,7 +126,7 @@ describe('release function', () => {
 			'verify npm authentication',
 			'get last github tag',
 			'get current github commit',
-			'prepare release notes',
+			'get commits since last release',
 			'run checks',
 			'update version',
 			'npm publish',
@@ -146,7 +151,7 @@ describe('release function', () => {
 				{
 					choices: [
 						{ value: '1.0.0' },
-						{ name: '1.0.\x1b[1m1\x1b[22m', value: '1.0.1' },
+						{ name: '1.0.\x1b[1m1\x1b[22m (recommended)', value: '1.0.1' },
 						{ name: '1.\x1b[1m1.0\x1b[22m', value: '1.1.0' },
 						{ name: '\x1b[1m2.0.0\x1b[22m', value: '2.0.0' },
 					],
@@ -180,7 +185,7 @@ describe('release function', () => {
 					'edit',
 					'v1.1.0',
 					'--notes',
-					'# Release v1.1.0\n\nchanges:\n- commit message 2\n- commit message 3\n\n',
+					'# Release v1.1.0\n\n## Other Changes\n\n- commit message 2\n- commit message 3\n\n',
 				],
 			],
 		]);

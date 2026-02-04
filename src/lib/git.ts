@@ -13,6 +13,113 @@ export interface Commit {
 }
 
 /**
+ * Conventional commit types and their display labels
+ */
+export const COMMIT_TYPES = {
+	feat: 'Features',
+	fix: 'Bug Fixes',
+	docs: 'Documentation',
+	style: 'Styles',
+	refactor: 'Code Refactoring',
+	perf: 'Performance Improvements',
+	test: 'Tests',
+	build: 'Build System',
+	ci: 'CI/CD',
+	chore: 'Chores',
+	revert: 'Reverts',
+} as const;
+
+export type CommitType = keyof typeof COMMIT_TYPES;
+
+/**
+ * Represents a parsed conventional commit
+ */
+export interface ParsedCommit extends Commit {
+	/** The conventional commit type (feat, fix, etc.) */
+	type?: CommitType;
+	/** The scope of the change (e.g., "api" in "feat(api): add endpoint") */
+	scope?: string;
+	/** The commit description without the type/scope prefix */
+	description: string;
+	/** Whether this is a breaking change */
+	breaking: boolean;
+}
+
+/**
+ * Parses a commit message according to the Conventional Commits specification.
+ * @see https://www.conventionalcommits.org/
+ *
+ * @param commit - The commit to parse
+ * @returns A ParsedCommit with type, scope, description, and breaking change info
+ */
+export function parseConventionalCommit(commit: Commit): ParsedCommit {
+	const message = commit.message.trim();
+
+	// Pattern: type(scope)!: description OR type!: description OR type(scope): description OR type: description
+	const conventionalPattern = /^(\w+)(?:\(([^)]+)\))?(!)?\s*:\s*(.+)$/;
+	const match = message.match(conventionalPattern);
+
+	if (!match) {
+		// Not a conventional commit - return with original message as description
+		return {
+			...commit,
+			description: message,
+			breaking: message.toUpperCase().includes('BREAKING CHANGE'),
+		};
+	}
+
+	const [, typeStr, scope, breakingMark, description] = match;
+	const type = typeStr.toLowerCase() as CommitType;
+	const isKnownType = type in COMMIT_TYPES;
+
+	return {
+		...commit,
+		type: isKnownType ? type : undefined,
+		scope: scope || undefined,
+		description: description.trim(),
+		breaking: breakingMark === '!' || message.toUpperCase().includes('BREAKING CHANGE'),
+	};
+}
+
+/**
+ * Determines the suggested semver bump based on parsed commits.
+ * - Breaking changes -> major
+ * - Features -> minor
+ * - Everything else -> patch
+ *
+ * @param commits - Array of parsed commits
+ * @returns The suggested bump type: 'major', 'minor', or 'patch'
+ */
+export function getSuggestedBump(commits: ParsedCommit[]): 'major' | 'minor' | 'patch' {
+	const hasBreaking = commits.some((c) => c.breaking);
+	if (hasBreaking) return 'major';
+
+	const hasFeature = commits.some((c) => c.type === 'feat');
+	if (hasFeature) return 'minor';
+
+	return 'patch';
+}
+
+/**
+ * Groups parsed commits by their type for release notes.
+ *
+ * @param commits - Array of parsed commits
+ * @returns A Map of commit type to array of commits, plus 'other' for non-conventional commits
+ */
+export function groupCommitsByType(commits: ParsedCommit[]): Map<string, ParsedCommit[]> {
+	const groups = new Map<string, ParsedCommit[]>();
+
+	for (const commit of commits) {
+		const key = commit.type ?? 'other';
+		const existing = groups.get(key) ?? [];
+		existing.push(commit);
+		groups.set(key, existing);
+	}
+
+	return groups;
+}
+
+/**
  * Interface for Git operations used by the release tool.
  */
 export interface Git {
