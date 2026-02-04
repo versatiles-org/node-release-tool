@@ -215,10 +215,11 @@ subgraph 3["lib"]
 5["errors.ts"]
 8["shell.ts"]
 A["utils.ts"]
-E["git.ts"]
-F["retry.ts"]
+E["changelog.ts"]
+F["git.ts"]
+G["retry.ts"]
 end
-G["index.ts"]
+H["index.ts"]
 end
 2-->4
 4-->5
@@ -230,20 +231,22 @@ end
 B-->4
 C-->5
 C-->A
-D-->5
 D-->E
-D-->4
+D-->5
 D-->F
+D-->4
+D-->G
 D-->8
-E-->8
-G-->2
-G-->6
-G-->7
-G-->9
-G-->B
-G-->C
-G-->D
-G-->4
+E-->F
+F-->8
+H-->2
+H-->6
+H-->7
+H-->9
+H-->B
+H-->C
+H-->D
+H-->4
 
 class 0,1,3 subgraphs;
 classDef subgraphs fill-opacity:0.1, fill:#888, color:#888, stroke:#888;
