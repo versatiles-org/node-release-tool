@@ -50,6 +50,27 @@ jobs:
          - name: Build
            run: npm run build
 
+         - name: Validate build artifacts
+           run: |
+              # Verify main entry point exists and is executable
+              test -f dist/index.js || (echo "ERROR: dist/index.js not found" && exit 1)
+              test -x dist/index.js || (echo "ERROR: dist/index.js is not executable" && exit 1)
+
+              # Verify TypeScript declaration files are generated
+              test -f dist/index.d.ts || (echo "ERROR: dist/index.d.ts not found" && exit 1)
+
+              # Count JS and declaration files to ensure build produced output
+              JS_COUNT=$(find dist -name "*.js" | wc -l)
+              DTS_COUNT=$(find dist -name "*.d.ts" | wc -l)
+
+              echo "Build artifacts validated:"
+              echo "  - JavaScript files: $JS_COUNT"
+              echo "  - Declaration files: $DTS_COUNT"
+
+              # Ensure we have a reasonable number of output files
+              test "$JS_COUNT" -gt 5 || (echo "ERROR: Too few JS files in dist/" && exit 1)
+              test "$DTS_COUNT" -gt 5 || (echo "ERROR: Too few declaration files in dist/" && exit 1)
+
          - name: Test
            run: npm test
 
