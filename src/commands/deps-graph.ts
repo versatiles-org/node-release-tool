@@ -7,7 +7,7 @@ export async function generateDependencyGraph(directory: string): Promise<void> 
 		cruiseResult = await cruise([directory], {
 			includeOnly: '^src',
 			outputType: 'mermaid',
-			exclude: ['\\.(test|d)\\.ts$', 'node_modules', '__mocks__/'],
+			exclude: ['\\.(test|d|mock)\\.ts$', 'node_modules', '__mocks__/'],
 		});
 	} catch (pError) {
 		panic(String(pError));
