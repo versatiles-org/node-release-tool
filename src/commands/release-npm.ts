@@ -1,12 +1,13 @@
 #!/usr/bin/env npx tsx
 
 import { readFileSync, writeFileSync } from 'fs';
+import { resolve } from 'path';
 import select from '@inquirer/select';
 import { releaseError, validationError } from '../lib/errors.js';
-import { check, info, panic, warn } from '../lib/log.js';
-import { Shell } from '../lib/shell.js';
 import { getGit } from '../lib/git.js';
-import { resolve } from 'path';
+import { check, info, panic, warn } from '../lib/log.js';
+import { withRetry } from '../lib/retry.js';
+import { Shell } from '../lib/shell.js';
 
 interface PackageJson {
 	version: string;
@@ -37,8 +38,13 @@ export async function release(directory: string, branch = 'main', dryRun = false
 	// git: check if no changes
 	await check('are all changes committed?', checkThatNoUncommittedChanges());
 
-	// git: pull
-	await check('git pull', shell.run('git pull -t'));
+	// git: pull (with retry for transient network failures)
+	await check(
+		'git pull',
+		withRetry(() => shell.run('git pull -t'), {
+			onRetry: (attempt, error) => warn(`git pull failed (attempt ${attempt}): ${error.message}, retrying...`),
+		}),
+	);
 
 	// check package.json
 	const pkgRaw: unknown = JSON.parse(readFileSync(resolve(directory, 'package.json'), 'utf8'));
@@ -99,22 +105,44 @@ export async function release(directory: string, branch = 'main', dryRun = false
 	await check('update version', setNextVersion(nextVersion));
 
 	if (!isPrivatePackage) {
-		// npm publish
-		await check('npm publish', shell.runInteractive('npm publish --access public'));
+		// npm publish (with retry for transient network failures)
+		await check(
+			'npm publish',
+			withRetry(() => shell.runInteractive('npm publish --access public'), {
+				onRetry: (attempt, error) => warn(`npm publish failed (attempt ${attempt}): ${error.message}, retrying...`),
+			}),
+		);
 	}
 
 	// git push
 	await check('git add', shell.run('git add .'));
 	await check('git commit', shell.run(`git commit -m "v${nextVersion}"`, false));
 	await check('git tag', shell.run(`git tag -f -a "v${nextVersion}" -m "new release: v${nextVersion}"`));
-	await check('git push', shell.run('git push --no-verify --follow-tags'));
+	await check(
+		'git push',
+		withRetry(() => shell.run('git push --no-verify --follow-tags'), {
+			onRetry: (attempt, error) => warn(`git push failed (attempt ${attempt}): ${error.message}, retrying...`),
+		}),
+	);
 
-	// github release
+	// github release (with retry for transient network failures)
 	const releaseTag = `v${nextVersion}`;
 	if (await check('check github release', shell.ok(`gh release view ${releaseTag}`))) {
-		await check('edit release', shell.exec('gh', ['release', 'edit', releaseTag, '--notes', releaseNotes]));
+		await check(
+			'edit release',
+			withRetry(() => shell.exec('gh', ['release', 'edit', releaseTag, '--notes', releaseNotes]), {
+				onRetry: (attempt, error) =>
+					warn(`gh release edit failed (attempt ${attempt}): ${error.message}, retrying...`),
+			}),
+		);
 	} else {
-		await check('create release', shell.exec('gh', ['release', 'create', releaseTag, '--notes', releaseNotes]));
+		await check(
+			'create release',
+			withRetry(() => shell.exec('gh', ['release', 'create', releaseTag, '--notes', releaseNotes]), {
+				onRetry: (attempt, error) =>
+					warn(`gh release create failed (attempt ${attempt}): ${error.message}, retrying...`),
+			}),
+		);
 	}
 
 	info('Finished');
