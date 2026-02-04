@@ -227,4 +227,75 @@ describe('release function', () => {
 		vi.mocked(readFileSync).mockReturnValue(JSON.stringify({ version: '1.0.0', scripts: {} }));
 		await expect(release('/test/directory', 'main')).rejects.toThrow('missing npm script "check" in package.json');
 	});
+
+	it('should skip npm auth check for private packages', async () => {
+		vi.mocked(readFileSync).mockImplementation((path: string) => {
+			if (path.toString().includes('CHANGELOG.md')) {
+				return '# Changelog\n\n## [0.9.0] - 2024-01-01\n\n- old entry\n';
+			}
+			return JSON.stringify({ version: '1.0.0', scripts: { check: '', prepack: '' }, private: true });
+		});
+
+		await release('/test/directory', 'main');
+
+		// Verify npm whoami was never called (no npm authentication)
+		expect(vi.mocked(mockedShellInstance.stdout).mock.calls).not.toContainEqual(['npm whoami']);
+
+		// Verify npm publish was never called
+		expect(vi.mocked(mockedShellInstance.runInteractive).mock.calls).toStrictEqual([]);
+
+		// Verify check steps - should not include 'verify npm authentication' or 'npm publish'
+		const checkCalls = vi.mocked(check).mock.calls.map((v) => v[0]);
+		expect(checkCalls).not.toContain('verify npm authentication');
+		expect(checkCalls).not.toContain('npm publish');
+	});
+
+	it('should throw error when uncommitted changes exist', async () => {
+		vi.mocked(mockedShellInstance.stdout).mockImplementation(async (command: string): Promise<string> => {
+			switch (command) {
+				case 'git rev-parse --abbrev-ref HEAD':
+					return 'main';
+				case 'git status --porcelain':
+					return 'M  some-file.ts\n'; // uncommitted changes
+				case 'npm whoami':
+					return 'test-user';
+			}
+			throw Error();
+		});
+
+		await expect(release('/test/directory', 'main')).rejects.toThrow('please commit all changes before releasing');
+	});
+
+	it('should include breaking changes section in release notes', async () => {
+		// Restore default stdout mock behavior first
+		vi.mocked(mockedShellInstance.stdout).mockImplementation(async (command: string): Promise<string> => {
+			switch (command) {
+				case 'git rev-parse --abbrev-ref HEAD':
+					return 'main';
+				case 'git status --porcelain':
+					return '';
+				case 'npm whoami':
+					return 'test-user';
+			}
+			throw Error();
+		});
+
+		// Configure mock git to return breaking change commits
+		mockGit.getCommitsBetween = vi.fn(async () => [
+			{ sha: 'cccc', message: 'feat!: breaking feature change', tag: undefined },
+			{ sha: 'dddd', message: 'fix: regular fix', tag: undefined },
+		]);
+		vi.mocked(getGit).mockReturnValue(mockGit);
+
+		await release('/test/directory', 'main');
+
+		// Check that the release notes contain breaking changes section
+		const execCalls = vi.mocked(mockedShellInstance.exec).mock.calls;
+		const releaseCall = execCalls.find((call) => call[0] === 'gh' && call[1][0] === 'release');
+		expect(releaseCall).toBeDefined();
+
+		const releaseNotes = releaseCall![1][4]; // --notes argument value
+		expect(releaseNotes).toContain('## Breaking Changes');
+		expect(releaseNotes).toContain('breaking feature change');
+	});
 });
