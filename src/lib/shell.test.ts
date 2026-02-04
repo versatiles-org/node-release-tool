@@ -1,5 +1,15 @@
+import { type ChildProcess, spawn } from 'child_process';
+import { EventEmitter } from 'events';
 import { describe, expect, it, vi } from 'vitest';
 import { Shell } from './shell.js';
+
+vi.mock('child_process', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('child_process')>();
+	return {
+		...actual,
+		spawn: vi.fn(actual.spawn),
+	};
+});
 
 describe('Shell', () => {
 	const cwd = new URL('../../', import.meta.url).pathname;
@@ -101,6 +111,72 @@ describe('Shell', () => {
 			mockError.mockImplementationOnce(() => {});
 			await expect(shell.exec('sh', ['-c', 'exit 1'])).rejects.toMatchObject({ code: 1 });
 			mockError.mockRestore();
+		});
+	});
+
+	describe('runInteractive', () => {
+		it('resolves on successful command (exit code 0)', async () => {
+			const mockProcess = new EventEmitter() as ChildProcess;
+			vi.mocked(spawn).mockReturnValueOnce(mockProcess);
+
+			const promise = shell.runInteractive('echo test');
+
+			// Simulate successful exit
+			process.nextTick(() => mockProcess.emit('close', 0, null));
+
+			const result = await promise;
+			expect(result).toEqual({ code: 0, signal: null });
+		});
+
+		it('rejects on failed command (non-zero exit code)', async () => {
+			const mockProcess = new EventEmitter() as ChildProcess;
+			vi.mocked(spawn).mockReturnValueOnce(mockProcess);
+
+			const promise = shell.runInteractive('exit 1');
+
+			// Simulate failed exit
+			process.nextTick(() => mockProcess.emit('close', 1, null));
+
+			await expect(promise).rejects.toEqual({ code: 1, signal: null });
+		});
+
+		it('rejects on spawn error', async () => {
+			const mockProcess = new EventEmitter() as ChildProcess;
+			vi.mocked(spawn).mockReturnValueOnce(mockProcess);
+
+			const promise = shell.runInteractive('nonexistent-command');
+
+			// Simulate spawn error
+			const error = new Error('spawn ENOENT');
+			process.nextTick(() => mockProcess.emit('error', error));
+
+			await expect(promise).rejects.toEqual(error);
+		});
+
+		it('resolves on non-zero when errorOnCodeNonZero is false', async () => {
+			const mockProcess = new EventEmitter() as ChildProcess;
+			vi.mocked(spawn).mockReturnValueOnce(mockProcess);
+
+			const promise = shell.runInteractive('exit 42', false);
+
+			// Simulate failed exit
+			process.nextTick(() => mockProcess.emit('close', 42, null));
+
+			const result = await promise;
+			expect(result).toEqual({ code: 42, signal: null });
+		});
+
+		it('handles signal termination', async () => {
+			const mockProcess = new EventEmitter() as ChildProcess;
+			vi.mocked(spawn).mockReturnValueOnce(mockProcess);
+
+			const promise = shell.runInteractive('sleep 100', false);
+
+			// Simulate signal termination
+			process.nextTick(() => mockProcess.emit('close', null, 'SIGTERM'));
+
+			const result = await promise;
+			expect(result).toEqual({ code: null, signal: 'SIGTERM' });
 		});
 	});
 });
