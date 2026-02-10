@@ -194,7 +194,7 @@ describe('release function', () => {
 			['npm run check'],
 			['npm i --package-lock-only'],
 			['git add .'],
-			['git commit -m "v1.1.0"', false],
+			['git commit -m "v1.1.0"'],
 			['git tag -f -a "v1.1.0" -m "new release: v1.1.0"'],
 			['git push --atomic --no-verify --follow-tags'],
 		]);

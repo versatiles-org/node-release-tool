@@ -193,7 +193,7 @@ export async function release(directory: string, branch = 'main', dryRun = false
 
 	// git push
 	await check('git add', shell.run('git add .'));
-	await check('git commit', shell.run(`git commit -m "v${nextVersion}"`, false));
+	await check('git commit', shell.run(`git commit -m "v${nextVersion}"`));
 	await check('git tag', shell.run(`git tag -f -a "v${nextVersion}" -m "new release: v${nextVersion}"`));
 	await check(
 		'git push',
