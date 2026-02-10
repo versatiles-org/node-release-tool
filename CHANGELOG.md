@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.1] - 2026-02-10
+
+### Bug Fixes
+
+- update git push command to use --atomic for safer releases
+- remove unnecessary false flag from git commit command
+- update upgradeDependencies to use shell.run for removing node_modules and lock file
+
+### Chores
+
+- update devDependencies and dependencies in package.json
+
 ## [2.7.0] - 2026-02-04
 
 ### Breaking Changes
