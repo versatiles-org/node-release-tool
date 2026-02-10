@@ -12,6 +12,7 @@ vi.mock('../lib/log.js', () => ({
 }));
 
 const mockedShellInstance = {
+	run: vi.fn(async () => ({ code: 0, signal: null, stdout: '', stderr: '' })),
 	stdout: vi.fn(async () => ''),
 };
 vi.mock('../lib/shell.js', () => ({
@@ -52,15 +53,14 @@ describe('upgradeDependencies', () => {
 		// Verify check was called for each step
 		expect(vi.mocked(check).mock.calls.map((c) => c[0])).toStrictEqual([
 			'Upgrade all dependencies',
-			'Remove lock file and node_modules',
 			'Reinstall all dependencies',
 		]);
 
 		// Verify shell commands were executed
-		expect(vi.mocked(mockedShellInstance.stdout).mock.calls).toStrictEqual([
-			['rm -f package-lock.json && rm -rf node_modules'],
-			['npm i'],
+		expect(vi.mocked(mockedShellInstance.run).mock.calls).toStrictEqual([
+			['rm -f package-lock.json && rm -rf node_modules', false],
 		]);
+		expect(vi.mocked(mockedShellInstance.stdout).mock.calls).toStrictEqual([['npm i']]);
 
 		// Verify info was called at the end
 		expect(vi.mocked(info)).toHaveBeenCalledWith('All dependencies are up to date');

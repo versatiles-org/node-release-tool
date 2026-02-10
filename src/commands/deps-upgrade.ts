@@ -27,7 +27,7 @@ export async function upgradeDependencies(directory: string): Promise<void> {
 
 	const shell = new Shell(directory);
 
-	await check('Remove lock file and node_modules', shell.stdout('rm -f package-lock.json && rm -rf node_modules'));
+	await shell.run('rm -f package-lock.json && rm -rf node_modules', false);
 
 	await check('Reinstall all dependencies', shell.stdout('npm i'));
 
