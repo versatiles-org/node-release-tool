@@ -196,7 +196,7 @@ describe('release function', () => {
 			['git add .'],
 			['git commit -m "v1.1.0"', false],
 			['git tag -f -a "v1.1.0" -m "new release: v1.1.0"'],
-			['git push --no-verify --follow-tags'],
+			['git push --atomic --no-verify --follow-tags'],
 		]);
 		expect(vi.mocked(mockedShellInstance.exec).mock.calls).toStrictEqual([
 			[

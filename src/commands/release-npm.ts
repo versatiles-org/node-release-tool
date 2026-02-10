@@ -161,7 +161,7 @@ export async function release(directory: string, branch = 'main', dryRun = false
 		info('    git add .');
 		info(`    git commit -m "v${nextVersion}"`);
 		info(`    git tag -f -a "v${nextVersion}" -m "new release: v${nextVersion}"`);
-		info('    git push --no-verify --follow-tags');
+		info('    git push --atomic --no-verify --follow-tags');
 		info(`    gh release create/edit "v${nextVersion}"`);
 		info('Dry-run complete - no changes were made');
 		return;
@@ -197,7 +197,7 @@ export async function release(directory: string, branch = 'main', dryRun = false
 	await check('git tag', shell.run(`git tag -f -a "v${nextVersion}" -m "new release: v${nextVersion}"`));
 	await check(
 		'git push',
-		withRetry(() => shell.run('git push --no-verify --follow-tags'), {
+		withRetry(() => shell.run('git push --atomic --no-verify --follow-tags'), {
 			onRetry: (attempt, error) => warn(`git push failed (attempt ${attempt}): ${error.message}, retrying...`),
 		}),
 	);
