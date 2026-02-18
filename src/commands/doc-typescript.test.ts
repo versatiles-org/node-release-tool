@@ -55,8 +55,8 @@ describe('generateTypescriptDocs (integration)', () => {
 		// Invoke doc generator
 		const docsDir = join(testDir, 'docs');
 		await generateTypescriptDocs({
-			entryPoint: indexTsPath,
-			outputPath: docsDir,
+			input: indexTsPath,
+			output: docsDir,
 			format,
 			quiet: true,
 		});

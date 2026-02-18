@@ -11,9 +11,9 @@ export type DocFormat = 'markdown' | 'wiki' | 'html';
  */
 export interface TypescriptDocOptions {
 	/** Path to the entry point file (default: './src/index.ts') */
-	entryPoint?: string;
+	input?: string;
 	/** Output directory for generated docs (default: './docs') */
-	outputPath?: string;
+	output?: string;
 	/** Documentation format: 'markdown', 'wiki', or 'html' (default: 'markdown') */
 	format?: DocFormat;
 	/** Suppress info-level logging (default: false) */
@@ -38,14 +38,14 @@ export interface TypescriptDocOptions {
  *
  * // Generate HTML docs to custom directory
  * await generateTypescriptDocs({
- *   entryPoint: './src/main.ts',
- *   outputPath: './api-docs',
+ *   input: './src/main.ts',
+ *   output: './api-docs',
  *   format: 'html'
  * });
  * ```
  */
 export async function generateTypescriptDocs(options: TypescriptDocOptions): Promise<void> {
-	const { entryPoint, outputPath, quiet } = options;
+	const { input, output, quiet } = options;
 	const format = options.format ?? 'markdown';
 	const isMarkdown = format !== 'html';
 
@@ -57,8 +57,8 @@ export async function generateTypescriptDocs(options: TypescriptDocOptions): Pro
 
 	const app = await td.Application.bootstrapWithPlugins(
 		{
-			entryPoints: [entryPoint ?? './src/index.ts'],
-			out: outputPath ?? './docs',
+			entryPoints: [input ?? './src/index.ts'],
+			out: output ?? './docs',
 			plugin,
 			logLevel: quiet ? 'Warn' : 'Info',
 			highlightLanguages: ['typescript', 'javascript', 'json', 'shell', 'bash', 'sh', 'css', 'html'],
