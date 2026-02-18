@@ -94,7 +94,12 @@ program
 	.description('Insert Markdown from stdin into a specified section of a Markdown file.')
 	.argument('<readme>', 'Path to the target Markdown file (e.g., README.md).', checkFilename)
 	.argument('[heading]', 'Heading in the Markdown file where content should be placed. Default is "# API".', '# API')
-	.argument('[foldable]', 'Whether to wrap the inserted content in a foldable section.', false)
+	.argument(
+		'[foldable]',
+		'Whether to wrap the inserted content in a foldable section.',
+		(v: string) => v === 'true',
+		false,
+	)
 	.action(async (mdFilename: string, heading: string, foldable: boolean) => {
 		const buffers = [];
 		for await (const data of process.stdin) {
