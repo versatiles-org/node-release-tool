@@ -1,5 +1,8 @@
-[![Code Coverage](https://codecov.io/gh/versatiles-org/node-release-tool/branch/main/graph/badge.svg?token=IDHAI13M0K)](https://codecov.io/gh/versatiles-org/node-release-tool)
-[![GitHub Workflow Status)](https://img.shields.io/github/actions/workflow/status/versatiles-org/node-release-tool/ci.yml)](https://github.com/versatiles-org/node-release-tool/actions/workflows/ci.yml)
+[![NPM version](https://img.shields.io/npm/v/%40versatiles%2Frelease-tool)](https://www.npmjs.com/package/@versatiles/release-tool)
+[![NPM downloads](https://img.shields.io/npm/dt/%40versatiles%2Frelease-tool)](https://www.npmjs.com/package/@versatiles/release-tool)
+[![Code coverage](https://codecov.io/gh/versatiles-org/node-release-tool/branch/main/graph/badge.svg?token=IDHAI13M0K)](https://codecov.io/gh/versatiles-org/node-release-tool)
+[![CI status](https://img.shields.io/github/actions/workflow/status/versatiles-org/node-release-tool/ci.yml)](https://github.com/versatiles-org/node-release-tool/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 # VersaTiles Release Tools
 
