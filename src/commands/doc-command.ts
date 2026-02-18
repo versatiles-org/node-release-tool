@@ -24,6 +24,7 @@ export async function generateCommandDocumentation(command: string): Promise<str
 					// Handle errors in generating subcommand documentation.
 					throw new Error(
 						`Error generating documentation for subcommand '${fullCommand}': ${getErrorMessage(error)}`,
+						{ cause: error },
 					);
 				}
 			}),
