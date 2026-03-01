@@ -96,7 +96,7 @@ describe('release function', () => {
 
 		vi.mocked(readFileSync)
 			.mockClear()
-			.mockImplementation((path: string) => {
+			.mockImplementation((path) => {
 				if (path.toString().includes('CHANGELOG.md')) {
 					return '# Changelog\n\n## [0.9.0] - 2024-01-01\n\n- old entry\n';
 				}
@@ -229,7 +229,7 @@ describe('release function', () => {
 	});
 
 	it('should skip npm auth check for private packages', async () => {
-		vi.mocked(readFileSync).mockImplementation((path: string) => {
+		vi.mocked(readFileSync).mockImplementation((path) => {
 			if (path.toString().includes('CHANGELOG.md')) {
 				return '# Changelog\n\n## [0.9.0] - 2024-01-01\n\n- old entry\n';
 			}
