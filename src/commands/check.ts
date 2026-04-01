@@ -1,4 +1,4 @@
-import { JSONSchemaForNPMPackageJsonFiles2 as Package } from '@schemastore/package';
+import { JSONSchemaForNPMPackageJsonFiles as Package } from '@schemastore/package';
 import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 import { info, panic, warn } from '../lib/log.js';
