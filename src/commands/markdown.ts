@@ -215,11 +215,7 @@ function extractTextFromMDAsHTML(node: Root | RootContent): string {
 		case 'emphasis':
 		case 'strong':
 		case 'delete':
-			return node.children.map((child) => extractTextFromMDAsHTML(child as RootContent)).join('');
-
-		// Nodes with children but need special handling
 		case 'list':
-			return node.children.map((child) => extractTextFromMDAsHTML(child as RootContent)).join('');
 		case 'table':
 			return node.children.map((child) => extractTextFromMDAsHTML(child as RootContent)).join('');
 
