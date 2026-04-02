@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.5] - 2026-04-02
+
+### Bug Fixes
+
+- simplify extractTextFromMDAsHTML function by removing redundant handling for emphasis and list nodes
+- restore rootDir in tsconfig.json for proper directory structure
+- update esbuild packages to version 0.27.5 in package-lock.json
+
+### Build System
+
+- **deps:** bump codecov/codecov-action from 5 to 6 in the action group
+
+### Chores
+
+- update dependencies and fix import path
+
 ## [2.7.4] - 2026-03-01
 
 ### Bug Fixes
