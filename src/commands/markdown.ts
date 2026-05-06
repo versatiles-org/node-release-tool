@@ -196,52 +196,49 @@ function mergeSegments(mainAst: Root, segmentAst: Root, startIndex: number, endI
  * @param node The AST node (Root or any RootContent type).
  * @returns The extracted text content as HTML-escaped string.
  */
+const MD_TEXT_VALUE_TYPES = new Set(['inlineCode', 'text']);
+const MD_RECURSE_TYPES = new Set([
+	'heading',
+	'root',
+	'paragraph',
+	'blockquote',
+	'listItem',
+	'tableCell',
+	'tableRow',
+	'link',
+	'emphasis',
+	'strong',
+	'delete',
+	'list',
+	'table',
+]);
+const MD_EMPTY_TYPES = new Set([
+	'html',
+	'code',
+	'thematicBreak',
+	'break',
+	'definition',
+	'footnoteDefinition',
+	'footnoteReference',
+	'imageReference',
+	'linkReference',
+	'yaml',
+]);
+
 function extractTextFromMDAsHTML(node: Root | RootContent): string {
-	switch (node.type) {
-		// Nodes with direct text value
-		case 'inlineCode':
-		case 'text':
-			return textToHtml(node.value);
-
-		// Nodes with children to recurse into
-		case 'heading':
-		case 'root':
-		case 'paragraph':
-		case 'blockquote':
-		case 'listItem':
-		case 'tableCell':
-		case 'tableRow':
-		case 'link':
-		case 'emphasis':
-		case 'strong':
-		case 'delete':
-		case 'list':
-		case 'table':
-			return node.children.map((child) => extractTextFromMDAsHTML(child as RootContent)).join('');
-
-		// Nodes with alt text
-		case 'image':
-			return node.alt ? textToHtml(node.alt) : '';
-
-		// Nodes that don't contribute text content
-		case 'html':
-		case 'code':
-		case 'thematicBreak':
-		case 'break':
-		case 'definition':
-		case 'footnoteDefinition':
-		case 'footnoteReference':
-		case 'imageReference':
-		case 'linkReference':
-		case 'yaml':
-			return '';
-
-		default: {
-			// TypeScript exhaustive check - this ensures we handle all types
-			const _exhaustiveCheck: never = node;
-			throw markdownError(`unhandled node type: ${(node as RootContent).type}`);
-		}
+	if (MD_TEXT_VALUE_TYPES.has(node.type)) {
+		return textToHtml((node as { value: string }).value);
 	}
+	if (MD_RECURSE_TYPES.has(node.type)) {
+		return (node as { children: RootContent[] }).children.map((child) => extractTextFromMDAsHTML(child)).join('');
+	}
+	if (node.type === 'image') {
+		return node.alt ? textToHtml(node.alt) : '';
+	}
+	if (MD_EMPTY_TYPES.has(node.type)) {
+		return '';
+	}
+	throw markdownError(`unhandled node type: ${node.type}`);
 }
 
 /**
@@ -317,68 +314,50 @@ function getMDAnchor(node: Heading): string {
  *
  * @param ast The AST of the segment to be converted.
  */
+const FOLDABLE_PASSTHROUGH_TYPES = new Set([
+	'html',
+	'list',
+	'paragraph',
+	'blockquote',
+	'code',
+	'table',
+	'thematicBreak',
+	'definition',
+	'footnoteDefinition',
+	'yaml',
+	'text',
+	'inlineCode',
+	'emphasis',
+	'strong',
+	'delete',
+	'link',
+	'image',
+	'break',
+	'footnoteReference',
+	'imageReference',
+	'linkReference',
+	'listItem',
+	'tableCell',
+	'tableRow',
+]);
+
 function convertToFoldable(ast: Root): void {
 	const openDetails: number[] = [];
 	const children: RootContent[] = [];
 
 	ast.children.forEach((c: RootContent) => {
-		switch (c.type) {
-			// Headings start new foldable sections
-			case 'heading':
-				closeDetails(c.depth);
-				children.push({ type: 'html', value: '<details>' });
-				children.push({ type: 'html', value: `<summary>${lineToHtml(c)}</summary>` });
-				openDetails.unshift(c.depth);
-				break;
-
-			// Block content that gets included in sections
-			case 'html':
-			case 'list':
-			case 'paragraph':
-			case 'blockquote':
-			case 'code':
-			case 'table':
-			case 'thematicBreak':
-				children.push(c);
-				break;
-
-			// Definition content - include as-is
-			case 'definition':
-			case 'footnoteDefinition':
-				children.push(c);
-				break;
-
-			// YAML frontmatter - include as-is
-			case 'yaml':
-				children.push(c);
-				break;
-
-			// Inline/phrasing content that shouldn't appear at root level
-			// but handle gracefully if present
-			case 'text':
-			case 'inlineCode':
-			case 'emphasis':
-			case 'strong':
-			case 'delete':
-			case 'link':
-			case 'image':
-			case 'break':
-			case 'footnoteReference':
-			case 'imageReference':
-			case 'linkReference':
-			case 'listItem':
-			case 'tableCell':
-			case 'tableRow':
-				// These shouldn't normally appear at root level, but pass through
-				children.push(c);
-				break;
-
-			default: {
-				// TypeScript exhaustive check
-				const _exhaustiveCheck: never = c;
-				throw markdownError(`unhandled root content type: ${(c as RootContent).type}`);
-			}
+		if (c.type === 'heading') {
+			closeDetails(c.depth);
+			children.push({ type: 'html', value: '<details>' });
+			children.push({ type: 'html', value: `<summary>${lineToHtml(c)}</summary>` });
+			openDetails.unshift(c.depth);
+			return;
 		}
+		if (FOLDABLE_PASSTHROUGH_TYPES.has(c.type)) {
+			children.push(c);
+			return;
+		}
+		throw markdownError(`unhandled root content type: ${(c as RootContent).type}`);
 	});
 
 	closeDetails(0);
