@@ -18,7 +18,7 @@ import { Shell } from '../lib/shell.js';
  */
 export async function upgradeDependencies(directory: string): Promise<void> {
 	await check('Upgrade all dependencies', async () => {
-		await ncu.run({
+		await ncu({
 			cwd: directory,
 			packageFile: 'package.json',
 			upgrade: true,

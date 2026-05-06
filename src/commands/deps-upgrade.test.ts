@@ -1,9 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('npm-check-updates', () => ({
-	default: {
-		run: vi.fn(),
-	},
+	default: vi.fn(),
 }));
 
 vi.mock('../lib/log.js', () => ({
@@ -43,8 +41,8 @@ describe('upgradeDependencies', () => {
 		// Verify Shell was instantiated with correct directory
 		expect(vi.mocked(Shell)).toHaveBeenCalledWith('/test/directory');
 
-		// Verify ncu.run was called with correct options
-		expect(vi.mocked(ncu.run)).toHaveBeenCalledWith({
+		// Verify ncu was called with correct options
+		expect(vi.mocked(ncu)).toHaveBeenCalledWith({
 			cwd: '/test/directory',
 			packageFile: 'package.json',
 			upgrade: true,
@@ -66,9 +64,9 @@ describe('upgradeDependencies', () => {
 		expect(vi.mocked(info)).toHaveBeenCalledWith('All dependencies are up to date');
 	});
 
-	it('should propagate errors from ncu.run', async () => {
+	it('should propagate errors from ncu', async () => {
 		const error = new Error('ncu failed');
-		vi.mocked(ncu.run).mockRejectedValueOnce(error);
+		vi.mocked(ncu).mockRejectedValueOnce(error);
 
 		await expect(upgradeDependencies('/test/directory')).rejects.toThrow('ncu failed');
 	});
