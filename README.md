@@ -41,6 +41,18 @@ You need to configure the scripts in the package.json:
 - `scripts.prepack` is **recommended** to ensure that all files are up-to-date before releasing. Here you can build code and documentation.
 - `scripts.release` is **recommended** to make it easy to release a new version.
 
+# Trimming a noisy dependency graph
+
+For repos with high fan-out, `deps-graph` accepts repeatable globs to collapse or drop nodes:
+
+```bash
+# Merge all region scrapers into a single labelled node ("regions/*.ts (24 files)").
+vrt deps-graph --collapse-dir 'src/regions/*.ts'
+
+# Drop trivial barrels and stubs from the graph entirely.
+vrt deps-graph --exclude '**/_planned.ts' --exclude '**/index.ts'
+```
+
 # Command `vrt`
 
 <!--- This chapter is generated automatically --->
@@ -58,7 +70,7 @@ Options:
 
 Commands:
   check                                     Check repo for required scripts and other stuff.
-  deps-graph                                Analyze project files and output a dependency graph as Mermaid markup.
+  deps-graph [options]                      Analyze project files and output a dependency graph as Mermaid markup.
   deps-upgrade                              Upgrade all dependencies in the current project to their latest versions.
   doc-command <command>                     Generate Markdown documentation for a specified command and output the result.
   doc-insert <readme> [heading] [foldable]  Insert Markdown from stdin into a specified section of a Markdown file.
@@ -89,7 +101,11 @@ Usage: vrt deps-graph [options]
 Analyze project files and output a dependency graph as Mermaid markup.
 
 Options:
-  -h, --help  display help for command
+  --collapse-dir <glob>  Collapse all files matching the glob into a single node
+                         (repeatable). (default: [])
+  --exclude <glob>       Drop files matching the glob from the graph entirely
+                         (repeatable). (default: [])
+  -h, --help             display help for command
 ```
 
 ## Subcommand: `vrt deps-upgrade`

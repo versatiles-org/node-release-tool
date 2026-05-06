@@ -56,8 +56,23 @@ program
 program
 	.command('deps-graph')
 	.description('Analyze project files and output a dependency graph as Mermaid markup.')
-	.action(() => {
-		void generateDependencyGraph(process.cwd());
+	.option(
+		'--collapse-dir <glob>',
+		'Collapse all files matching the glob into a single node (repeatable).',
+		(value: string, prev: string[] = []) => prev.concat(value),
+		[] as string[],
+	)
+	.option(
+		'--exclude <glob>',
+		'Drop files matching the glob from the graph entirely (repeatable).',
+		(value: string, prev: string[] = []) => prev.concat(value),
+		[] as string[],
+	)
+	.action((opts: { collapseDir: string[]; exclude: string[] }) => {
+		void generateDependencyGraph(process.cwd(), {
+			collapseDir: opts.collapseDir,
+			exclude: opts.exclude,
+		});
 	});
 
 /**

@@ -93,7 +93,7 @@ describe('release-tool CLI', () => {
 		it('should call generateDependencyGraph with current working directory', async () => {
 			await run('deps-graph');
 
-			expect(generateDependencyGraph).toHaveBeenCalledWith(process.cwd());
+			expect(generateDependencyGraph).toHaveBeenCalledWith(process.cwd(), { collapseDir: [], exclude: [] });
 		});
 	});
 
