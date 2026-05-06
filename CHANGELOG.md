@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.0] - 2026-05-06
+
+### Features
+
+- add GitHub repository URL support in changelog and release notes ([01faef7](https://github.com/versatiles-org/node-release-tool/commit/01faef737defc19de9d0b56a91805cbd3483a482))
+- enhance deps-graph command with collapse and exclude options for improved dependency visualization, close #46 ([9470a6e](https://github.com/versatiles-org/node-release-tool/commit/9470a6ef39a328305724c75fdd623c9577ef6b7c))
+
+### Bug Fixes
+
+- update ncu usage in upgradeDependencies function to reflect new API ([d68826d](https://github.com/versatiles-org/node-release-tool/commit/d68826d0dacf66df080ef354a25f5059f007bc27))
+
+### Code Refactoring
+
+- optimize extractTextFromMDAsHTML and convertToFoldable functions for better readability and performance ([f3d7742](https://github.com/versatiles-org/node-release-tool/commit/f3d7742f1c3319e39b2c21bab55f9f993ec13270))
+- update script names in CI and package.json for consistency ([9976746](https://github.com/versatiles-org/node-release-tool/commit/9976746673a486b68d2dad64cddac7bd1306ee99))
+
+### Tests
+
+- enhance release function tests for dry-run mode and error handling ([b69d496](https://github.com/versatiles-org/node-release-tool/commit/b69d496beda4b8fc49c33a180d03a9fb326d5675))
+
+### Chores
+
+- update dependencies in package.json ([9e4716b](https://github.com/versatiles-org/node-release-tool/commit/9e4716b72888a41bbb6a856e98044323aafb6769))
+
 ## [2.7.5] - 2026-04-02
 
 ### Bug Fixes
