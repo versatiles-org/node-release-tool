@@ -18,7 +18,7 @@ export function check(directory: string): void {
  *
  * Checks for:
  * - Required scripts (build, check, prepack, release)
- * - Recommended scripts (test, doc, upgrade, doc-graph)
+ * - Recommended scripts (test, doc, upgrade, doc:graph)
  * - Script configurations following best practices
  * - Unnecessary dependencies
  *
@@ -64,11 +64,11 @@ export function checkPackage(directory: string): void {
 		info(`scripts.upgrade should be "vrt deps-upgrade", but is "${scripts.upgrade}"`);
 	}
 
-	if (!scripts['doc-graph']) {
-		info(`scripts.doc-graph could be: "vrt deps-graph | vrt doc-insert README.md '## Dependency Graph'"`);
+	if (!scripts['doc:graph']) {
+		info(`scripts["doc:graph"] could be: "vrt deps-graph | vrt doc-insert README.md '## Dependency Graph'"`);
 	} else {
-		if (scripts.doc && !scripts.doc.includes('npm run doc-graph')) {
-			info('scripts.doc should include "npm run doc-graph"');
+		if (scripts.doc && !scripts.doc.includes('npm run doc:graph')) {
+			info('scripts.doc should include "npm run doc:graph"');
 		}
 	}
 

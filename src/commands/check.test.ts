@@ -22,14 +22,14 @@ const { check } = await import('./check.js');
 describe('check', () => {
 	const goodPackage = {
 		scripts: {
-			build: 'run build script && npm run doc-graph',
+			build: 'run build script && npm run doc:graph',
 			test: 'test',
-			doc: 'npm run doc-graph',
+			doc: 'npm run doc:graph',
 			check: 'npm run build && npm run test',
 			prepack: 'npm run build',
 			release: 'vrt release-npm',
 			upgrade: 'vrt deps-upgrade',
-			'doc-graph': 'vrt deps-graph',
+			'doc:graph': 'vrt deps-graph',
 		},
 	};
 
