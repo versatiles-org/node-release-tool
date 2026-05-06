@@ -77,6 +77,20 @@ describe('release function', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 
+		// Reset shell mock implementations that earlier tests may have overridden
+		vi.mocked(mockedShellInstance.stdout).mockImplementation(async (command: string): Promise<string> => {
+			switch (command) {
+				case 'git rev-parse --abbrev-ref HEAD':
+					return 'main';
+				case 'git status --porcelain':
+					return '';
+				case 'npm whoami':
+					return 'test-user';
+			}
+			throw Error();
+		});
+		vi.mocked(mockedShellInstance.ok).mockResolvedValue(true);
+
 		mockGit = {
 			getCommitsBetween: vi.fn(async () => [
 				{ sha: 'cccccccccccccccccccccccccccccccccccccccc', message: 'commit message 3', tag: undefined },
@@ -269,6 +283,103 @@ describe('release function', () => {
 		});
 
 		await expect(release('/test/directory', 'main')).rejects.toThrow('please commit all changes before releasing');
+	});
+
+	it('should perform no destructive actions in dry-run mode', async () => {
+		await release('/test/directory', 'main', true);
+
+		// No file writes
+		expect(vi.mocked(writeFileSync).mock.calls).toStrictEqual([]);
+
+		// No npm publish, no gh release
+		expect(vi.mocked(mockedShellInstance.runInteractive).mock.calls).toStrictEqual([]);
+		expect(vi.mocked(mockedShellInstance.exec).mock.calls).toStrictEqual([]);
+
+		// shell.run is only used for "git pull -t" before the dry-run early return
+		expect(vi.mocked(mockedShellInstance.run).mock.calls).toStrictEqual([['git pull -t']]);
+
+		// Dry-run announces itself and reports no-op completion
+		const infoMessages = vi.mocked(info).mock.calls.map((c) => c[0]);
+		expect(infoMessages).toContain('starting release process (dry-run)');
+		expect(infoMessages).toContain('Dry-run mode - the following actions would be performed:');
+		expect(infoMessages).toContain('  Version: 1.0.0 -> 1.1.0');
+		expect(infoMessages).toContain('    npm publish --access public');
+		expect(infoMessages).toContain('Dry-run complete - no changes were made');
+	});
+
+	it('should omit npm publish in dry-run for private packages', async () => {
+		vi.mocked(readFileSync).mockImplementation((path) => {
+			if (path.toString().includes('CHANGELOG.md')) {
+				return '# Changelog\n\n## [0.9.0] - 2024-01-01\n\n- old entry\n';
+			}
+			return JSON.stringify({
+				version: '1.0.0',
+				scripts: { check: '', prepack: '' },
+				private: true,
+				repository: { type: 'git', url: 'git+https://github.com/owner/repo.git' },
+			});
+		});
+
+		await release('/test/directory', 'main', true);
+
+		// No npm-whoami check for private packages
+		expect(vi.mocked(mockedShellInstance.stdout).mock.calls).not.toContainEqual(['npm whoami']);
+
+		const infoMessages = vi.mocked(info).mock.calls.map((c) => c[0]);
+		expect(infoMessages).not.toContain('    npm publish --access public');
+		expect(infoMessages).toContain('Dry-run complete - no changes were made');
+	});
+
+	it('should create a new gh release when none exists', async () => {
+		vi.mocked(mockedShellInstance.ok).mockResolvedValueOnce(false);
+
+		await release('/test/directory', 'main');
+
+		const execCalls = vi.mocked(mockedShellInstance.exec).mock.calls;
+		expect(execCalls).toHaveLength(1);
+		const [cmd, args] = execCalls[0];
+		expect(cmd).toBe('gh');
+		expect(args.slice(0, 3)).toStrictEqual(['release', 'create', 'v1.1.0']);
+
+		const checkCalls = vi.mocked(check).mock.calls.map((v) => v[0]);
+		expect(checkCalls).toContain('create release');
+		expect(checkCalls).not.toContain('edit release');
+	});
+
+	it('should warn about missing repo URL and skip commit links', async () => {
+		vi.mocked(readFileSync).mockImplementation((path) => {
+			if (path.toString().includes('CHANGELOG.md')) {
+				return '# Changelog\n\n## [0.9.0] - 2024-01-01\n\n- old entry\n';
+			}
+			return JSON.stringify({ version: '1.0.0', scripts: { check: '', prepack: '' } });
+		});
+
+		await release('/test/directory', 'main');
+
+		const infoMessages = vi.mocked(info).mock.calls.map((c) => c[0]);
+		expect(infoMessages).toContain(
+			'no GitHub repository URL detected in package.json — commit links will be omitted',
+		);
+
+		const releaseCall = vi.mocked(mockedShellInstance.exec).mock.calls.find((c) => c[0] === 'gh');
+		const releaseNotes = releaseCall![1][4];
+		expect(releaseNotes).not.toContain('](https://github.com/');
+	});
+
+	it('should reject release when npm authentication fails', async () => {
+		vi.mocked(mockedShellInstance.stdout).mockImplementation(async (command: string): Promise<string> => {
+			switch (command) {
+				case 'git rev-parse --abbrev-ref HEAD':
+					return 'main';
+				case 'git status --porcelain':
+					return '';
+				case 'npm whoami':
+					throw new Error('not logged in');
+			}
+			throw Error();
+		});
+
+		await expect(release('/test/directory', 'main')).rejects.toThrow(/npm authentication required/);
 	});
 
 	it('should include breaking changes section in release notes', async () => {
