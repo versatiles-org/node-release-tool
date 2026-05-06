@@ -100,7 +100,11 @@ describe('release function', () => {
 				if (path.toString().includes('CHANGELOG.md')) {
 					return '# Changelog\n\n## [0.9.0] - 2024-01-01\n\n- old entry\n';
 				}
-				return JSON.stringify({ version: '1.0.0', scripts: { check: '', prepack: '' } });
+				return JSON.stringify({
+					version: '1.0.0',
+					scripts: { check: '', prepack: '' },
+					repository: { type: 'git', url: 'git+https://github.com/owner/repo.git' },
+				});
 			});
 
 		vi.mocked(select).mockClear().mockResolvedValue('1.1.0');
@@ -159,6 +163,7 @@ describe('release function', () => {
 		expect(JSON.parse(packageJsonWrite![1] as string)).toStrictEqual({
 			version: '1.1.0',
 			scripts: { check: '', prepack: '' },
+			repository: { type: 'git', url: 'git+https://github.com/owner/repo.git' },
 		});
 
 		// Check CHANGELOG.md write
@@ -206,7 +211,7 @@ describe('release function', () => {
 					'edit',
 					'v1.1.0',
 					'--notes',
-					'# Release v1.1.0\n\n## Other Changes\n\n- commit message 2\n- commit message 3\n\n',
+					'# Release v1.1.0\n\n## Other Changes\n\n- commit message 2 ([ddddddd](https://github.com/owner/repo/commit/dddddddddddddddddddddddddddddddddddddddd))\n- commit message 3 ([ccccccc](https://github.com/owner/repo/commit/cccccccccccccccccccccccccccccccccccccccc))\n\n',
 				],
 			],
 		]);

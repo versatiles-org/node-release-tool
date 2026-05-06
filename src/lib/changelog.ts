@@ -3,17 +3,42 @@ import { resolve } from 'path';
 import { COMMIT_TYPES, groupCommitsByType, type ParsedCommit } from './git.js';
 
 /**
+ * Options for changelog generation.
+ */
+export interface ChangelogOptions {
+	/**
+	 * Base GitHub repository URL (e.g. "https://github.com/owner/repo").
+	 * When provided, each commit line is suffixed with a short-SHA link
+	 * to `<repoUrl>/commit/<sha>`.
+	 */
+	repoUrl?: string;
+}
+
+function commitLink(commit: ParsedCommit, repoUrl?: string): string {
+	if (!repoUrl || !commit.sha) return '';
+	const short = commit.sha.slice(0, 7);
+	return ` ([${short}](${repoUrl}/commit/${commit.sha}))`;
+}
+
+/**
  * Generates a changelog entry for a release from parsed commits.
  *
  * @param version - The version being released
  * @param commits - Array of parsed conventional commits
  * @param date - The release date (defaults to today)
+ * @param options - Optional formatting options (e.g. repository URL for commit links)
  * @returns Formatted changelog entry string
  */
-export function generateChangelogEntry(version: string, commits: ParsedCommit[], date: Date = new Date()): string {
+export function generateChangelogEntry(
+	version: string,
+	commits: ParsedCommit[],
+	date: Date = new Date(),
+	options: ChangelogOptions = {},
+): string {
 	const dateStr = date.toISOString().split('T')[0];
 	const reversed = [...commits].reverse();
 	const grouped = groupCommitsByType(reversed);
+	const { repoUrl } = options;
 
 	let entry = `## [${version}] - ${dateStr}\n\n`;
 
@@ -38,7 +63,7 @@ export function generateChangelogEntry(version: string, commits: ParsedCommit[],
 	if (breakingCommits.length > 0) {
 		entry += '### Breaking Changes\n\n';
 		for (const commit of breakingCommits) {
-			entry += `- ${commit.description.replace(/\s+/g, ' ')}\n`;
+			entry += `- ${commit.description.replace(/\s+/g, ' ')}${commitLink(commit, repoUrl)}\n`;
 		}
 		entry += '\n';
 	}
@@ -56,7 +81,7 @@ export function generateChangelogEntry(version: string, commits: ParsedCommit[],
 		entry += `### ${label}\n\n`;
 		for (const commit of nonBreaking) {
 			const scope = commit.scope ? `**${commit.scope}:** ` : '';
-			entry += `- ${scope}${commit.description.replace(/\s+/g, ' ')}\n`;
+			entry += `- ${scope}${commit.description.replace(/\s+/g, ' ')}${commitLink(commit, repoUrl)}\n`;
 		}
 		entry += '\n';
 	}
@@ -83,6 +108,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * @param version - The version being released
  * @param commits - Array of parsed conventional commits
  * @param date - The release date (defaults to today)
+ * @param options - Optional formatting options (e.g. repository URL for commit links)
  * @returns Object indicating whether the file was created or updated
  */
 export function updateChangelog(
@@ -90,9 +116,10 @@ export function updateChangelog(
 	version: string,
 	commits: ParsedCommit[],
 	date: Date = new Date(),
+	options: ChangelogOptions = {},
 ): { created: boolean; path: string } {
 	const changelogPath = resolve(directory, 'CHANGELOG.md');
-	const entry = generateChangelogEntry(version, commits, date);
+	const entry = generateChangelogEntry(version, commits, date, options);
 
 	let content: string;
 	let created = false;

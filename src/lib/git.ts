@@ -102,6 +102,37 @@ export function getSuggestedBump(commits: ParsedCommit[]): 'major' | 'minor' | '
 }
 
 /**
+ * Extracts a canonical GitHub repository URL from a package.json `repository` field.
+ * Accepts string shorthand ("owner/repo", "github:owner/repo"), full URLs
+ * (with or without `git+` prefix and `.git` suffix), and the object form.
+ *
+ * @param repository - The value of the `repository` field from package.json.
+ * @returns A URL like "https://github.com/owner/repo", or undefined if it can't be parsed.
+ */
+export function extractGitHubRepoUrl(repository: unknown): string | undefined {
+	let url: string | undefined;
+	if (typeof repository === 'string') {
+		url = repository;
+	} else if (
+		typeof repository === 'object' &&
+		repository !== null &&
+		'url' in repository &&
+		typeof (repository as { url: unknown }).url === 'string'
+	) {
+		url = (repository as { url: string }).url;
+	}
+	if (!url) return undefined;
+
+	const fullUrl = /(?:^|[/:@])github\.com[/:]([\w.-]+)\/([\w.-]+?)(?:\.git)?(?:[/?#].*)?$/i.exec(url);
+	if (fullUrl) return `https://github.com/${fullUrl[1]}/${fullUrl[2]}`;
+
+	const shorthand = /^(?:github:)?([\w.-]+)\/([\w.-]+?)(?:\.git)?$/i.exec(url);
+	if (shorthand) return `https://github.com/${shorthand[1]}/${shorthand[2]}`;
+
+	return undefined;
+}
+
+/**
  * Groups parsed commits by their type for release notes.
  *
  * @param commits - Array of parsed commits

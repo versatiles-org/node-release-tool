@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { COMMIT_TYPES, getGit, getSuggestedBump, groupCommitsByType, parseConventionalCommit } from './git.js';
+import {
+	COMMIT_TYPES,
+	extractGitHubRepoUrl,
+	getGit,
+	getSuggestedBump,
+	groupCommitsByType,
+	parseConventionalCommit,
+} from './git.js';
 import type { Commit, ParsedCommit } from './git.js';
 
 describe('Git module tests', () => {
@@ -284,5 +291,44 @@ describe('groupCommitsByType', () => {
 		const featCommits = groups.get('feat')!;
 		expect(featCommits[0].description).toBe('first');
 		expect(featCommits[1].description).toBe('second');
+	});
+});
+
+describe('extractGitHubRepoUrl', () => {
+	const expected = 'https://github.com/owner/repo';
+
+	it('parses object form with git+https url', () => {
+		expect(extractGitHubRepoUrl({ type: 'git', url: 'git+https://github.com/owner/repo.git' })).toBe(expected);
+	});
+
+	it('parses object form with plain https url', () => {
+		expect(extractGitHubRepoUrl({ url: 'https://github.com/owner/repo' })).toBe(expected);
+	});
+
+	it('parses object form with ssh url', () => {
+		expect(extractGitHubRepoUrl({ url: 'git@github.com:owner/repo.git' })).toBe(expected);
+	});
+
+	it('parses string url', () => {
+		expect(extractGitHubRepoUrl('https://github.com/owner/repo.git')).toBe(expected);
+	});
+
+	it('parses github: shorthand', () => {
+		expect(extractGitHubRepoUrl('github:owner/repo')).toBe(expected);
+	});
+
+	it('parses bare owner/repo shorthand', () => {
+		expect(extractGitHubRepoUrl('owner/repo')).toBe(expected);
+	});
+
+	it('returns undefined for unsupported hosts', () => {
+		expect(extractGitHubRepoUrl('https://gitlab.com/owner/repo.git')).toBeUndefined();
+	});
+
+	it('returns undefined for missing/invalid input', () => {
+		expect(extractGitHubRepoUrl(undefined)).toBeUndefined();
+		expect(extractGitHubRepoUrl(null)).toBeUndefined();
+		expect(extractGitHubRepoUrl({})).toBeUndefined();
+		expect(extractGitHubRepoUrl({ url: 42 })).toBeUndefined();
 	});
 });

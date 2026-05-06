@@ -122,6 +122,49 @@ describe('generateChangelogEntry', () => {
 
 		expect(entry).toContain('## [1.0.0-beta.1] - 2024-01-15');
 	});
+
+	it('appends short-SHA commit link when repoUrl is provided', () => {
+		const commit: ParsedCommit = {
+			sha: '0123456789abcdef0123456789abcdef01234567',
+			message: 'feat: add link',
+			description: 'add link',
+			type: 'feat',
+			breaking: false,
+		};
+		const entry = generateChangelogEntry('1.0.0', [commit], fixedDate, {
+			repoUrl: 'https://github.com/owner/repo',
+		});
+
+		expect(entry).toContain(
+			'- add link ([0123456](https://github.com/owner/repo/commit/0123456789abcdef0123456789abcdef01234567))',
+		);
+	});
+
+	it('also links breaking-change entries', () => {
+		const commit: ParsedCommit = {
+			sha: 'fedcba9876543210fedcba9876543210fedcba98',
+			message: 'feat!: drop legacy API',
+			description: 'drop legacy API',
+			type: 'feat',
+			breaking: true,
+		};
+		const entry = generateChangelogEntry('2.0.0', [commit], fixedDate, {
+			repoUrl: 'https://github.com/owner/repo',
+		});
+
+		const breakingSection = entry.split('### Breaking Changes')[1];
+		expect(breakingSection).toContain(
+			'([fedcba9](https://github.com/owner/repo/commit/fedcba9876543210fedcba9876543210fedcba98))',
+		);
+	});
+
+	it('does not append a link when repoUrl is omitted', () => {
+		const commits = [makeCommit('feat', 'add feature')];
+		const entry = generateChangelogEntry('1.0.0', commits, fixedDate);
+
+		expect(entry).not.toContain('](');
+		expect(entry).toContain('- add feature\n');
+	});
 });
 
 describe('updateChangelog', () => {

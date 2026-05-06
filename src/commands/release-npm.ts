@@ -7,6 +7,7 @@ import { updateChangelog } from '../lib/changelog.js';
 import { releaseError, validationError } from '../lib/errors.js';
 import {
 	COMMIT_TYPES,
+	extractGitHubRepoUrl,
 	getGit,
 	getSuggestedBump,
 	groupCommitsByType,
@@ -32,6 +33,8 @@ interface PackageJson {
 	};
 	/** Whether the package is private (not published to npm) */
 	private?: boolean;
+	/** Repository field (string shorthand or { url } object) */
+	repository?: string | { url?: string };
 }
 
 /**
@@ -117,6 +120,8 @@ export async function release(directory: string, branch = 'main', dryRun = false
 
 	const pkg = pkgRaw;
 	const isPrivatePackage = pkg.private === true;
+	const repoUrl = extractGitHubRepoUrl(pkg.repository);
+	if (!repoUrl) info('no GitHub repository URL detected in package.json — commit links will be omitted');
 
 	// npm: verify authentication (skip for private packages)
 	if (!isPrivatePackage) {
@@ -143,7 +148,7 @@ export async function release(directory: string, branch = 'main', dryRun = false
 	const nextVersion = await getNewVersion(versionLastPackage, parsedCommits);
 
 	// prepare release notes (grouped by conventional commit type)
-	const releaseNotes = getReleaseNotes(nextVersion, parsedCommits);
+	const releaseNotes = getReleaseNotes(nextVersion, parsedCommits, repoUrl);
 	info('prepared release notes');
 
 	if (dryRun) {
@@ -174,7 +179,7 @@ export async function release(directory: string, branch = 'main', dryRun = false
 	await check('update version', setNextVersion(nextVersion));
 
 	// update changelog
-	const changelogResult = updateChangelog(directory, nextVersion, parsedCommits);
+	const changelogResult = updateChangelog(directory, nextVersion, parsedCommits, new Date(), { repoUrl });
 	if (changelogResult.created) {
 		info('created CHANGELOG.md');
 	} else {
@@ -257,7 +262,7 @@ export async function release(directory: string, branch = 'main', dryRun = false
 		await shell.run('npm i --package-lock-only');
 	}
 
-	function getReleaseNotes(version: string, commits: ParsedCommit[]): string {
+	function getReleaseNotes(version: string, commits: ParsedCommit[], repoUrl?: string): string {
 		const reversed = [...commits].reverse();
 		const grouped = groupCommitsByType(reversed);
 
@@ -279,12 +284,17 @@ export async function release(directory: string, branch = 'main', dryRun = false
 			'other',
 		];
 
+		const linkFor = (commit: ParsedCommit): string => {
+			if (!repoUrl || !commit.sha) return '';
+			return ` ([${commit.sha.slice(0, 7)}](${repoUrl}/commit/${commit.sha}))`;
+		};
+
 		// Add breaking changes section if any
 		const breakingCommits = reversed.filter((c) => c.breaking);
 		if (breakingCommits.length > 0) {
 			notes += '## Breaking Changes\n\n';
 			for (const commit of breakingCommits) {
-				notes += `- ${commit.description.replace(/\s+/g, ' ')}\n`;
+				notes += `- ${commit.description.replace(/\s+/g, ' ')}${linkFor(commit)}\n`;
 			}
 			notes += '\n';
 		}
@@ -302,7 +312,7 @@ export async function release(directory: string, branch = 'main', dryRun = false
 			notes += `## ${label}\n\n`;
 			for (const commit of nonBreaking) {
 				const scope = commit.scope ? `**${commit.scope}:** ` : '';
-				notes += `- ${scope}${commit.description.replace(/\s+/g, ' ')}\n`;
+				notes += `- ${scope}${commit.description.replace(/\s+/g, ' ')}${linkFor(commit)}\n`;
 			}
 			notes += '\n';
 		}
