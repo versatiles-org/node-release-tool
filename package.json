@@ -59,7 +59,7 @@
   },
   "dependencies": {
     "@inquirer/select": "^5.1.4",
-    "commander": "^14.0.3",
+    "commander": "^15.0.0",
     "dependency-cruiser": "^17.4.0",
     "mdast-util-to-markdown": "^2.1.2",
     "npm-check-updates": "^22.1.0",
