@@ -43,7 +43,7 @@
     "@eslint/js": "^10.0.1",
     "@schemastore/package": "^1.0.5",
     "@types/mdast": "^4.0.4",
-    "@types/node": "^25.9.1",
+    "@types/node": "^26.1.0",
     "@types/picomatch": "^4.0.3",
     "@typescript-eslint/eslint-plugin": "^8.60.1",
     "@typescript-eslint/parser": "^8.60.1",
@@ -60,7 +60,7 @@
   "dependencies": {
     "@inquirer/select": "^5.2.1",
     "commander": "^15.0.0",
-    "dependency-cruiser": "^17.4.3",
+    "dependency-cruiser": "^18.0.0",
     "mdast-util-to-markdown": "^2.1.2",
     "npm-check-updates": "^22.2.2",
     "picomatch": "^4.0.4",
