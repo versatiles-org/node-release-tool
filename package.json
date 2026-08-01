@@ -43,31 +43,31 @@
     "@eslint/js": "^10.0.1",
     "@schemastore/package": "^1.0.5",
     "@types/mdast": "^4.0.4",
-    "@types/node": "^26.1.0",
+    "@types/node": "^26.1.2",
     "@types/picomatch": "^4.0.3",
-    "@typescript-eslint/eslint-plugin": "^8.60.1",
-    "@typescript-eslint/parser": "^8.60.1",
-    "@vitest/coverage-v8": "^4.1.8",
-    "eslint": "^10.4.1",
+    "@typescript-eslint/eslint-plugin": "^8.65.0",
+    "@typescript-eslint/parser": "^8.65.0",
+    "@vitest/coverage-v8": "^4.1.10",
+    "eslint": "^10.8.0",
     "husky": "^9.1.7",
-    "lint-staged": "^17.0.7",
-    "prettier": "^3.8.3",
-    "tsx": "^4.22.4",
-    "typescript": "^6.0.3",
-    "typescript-eslint": "^8.60.1",
-    "vitest": "^4.1.8"
+    "lint-staged": "^17.3.0",
+    "prettier": "^3.9.6",
+    "tsx": "^4.23.1",
+    "typescript": "^6.0.2",
+    "typescript-eslint": "^8.65.0",
+    "vitest": "^4.1.10"
   },
   "dependencies": {
     "@inquirer/select": "^5.2.1",
     "commander": "^15.0.0",
-    "dependency-cruiser": "^18.0.0",
+    "dependency-cruiser": "^18.1.0",
     "mdast-util-to-markdown": "^2.1.2",
-    "npm-check-updates": "^22.2.2",
-    "picomatch": "^4.0.4",
+    "npm-check-updates": "^23.0.0",
+    "picomatch": "^4.0.5",
     "remark": "^15.0.1",
     "remark-gfm": "^4.0.1",
     "remark-stringify": "^11.0.0",
-    "typedoc": "^0.28.19",
+    "typedoc": "^0.28.20",
     "typedoc-github-theme": "^0.4.0",
     "typedoc-github-wiki-theme": "^2.1.0",
     "typedoc-plugin-markdown": "^4.12.0"
@@ -75,5 +75,9 @@
   "lint-staged": {
     "*.{ts,js,json,md,yml,yaml}": "prettier --write",
     "*.ts": "eslint --fix"
+  },
+  "allowScripts": {
+    "esbuild": true,
+    "fsevents": true
   }
 }
