@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.2] - 2026-08-01
+
+### Build System
+
+- **deps:** bump the action group with 2 updates ([1efe0be](https://github.com/versatiles-org/node-release-tool/commit/1efe0be15f6127fb9a6254e10e2498babc1cbe31))
+- **deps:** bump the npm group with 11 updates ([2819224](https://github.com/versatiles-org/node-release-tool/commit/28192245149bf6cf9d227f18aa81d335a0373eab))
+- **deps:** bump actions/setup-node from 6 to 7 in the action group ([2ead831](https://github.com/versatiles-org/node-release-tool/commit/2ead83126d4465f8602a870409953f7128089e03))
+
+### Chores
+
+- update funding information in FUNDING.yml ([fb25f69](https://github.com/versatiles-org/node-release-tool/commit/fb25f69930c561e2220e00fd20c12079be5fc41a))
+- update dependencies and devDependencies in package.json ([0673b4c](https://github.com/versatiles-org/node-release-tool/commit/0673b4c2bceffb245950e817b71f0d95566f42ea))
+
 ## [2.8.1] - 2026-06-04
 
 ### Chores
