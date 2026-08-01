@@ -53,7 +53,7 @@
     "lint-staged": "^17.0.7",
     "prettier": "^3.8.3",
     "tsx": "^4.22.4",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "typescript-eslint": "^8.60.1",
     "vitest": "^4.1.8"
   },
@@ -62,7 +62,7 @@
     "commander": "^15.0.0",
     "dependency-cruiser": "^18.0.0",
     "mdast-util-to-markdown": "^2.1.2",
-    "npm-check-updates": "^22.2.2",
+    "npm-check-updates": "^23.0.0",
     "picomatch": "^4.0.4",
     "remark": "^15.0.1",
     "remark-gfm": "^4.0.1",
