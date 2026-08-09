@@ -1,6 +1,7 @@
 import { type ChildProcess, spawn } from 'child_process';
 import { EventEmitter } from 'events';
 import { describe, expect, it, vi } from 'vitest';
+import { ShellError } from './errors.js';
 import { Shell } from './shell.js';
 
 vi.mock('child_process', async (importOriginal) => {
@@ -25,7 +26,17 @@ describe('Shell', () => {
 		it('fails on exit 1', async () => {
 			const mockError = vi.spyOn(console, 'error');
 			mockError.mockImplementationOnce(() => {});
-			await expect(shell.run('exit 1')).rejects.toEqual({ code: 1, signal: null, stderr: '', stdout: '' });
+			await expect(shell.run('exit 1')).rejects.toMatchObject({
+				name: 'ShellError',
+				code: 'SHELL_ERROR',
+				command: 'exit 1',
+				exitCode: 1,
+				signal: null,
+				stdout: '',
+				stderr: '',
+				message: 'Command failed with exit code 1: exit 1',
+			});
+			await expect(shell.run('exit 1')).rejects.toBeInstanceOf(ShellError);
 			mockError.mockRestore();
 		});
 
@@ -39,8 +50,13 @@ describe('Shell', () => {
 			mockError.mockImplementationOnce(() => {});
 			try {
 				await shell.run('>&2 echo "error message" && exit 1');
+				expect.unreachable('should have thrown');
 			} catch (e) {
-				expect(e).toMatchObject({ code: 1, stderr: 'error message\n' });
+				expect(e).toMatchObject({ exitCode: 1, stderr: 'error message\n' });
+				// the captured stderr must be part of the message, see issue #55
+				expect((e as Error).message).toBe(
+					'Command failed with exit code 1: >&2 echo "error message" && exit 1\nerror message',
+				);
 			}
 			mockError.mockRestore();
 		});
@@ -109,7 +125,11 @@ describe('Shell', () => {
 		it('throws on non-zero exit code', async () => {
 			const mockError = vi.spyOn(console, 'error');
 			mockError.mockImplementationOnce(() => {});
-			await expect(shell.exec('sh', ['-c', 'exit 1'])).rejects.toMatchObject({ code: 1 });
+			await expect(shell.exec('sh', ['-c', 'exit 1'])).rejects.toMatchObject({
+				exitCode: 1,
+				command: 'sh -c exit 1',
+				message: 'Command failed with exit code 1: sh -c exit 1',
+			});
 			mockError.mockRestore();
 		});
 	});
@@ -137,7 +157,13 @@ describe('Shell', () => {
 			// Simulate failed exit
 			process.nextTick(() => mockProcess.emit('close', 1, null));
 
-			await expect(promise).rejects.toEqual({ code: 1, signal: null });
+			await expect(promise).rejects.toMatchObject({
+				name: 'ShellError',
+				command: 'exit 1',
+				exitCode: 1,
+				signal: null,
+				message: 'Command failed with exit code 1: exit 1',
+			});
 		});
 
 		it('rejects on spawn error', async () => {
@@ -150,7 +176,12 @@ describe('Shell', () => {
 			const error = new Error('spawn ENOENT');
 			process.nextTick(() => mockProcess.emit('error', error));
 
-			await expect(promise).rejects.toEqual(error);
+			await expect(promise).rejects.toMatchObject({
+				name: 'ShellError',
+				command: 'nonexistent-command',
+				cause: error,
+				message: 'Command could not be executed: nonexistent-command\nspawn ENOENT',
+			});
 		});
 
 		it('resolves on non-zero when errorOnCodeNonZero is false', async () => {

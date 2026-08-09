@@ -50,4 +50,14 @@ describe('Your Module Tests', () => {
 		expect(processSpy).toHaveBeenCalledWith(expect.stringContaining('! ERROR: test error'));
 		expect(abortSpy).toHaveBeenCalled();
 	});
+
+	it('check should not report "[object Object]" for non-Error rejections', async () => {
+		// see issue #55
+		const promise = Promise.reject({ code: 1, stdout: '', stderr: 'npm install failed' });
+		await check('test check', promise);
+		expect(processSpy).toHaveBeenCalledWith(
+			expect.stringContaining('! ERROR: {"code":1,"stdout":"","stderr":"npm install failed"}'),
+		);
+		expect(abortSpy).toHaveBeenCalled();
+	});
 });

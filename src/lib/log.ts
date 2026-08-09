@@ -1,4 +1,4 @@
-import { VrtError } from './errors.js';
+import { formatError } from './errors.js';
 
 /** Internal flag to track verbose mode state. */
 let verboseMode = false;
@@ -100,9 +100,6 @@ export async function check<T>(message: string, promise: Promise<T> | (() => Pro
 		return result;
 	} catch (error) {
 		process.stderr.write(`\r\x1b[0;91m\u2718 ${message}\x1b[0m\n`);
-		if (error instanceof VrtError) {
-			panic(`[${error.code}] ${error.message}`);
-		}
-		panic((error as Error).message ?? String(error));
+		panic(formatError(error));
 	}
 }

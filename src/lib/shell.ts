@@ -1,4 +1,5 @@
 import { spawn } from 'child_process';
+import { ShellError } from './errors.js';
 import { debug, isVerbose } from './log.js';
 
 /**
@@ -78,11 +79,12 @@ export class Shell {
 	 * @param command - The shell command to execute. Must be a trusted string.
 	 * @param errorOnCodeNonZero - If true (default), rejects the promise on non-zero exit code.
 	 * @returns A promise resolving to the command result with exit code, signal, stdout, and stderr.
-	 * @throws Rejects with the result object if errorOnCodeNonZero is true and exit code is non-zero.
+	 * @throws Rejects with a {@link ShellError} if the process could not be spawned, or if
+	 *   errorOnCodeNonZero is true and the exit code is non-zero.
 	 */
 	async run(command: string, errorOnCodeNonZero: boolean = true): Promise<ShellResult> {
 		debug(`$ ${command}`);
-		return this.exec('bash', ['-c', command], errorOnCodeNonZero, true);
+		return this.spawnProcess('bash', ['-c', command], errorOnCodeNonZero, command);
 	}
 
 	/**
@@ -94,7 +96,8 @@ export class Shell {
 	 * @param errorOnCodeNonZero - If true (default), rejects the promise on non-zero exit code.
 	 * @param skipLog - If true, suppresses debug logging of the command.
 	 * @returns A promise resolving to the command result with exit code, signal, stdout, and stderr.
-	 * @throws Rejects with the result object if errorOnCodeNonZero is true and exit code is non-zero.
+	 * @throws Rejects with a {@link ShellError} if the process could not be spawned, or if
+	 *   errorOnCodeNonZero is true and the exit code is non-zero.
 	 */
 	async exec(
 		command: string,
@@ -105,11 +108,41 @@ export class Shell {
 		if (!skipLog) {
 			debug(`$ ${command} ${args.join(' ')}`);
 		}
+		return this.spawnProcess(command, args, errorOnCodeNonZero);
+	}
+
+	/**
+	 * Spawns a process, captures its output and rejects with a {@link ShellError} on failure.
+	 *
+	 * @param command - The command executable to run.
+	 * @param args - Array of arguments to pass to the command.
+	 * @param errorOnCodeNonZero - If true, rejects the promise on non-zero exit code.
+	 * @param label - Command description used in error messages. Defaults to command and args.
+	 * @returns A promise resolving to the command result with exit code, signal, stdout, and stderr.
+	 */
+	private async spawnProcess(
+		command: string,
+		args: string[],
+		errorOnCodeNonZero: boolean,
+		label?: string,
+	): Promise<ShellResult> {
+		const commandLine = label ?? [command, ...args].join(' ');
 		return await new Promise((resolve, reject) => {
 			const stdout: Buffer[] = [];
 			const stderr: Buffer[] = [];
 			const cp = spawn(command, args, { cwd: this.cwd })
-				.on('error', (error) => reject(error))
+				.on('error', (error) =>
+					reject(
+						new ShellError({
+							command: commandLine,
+							exitCode: null,
+							signal: null,
+							stdout: Buffer.concat(stdout).toString(),
+							stderr: Buffer.concat(stderr).toString(),
+							cause: error,
+						}),
+					),
+				)
 				.on('close', (code, signal) => {
 					const result = {
 						code,
@@ -123,7 +156,15 @@ export class Shell {
 						debug(`  exit code: ${code}`);
 					}
 					if (errorOnCodeNonZero && code !== 0) {
-						reject(result);
+						reject(
+							new ShellError({
+								command: commandLine,
+								exitCode: code,
+								signal,
+								stdout: result.stdout,
+								stderr: result.stderr,
+							}),
+						);
 					} else {
 						resolve(result);
 					}
@@ -146,21 +187,23 @@ export class Shell {
 	 * @param command - The shell command to execute. Must be a trusted string.
 	 * @param errorOnCodeNonZero - If true (default), rejects the promise on non-zero exit code.
 	 * @returns A promise resolving to the exit code and signal (no captured output).
-	 * @throws Rejects with the result object if errorOnCodeNonZero is true and exit code is non-zero.
+	 * @throws Rejects with a {@link ShellError} if the process could not be spawned, or if
+	 *   errorOnCodeNonZero is true and the exit code is non-zero.
 	 */
 	async runInteractive(command: string, errorOnCodeNonZero: boolean = true): Promise<ShellInteractiveResult> {
+		debug(`$ ${command}`);
 		return await new Promise((resolve, reject) => {
 			const cp = spawn('bash', ['-c', command], {
 				cwd: this.cwd,
 				stdio: 'inherit', // give full TTY passthrough
 			});
 
-			cp.on('error', reject);
+			cp.on('error', (error) => reject(new ShellError({ command, exitCode: null, signal: null, cause: error })));
 
 			cp.on('close', (code, signal) => {
 				const result = { code, signal };
 				if (errorOnCodeNonZero && code !== 0) {
-					reject(result);
+					reject(new ShellError({ command, exitCode: code, signal }));
 				} else {
 					resolve(result);
 				}
