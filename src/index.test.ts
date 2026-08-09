@@ -101,7 +101,15 @@ describe('release-tool CLI', () => {
 		it('should call upgradeDependencies with current working directory', async () => {
 			await run('deps-upgrade');
 
-			expect(upgradeDependencies).toHaveBeenCalledWith(process.cwd());
+			expect(upgradeDependencies).toHaveBeenCalledWith(process.cwd(), { ignore: [] });
+		});
+
+		it('should collect repeated --ignore options', async () => {
+			await run('deps-upgrade', '--ignore', 'path-to-regexp@<7.0.0', '--ignore', 'typescript');
+
+			expect(upgradeDependencies).toHaveBeenCalledWith(process.cwd(), {
+				ignore: ['path-to-regexp@<7.0.0', 'typescript'],
+			});
 		});
 	});
 

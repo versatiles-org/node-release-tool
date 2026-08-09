@@ -7,6 +7,9 @@ vi.mock('npm-check-updates', () => ({
 vi.mock('../lib/log.js', () => ({
 	check: vi.fn(),
 	info: vi.fn(),
+	panic: vi.fn(() => {
+		throw new Error('panic');
+	}),
 	warn: vi.fn(),
 }));
 
@@ -29,22 +32,34 @@ vi.mock('../lib/shell.js', () => ({
 }));
 
 const ncu = (await import('npm-check-updates')).default;
-const { check, info, warn } = await import('../lib/log.js');
+const { check, info, panic, warn } = await import('../lib/log.js');
 const { existsSync, readFileSync, rmSync, writeFileSync } = await import('fs');
 const { Shell } = await import('../lib/shell.js');
-const { upgradeDependencies } = await import('./deps-upgrade.js');
+const { parseIgnoreRules, upgradeDependencies } = await import('./deps-upgrade.js');
 
 const PACKAGE_JSON = '/test/directory/package.json';
 const LOCK_FILE = '/test/directory/package-lock.json';
+
+/** Returns the options of the last ncu call. */
+function ncuOptions(): Record<string, unknown> {
+	return vi.mocked(ncu).mock.calls.at(-1)?.[0] as Record<string, unknown>;
+}
+
+const PACKAGE_CONTENT = '{"name":"demo","dependencies":{"is-odd":"^2.0.0"}}';
+
+/** Sets the content of the mocked package.json. */
+function mockPackageContent(content: string): void {
+	vi.mocked(readFileSync).mockImplementation((filename) =>
+		filename === PACKAGE_JSON ? content : 'old package-lock.json',
+	);
+}
 
 describe('upgradeDependencies', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 
 		vi.mocked(existsSync).mockReturnValue(true);
-		vi.mocked(readFileSync).mockImplementation((filename) =>
-			filename === PACKAGE_JSON ? 'old package.json' : 'old package-lock.json',
-		);
+		mockPackageContent(PACKAGE_CONTENT);
 		vi.mocked(mockedShellInstance.ok).mockResolvedValue(true);
 
 		// mimics check(): on failure the cleanup callback runs, then the error is propagated
@@ -120,7 +135,7 @@ describe('upgradeDependencies', () => {
 		await expect(upgradeDependencies('/test/directory')).rejects.toThrow('ncu failed');
 
 		expect(vi.mocked(writeFileSync).mock.calls).toStrictEqual([
-			[PACKAGE_JSON, 'old package.json'],
+			[PACKAGE_JSON, PACKAGE_CONTENT],
 			[LOCK_FILE, 'old package-lock.json'],
 		]);
 		// node_modules is still intact at this point, so there is nothing to reinstall
@@ -140,7 +155,7 @@ describe('upgradeDependencies', () => {
 		await expect(upgradeDependencies('/test/directory')).rejects.toThrow('install failed');
 
 		expect(vi.mocked(writeFileSync).mock.calls).toStrictEqual([
-			[PACKAGE_JSON, 'old package.json'],
+			[PACKAGE_JSON, PACKAGE_CONTENT],
 			[LOCK_FILE, 'old package-lock.json'],
 		]);
 		expect(vi.mocked(mockedShellInstance.ok).mock.calls).toStrictEqual([['npm ci']]);
@@ -155,7 +170,7 @@ describe('upgradeDependencies', () => {
 
 		await expect(upgradeDependencies('/test/directory')).rejects.toThrow('install failed');
 
-		expect(vi.mocked(writeFileSync).mock.calls).toStrictEqual([[PACKAGE_JSON, 'old package.json']]);
+		expect(vi.mocked(writeFileSync).mock.calls).toStrictEqual([[PACKAGE_JSON, PACKAGE_CONTENT]]);
 		expect(vi.mocked(rmSync).mock.calls).toStrictEqual([[LOCK_FILE, { force: true }]]);
 		expect(vi.mocked(mockedShellInstance.ok).mock.calls).toStrictEqual([['npm install']]);
 		expect(vi.mocked(info)).toHaveBeenCalledWith('Restored package.json');
@@ -169,6 +184,149 @@ describe('upgradeDependencies', () => {
 
 		expect(vi.mocked(warn)).toHaveBeenCalledWith(
 			'Could not reinstall the previous dependencies, please run "npm install" manually',
+		);
+	});
+
+	describe('ignored dependencies', () => {
+		it('should reject ignored packages without a range', async () => {
+			mockPackageContent('{"vrt":{"depsUpgrade":{"ignore":["path-to-regexp","typescript"]}}}');
+
+			await upgradeDependencies('/test/directory');
+
+			expect(ncuOptions().reject).toStrictEqual(['path-to-regexp', 'typescript']);
+			expect(ncuOptions().target).toBeUndefined();
+			expect(ncuOptions().filterResults).toBeUndefined();
+			expect(vi.mocked(info)).toHaveBeenCalledWith('Ignoring dependency "path-to-regexp"');
+		});
+
+		it('should limit packages with a range to their declared semver range', async () => {
+			mockPackageContent('{"vrt":{"depsUpgrade":{"ignore":{"path-to-regexp":"<7.0.0"}}}}');
+
+			await upgradeDependencies('/test/directory');
+
+			const { target, filterResults } = ncuOptions() as {
+				target: (name: string) => string;
+				filterResults: (name: string, meta: { upgradedVersion: string }) => boolean;
+			};
+
+			expect(ncuOptions().reject).toBeUndefined();
+			expect(target('path-to-regexp')).toBe('semver');
+			expect(target('typescript')).toBe('latest');
+
+			// versions inside the range are kept, so patches keep coming in
+			expect(filterResults('path-to-regexp', { upgradedVersion: '6.4.0' })).toBe(true);
+			expect(filterResults('path-to-regexp', { upgradedVersion: '8.4.2' })).toBe(false);
+			expect(filterResults('typescript', { upgradedVersion: '99.0.0' })).toBe(true);
+
+			expect(vi.mocked(info)).toHaveBeenCalledWith('Ignoring versions of "path-to-regexp" outside of "<7.0.0"');
+		});
+
+		it('should combine rules from package.json and the ignore option', async () => {
+			mockPackageContent('{"vrt":{"depsUpgrade":{"ignore":["path-to-regexp"]}}}');
+
+			await upgradeDependencies('/test/directory', { ignore: ['typescript@<7.0.0'] });
+
+			expect(ncuOptions().reject).toStrictEqual(['path-to-regexp']);
+			expect((ncuOptions().target as (name: string) => string)('typescript')).toBe('semver');
+		});
+
+		it('should let the ignore option override the configured rule', async () => {
+			mockPackageContent('{"vrt":{"depsUpgrade":{"ignore":{"path-to-regexp":"<7.0.0"}}}}');
+
+			await upgradeDependencies('/test/directory', { ignore: ['path-to-regexp'] });
+
+			expect(ncuOptions().reject).toStrictEqual(['path-to-regexp']);
+			expect(ncuOptions().target).toBeUndefined();
+		});
+
+		it('should report a misconfiguration before changing anything', async () => {
+			mockPackageContent('{"vrt":{"depsUpgrade":{"ignore":["is-odd@nope"]}}}');
+
+			await expect(upgradeDependencies('/test/directory')).rejects.toThrow('panic');
+
+			expect(vi.mocked(panic)).toHaveBeenCalledWith(
+				'[VALIDATION_ERROR] invalid version range "nope" for ignored dependency "is-odd"',
+			);
+			expect(vi.mocked(ncu)).not.toHaveBeenCalled();
+			expect(vi.mocked(writeFileSync)).not.toHaveBeenCalled();
+		});
+
+		it('should not pass any ignore options if nothing is ignored', async () => {
+			await upgradeDependencies('/test/directory');
+
+			expect(ncuOptions()).toStrictEqual({
+				cwd: '/test/directory',
+				packageFile: PACKAGE_JSON,
+				upgrade: true,
+			});
+		});
+	});
+});
+
+describe('parseIgnoreRules', () => {
+	it('should return no rules if nothing is configured', () => {
+		expect(parseIgnoreRules('{}')).toStrictEqual(new Map());
+	});
+
+	it('should parse a list of package names', () => {
+		expect(parseIgnoreRules('{"vrt":{"depsUpgrade":{"ignore":["is-odd","is-even"]}}}')).toStrictEqual(
+			new Map([
+				['is-odd', true],
+				['is-even', true],
+			]),
+		);
+	});
+
+	it('should parse ranges in list entries', () => {
+		expect(parseIgnoreRules('{"vrt":{"depsUpgrade":{"ignore":["is-odd@<7.0.0"]}}}')).toStrictEqual(
+			new Map([['is-odd', '<7.0.0']]),
+		);
+	});
+
+	it('should keep the scope of scoped packages', () => {
+		expect(parseIgnoreRules('{}', ['@versatiles/style', '@versatiles/container@^5'])).toStrictEqual(
+			new Map<string, true | string>([
+				['@versatiles/style', true],
+				['@versatiles/container', '^5'],
+			]),
+		);
+	});
+
+	it('should parse an object of package names', () => {
+		expect(parseIgnoreRules('{"vrt":{"depsUpgrade":{"ignore":{"is-odd":"<7.0.0","is-even":true}}}}')).toStrictEqual(
+			new Map<string, true | string>([
+				['is-odd', '<7.0.0'],
+				['is-even', true],
+			]),
+		);
+	});
+
+	it('should trim entries', () => {
+		expect(parseIgnoreRules('{}', [' is-odd '])).toStrictEqual(new Map([['is-odd', true]]));
+	});
+
+	it('should reject invalid version ranges', () => {
+		expect(() => parseIgnoreRules('{}', ['is-odd@not-a-range'])).toThrow(
+			'invalid version range "not-a-range" for ignored dependency "is-odd"',
+		);
+		expect(() => parseIgnoreRules('{"vrt":{"depsUpgrade":{"ignore":{"is-odd":"nope"}}}}')).toThrow(
+			'invalid version range "nope" for ignored dependency "is-odd"',
+		);
+	});
+
+	it('should reject malformed configurations', () => {
+		expect(() => parseIgnoreRules('{"vrt":{"depsUpgrade":{"ignore":"is-odd"}}}')).toThrow(
+			'vrt.depsUpgrade.ignore must be a list or an object',
+		);
+		expect(() => parseIgnoreRules('{"vrt":{"depsUpgrade":{"ignore":[42]}}}')).toThrow(
+			'vrt.depsUpgrade.ignore must only contain strings, but found number',
+		);
+		expect(() => parseIgnoreRules('{"vrt":{"depsUpgrade":{"ignore":{"is-odd":false}}}}')).toThrow(
+			'vrt.depsUpgrade.ignore["is-odd"] must be true or a semver range, but is false',
+		);
+		expect(() => parseIgnoreRules('{}', ['@<7.0.0'])).toThrow('invalid package name in ignored dependency "@<7.0.0"');
+		expect(() => parseIgnoreRules('{}', ['is-odd@'])).toThrow(
+			'invalid version range "" for ignored dependency "is-odd"',
 		);
 	});
 });

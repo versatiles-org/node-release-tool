@@ -82,8 +82,14 @@ program
 program
 	.command('deps-upgrade')
 	.description('Upgrade all dependencies in the current project to their latest versions.')
-	.action(() => {
-		void upgradeDependencies(process.cwd());
+	.option(
+		'--ignore <package[@range]>',
+		'Do not upgrade this dependency, optionally only up to a semver range, e.g. "path-to-regexp@<7.0.0" (repeatable).',
+		(value: string, prev: string[] = []) => prev.concat(value),
+		[] as string[],
+	)
+	.action((opts: { ignore: string[] }) => {
+		void upgradeDependencies(process.cwd(), { ignore: opts.ignore });
 	});
 
 /**

@@ -41,6 +41,35 @@ You need to configure the scripts in the package.json:
 - `scripts.prepack` is **recommended** to ensure that all files are up-to-date before releasing. Here you can build code and documentation.
 - `scripts.release` is **recommended** to make it easy to release a new version.
 
+# Holding back dependencies
+
+By default `deps-upgrade` upgrades every dependency to its latest version. Dependencies that must not follow can be declared in the `vrt.depsUpgrade.ignore` field of your package.json:
+
+```JSON
+{
+  "vrt": {
+    "depsUpgrade": {
+      "ignore": ["path-to-regexp@<7.0.0", "typescript"]
+    }
+  }
+}
+```
+
+- An entry without a range (`"typescript"`) blocks every upgrade of that package.
+- An entry with a semver range (`"path-to-regexp@<7.0.0"`) only blocks versions outside that range, so patches and minor releases keep coming in. Such a package is upgraded within the range that is already declared in your package.json, e.g. `"^6.3.0"` is upgraded to the latest `6.x`.
+
+The same rules can be given as an object, and on the command line:
+
+```JSON
+"ignore": { "path-to-regexp": "<7.0.0", "typescript": true }
+```
+
+```bash
+vrt deps-upgrade --ignore 'path-to-regexp@<7.0.0' --ignore typescript
+```
+
+Command line entries are merged into the configured ones and win in case of a conflict.
+
 # Trimming a noisy dependency graph
 
 For repos with high fan-out, `deps-graph` accepts repeatable globs to collapse or drop nodes:
@@ -71,7 +100,7 @@ Options:
 Commands:
   check                                     Check repo for required scripts and other stuff.
   deps-graph [options]                      Analyze project files and output a dependency graph as Mermaid markup.
-  deps-upgrade                              Upgrade all dependencies in the current project to their latest versions.
+  deps-upgrade [options]                    Upgrade all dependencies in the current project to their latest versions.
   doc-command <command>                     Generate Markdown documentation for a specified command and output the result.
   doc-insert <readme> [heading] [foldable]  Insert Markdown from stdin into a specified section of a Markdown file.
   doc-toc <readme> [heading]                Generate a Table of Contents (TOC) in a Markdown file.
@@ -117,7 +146,10 @@ Usage: vrt deps-upgrade [options]
 Upgrade all dependencies in the current project to their latest versions.
 
 Options:
-  -h, --help  display help for command
+  -h, --help                  display help for command
+  --ignore <package[@range]>  Do not upgrade this dependency, optionally only up
+                              to a semver range, e.g. "path-to-regexp@<7.0.0"
+                              (repeatable). (default: [])
 ```
 
 ## Subcommand: `vrt doc-command`
@@ -244,6 +276,7 @@ end
 2-->4
 4-->5
 6-->4
+7-->5
 7-->4
 7-->8
 8-->5
