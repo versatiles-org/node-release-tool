@@ -51,6 +51,33 @@ describe('Your Module Tests', () => {
 		expect(abortSpy).toHaveBeenCalled();
 	});
 
+	it('check should run the onError callback after reporting the error and before aborting', async () => {
+		const order: string[] = [];
+		processSpy.mockImplementation((text) => {
+			if (String(text).includes('ERROR')) order.push('error message');
+			return true;
+		});
+		abortSpy.mockImplementation(() => {
+			order.push('exit');
+			return null as never;
+		});
+		const error = new Error('test error');
+		const onError = vi.fn(() => {
+			order.push('cleanup');
+		});
+
+		await check('test check', Promise.reject(error), onError);
+
+		expect(onError).toHaveBeenCalledWith(error);
+		expect(order).toStrictEqual(['error message', 'cleanup', 'exit']);
+	});
+
+	it('check should not run the onError callback on success', async () => {
+		const onError = vi.fn();
+		await expect(check('test check', Promise.resolve('success'), onError)).resolves.toBe('success');
+		expect(onError).not.toHaveBeenCalled();
+	});
+
 	it('check should not report "[object Object]" for non-Error rejections', async () => {
 		// see issue #55
 		const promise = Promise.reject({ code: 1, stdout: '', stderr: 'npm install failed' });

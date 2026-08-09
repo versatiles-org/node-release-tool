@@ -30,8 +30,18 @@ export function isVerbose(): boolean {
  * @returns Never returns as the process is terminated.
  */
 export function panic(text: string): never {
-	process.stderr.write(`\x1b[1;31m! ERROR: ${text}\x1b[0m\n`);
+	printError(text);
 	abort();
+}
+
+/**
+ * Logs an error message to stderr without terminating the process.
+ * The message is displayed in bold red text.
+ *
+ * @param text - The error message to display.
+ */
+export function printError(text: string): void {
+	process.stderr.write(`\x1b[1;31m! ERROR: ${text}\x1b[0m\n`);
 }
 
 /**
@@ -83,16 +93,23 @@ export function abort(): never {
  * @typeParam T - The return type of the promise.
  * @param message - The message to display while the operation is running.
  * @param promise - The promise to await, or a function that returns a promise.
+ * @param onError - Optional cleanup callback, invoked after the error has been reported
+ *   and before the process is terminated. Use it to undo partial changes.
  * @returns The resolved value of the promise.
- * @throws Calls `panic()` if the promise rejects, terminating the process.
+ * @throws Terminates the process if the promise rejects.
  *
  * @example
  * ```ts
  * const result = await check('Fetching data', fetchData());
  * const result = await check('Processing', async () => processData());
+ * const result = await check('Installing', install(), async () => restoreBackup());
  * ```
  */
-export async function check<T>(message: string, promise: Promise<T> | (() => Promise<T>)): Promise<T> {
+export async function check<T>(
+	message: string,
+	promise: Promise<T> | (() => Promise<T>),
+	onError?: (error: unknown) => Promise<void> | void,
+): Promise<T> {
 	process.stderr.write(`\x1b[0;90m\u2B95 ${message}\x1b[0m`);
 	try {
 		const result: T = await (typeof promise === 'function' ? promise() : promise);
@@ -100,6 +117,8 @@ export async function check<T>(message: string, promise: Promise<T> | (() => Pro
 		return result;
 	} catch (error) {
 		process.stderr.write(`\r\x1b[0;91m\u2718 ${message}\x1b[0m\n`);
-		panic(formatError(error));
+		printError(formatError(error));
+		if (onError) await onError(error);
+		abort();
 	}
 }
