@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.0] - 2026-08-09
+
+### Features
+
+- add ShellError class and integrate error handling in shell commands, fix #55 ([1001252](https://github.com/versatiles-org/node-release-tool/commit/100125211caeee15ad2b930a1484d3ea6d4bd352))
+- let deps-upgrade skip or limit pinned dependencies, fix #53 ([fb45a2d](https://github.com/versatiles-org/node-release-tool/commit/fb45a2d8f098e41773adcbec1574cbf60a6bdee8))
+
+### Bug Fixes
+
+- roll back package.json and lockfile when deps-upgrade fails, fix #54 ([376bf0c](https://github.com/versatiles-org/node-release-tool/commit/376bf0ced3edce19db3fb442ba79116e605e3dbc))
+
+### Chores
+
+- update dependencies to latest versions ([92e28e0](https://github.com/versatiles-org/node-release-tool/commit/92e28e0f9eef84d6bc59e816cb7a6cf072a58e23))
+
 ## [2.8.2] - 2026-08-01
 
 ### Build System
