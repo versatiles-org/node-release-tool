@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.1] - 2026-08-18
+
+### Chores
+
+- add security update groups for GitHub Actions and npm in dependabot configuration ([1a2fa69](https://github.com/versatiles-org/node-release-tool/commit/1a2fa69cfb890a1fd648dd557c4c7979a468d8c6))
+- update devDependencies to latest versions ([aa048bd](https://github.com/versatiles-org/node-release-tool/commit/aa048bd7b4e0bb1fe90db14008c29647d503d3b5))
+
 ## [2.9.0] - 2026-08-09
 
 ### Features
