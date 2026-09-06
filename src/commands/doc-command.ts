@@ -41,8 +41,8 @@ export async function generateCommandDocumentation(command: string): Promise<str
  */
 async function getCommandResults(command: string): Promise<{ markdown: string; subcommands: string[] }> {
 	// The help output is captured into the documentation, so colours must not end up in it.
+	// These are merged into the current environment by Shell, so only the overrides are listed.
 	const shell = new Shell(process.cwd(), {
-		...process.env,
 		NODE_ENV: undefined,
 		NODE_DISABLE_COLORS: '1',
 		NO_COLORS: '1',

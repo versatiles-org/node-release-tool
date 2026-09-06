@@ -42,14 +42,16 @@ export class Shell {
 	/** The working directory for all commands. */
 	private cwd: string;
 
-	/** Environment for all commands, or undefined to inherit the current one. */
+	/** Environment overrides for all commands, or undefined to pass the current one through. */
 	private env: NodeJS.ProcessEnv | undefined;
 
 	/**
 	 * Creates a new Shell instance.
 	 *
 	 * @param cwd - The working directory for executing commands.
-	 * @param env - Environment variables for the commands. Defaults to the current environment.
+	 * @param env - Environment variables for the commands. These are merged into the current
+	 *   environment rather than replacing it, so that overriding one variable does not drop the
+	 *   rest, e.g. `PATH`. A variable set to `undefined` is removed from the environment.
 	 */
 	constructor(cwd: string, env?: NodeJS.ProcessEnv) {
 		this.cwd = cwd;
@@ -135,7 +137,9 @@ export class Shell {
 		return await new Promise((resolve, reject) => {
 			const stdout: Buffer[] = [];
 			const stderr: Buffer[] = [];
-			const cp = spawn(command, args, { cwd: this.cwd, ...(this.env ? { env: this.env } : {}) })
+			// merged, so that overriding a single variable does not strip PATH from the subprocess
+			const env = this.env ? { ...process.env, ...this.env } : undefined;
+			const cp = spawn(command, args, { cwd: this.cwd, env })
 				.on('error', (error) =>
 					reject(
 						new ShellError({

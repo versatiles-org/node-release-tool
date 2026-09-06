@@ -127,10 +127,28 @@ describe('Shell', () => {
 			expect(result.stdout.trim()).toBe(process.env.PATH);
 		});
 
-		it('uses the environment given to the constructor', async () => {
+		it('adds the environment given to the constructor', async () => {
 			const custom = new Shell(cwd, { VRT_TEST_VALUE: 'from-the-constructor' });
 			const result = await custom.exec('sh', ['-c', 'echo "$VRT_TEST_VALUE"']);
 			expect(result.stdout.trim()).toBe('from-the-constructor');
+		});
+
+		it('merges the given environment into the current one', async () => {
+			// a replaced environment would drop PATH and the command could not even be started
+			const custom = new Shell(cwd, { VRT_TEST_VALUE: 'x' });
+			const result = await custom.exec('sh', ['-c', 'echo "$PATH"']);
+			expect(result.stdout.trim()).toBe(process.env.PATH);
+		});
+
+		it('removes variables that are set to undefined', async () => {
+			process.env.VRT_TEST_REMOVE_ME = 'present';
+			try {
+				const custom = new Shell(cwd, { VRT_TEST_REMOVE_ME: undefined });
+				const result = await custom.exec('sh', ['-c', 'echo "[$VRT_TEST_REMOVE_ME]"']);
+				expect(result.stdout.trim()).toBe('[]');
+			} finally {
+				delete process.env.VRT_TEST_REMOVE_ME;
+			}
 		});
 
 		it('throws on non-zero exit code', async () => {
