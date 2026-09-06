@@ -1,4 +1,5 @@
 import { spawn } from 'child_process';
+import { existsSync } from 'fs';
 import { ShellError } from './errors.js';
 import { debug, isVerbose } from './log.js';
 
@@ -119,6 +120,25 @@ export class Shell {
 	}
 
 	/**
+	 * Ensures the working directory exists before a process is spawned.
+	 *
+	 * Without this, spawning in a missing directory fails with a bare "spawn bash ENOENT", which
+	 * reads as if the shell was missing instead of naming the directory that is actually wrong.
+	 *
+	 * @param command - Command description used in the error message.
+	 * @throws A {@link ShellError} if the working directory does not exist.
+	 */
+	private assertCwdExists(command: string): void {
+		if (existsSync(this.cwd)) return;
+		throw new ShellError({
+			command,
+			exitCode: null,
+			signal: null,
+			cause: new Error(`working directory does not exist: ${this.cwd}`),
+		});
+	}
+
+	/**
 	 * Spawns a process, captures its output and rejects with a {@link ShellError} on failure.
 	 *
 	 * @param command - The command executable to run.
@@ -134,6 +154,7 @@ export class Shell {
 		label?: string,
 	): Promise<ShellResult> {
 		const commandLine = label ?? [command, ...args].join(' ');
+		this.assertCwdExists(commandLine);
 		return await new Promise((resolve, reject) => {
 			const stdout: Buffer[] = [];
 			const stderr: Buffer[] = [];
@@ -201,6 +222,7 @@ export class Shell {
 	 */
 	async runInteractive(command: string, errorOnCodeNonZero: boolean = true): Promise<ShellInteractiveResult> {
 		debug(`$ ${command}`);
+		this.assertCwdExists(command);
 		return await new Promise((resolve, reject) => {
 			const cp = spawn('bash', ['-c', command], {
 				cwd: this.cwd,

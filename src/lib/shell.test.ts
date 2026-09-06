@@ -110,6 +110,36 @@ describe('Shell', () => {
 		});
 	});
 
+	describe('missing working directory', () => {
+		const missing = new Shell('/test/directory/does-not-exist');
+
+		it('names the directory instead of failing with "spawn bash ENOENT"', async () => {
+			await expect(missing.run('git status')).rejects.toMatchObject({
+				name: 'ShellError',
+				code: 'SHELL_ERROR',
+				command: 'git status',
+				exitCode: null,
+				message:
+					'Command could not be executed: git status\n' +
+					'working directory does not exist: /test/directory/does-not-exist',
+			});
+		});
+
+		it('rejects exec as well', async () => {
+			await expect(missing.exec('git', ['status'])).rejects.toMatchObject({
+				name: 'ShellError',
+				command: 'git status',
+			});
+		});
+
+		it('rejects runInteractive as well', async () => {
+			await expect(missing.runInteractive('git status')).rejects.toMatchObject({
+				name: 'ShellError',
+				command: 'git status',
+			});
+		});
+	});
+
 	describe('exec', () => {
 		it('executes command with arguments', async () => {
 			const result = await shell.exec('echo', ['hello', 'world']);
