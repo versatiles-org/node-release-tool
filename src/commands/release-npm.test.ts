@@ -65,7 +65,7 @@ const select = (await import('@inquirer/select')).default;
 const { readFileSync, writeFileSync } = await import('fs');
 const { check, info, panic, warn } = await import('../lib/log.js');
 const { getGit } = await import('../lib/git.js');
-const { release } = await import('./release-npm.js');
+const { bumpVersion, release, resolveRequestedVersion } = await import('./release-npm.js');
 
 describe('release function', () => {
 	let mockGit: {
@@ -236,6 +236,35 @@ describe('release function', () => {
 			['git status --porcelain'],
 			['npm whoami'],
 		]);
+	});
+
+	describe('requested version', () => {
+		it('should skip the prompt when a bump level is given', async () => {
+			await release('/test/directory', 'main', true, 'minor');
+
+			// nothing to answer, so the release also runs where no terminal is attached
+			expect(vi.mocked(select)).not.toHaveBeenCalled();
+			expect(vi.mocked(info)).toHaveBeenCalledWith('releasing version 1.1.0');
+		});
+
+		it('should skip the prompt when an explicit version is given', async () => {
+			await release('/test/directory', 'main', true, '3.4.5');
+
+			expect(vi.mocked(select)).not.toHaveBeenCalled();
+			expect(vi.mocked(info)).toHaveBeenCalledWith('releasing version 3.4.5');
+		});
+
+		it('should still prompt when no version is given', async () => {
+			await release('/test/directory', 'main', true);
+
+			expect(vi.mocked(select)).toHaveBeenCalled();
+		});
+
+		it('should abort on an unusable version', async () => {
+			await expect(release('/test/directory', 'main', true, 'next')).rejects.toThrow(
+				'invalid version "next", expected one of major, minor, patch or "x.y.z"',
+			);
+		});
 	});
 
 	it('should error on wrong branch', async () => {
@@ -413,5 +442,35 @@ describe('release function', () => {
 		const releaseNotes = releaseCall![1][4]; // --notes argument value
 		expect(releaseNotes).toContain('## Breaking Changes');
 		expect(releaseNotes).toContain('breaking feature change');
+	});
+});
+
+describe('bumpVersion', () => {
+	it.each([
+		['2.9.1', 'major', '3.0.0'],
+		['2.9.1', 'minor', '2.10.0'],
+		['2.9.1', 'patch', '2.9.2'],
+	] as const)('raises %s by a %s to %s', (version, level, expected) => {
+		expect(bumpVersion(version, level)).toBe(expected);
+	});
+
+	it.each(['2.9', '2.9.1.4', 'v2.9.1', 'nonsense'])('rejects the malformed version "%s"', (version) => {
+		expect(() => bumpVersion(version, 'minor')).toThrow('invalid version format, expected x.y.z');
+	});
+});
+
+describe('resolveRequestedVersion', () => {
+	it('turns a bump level into the raised version', () => {
+		expect(resolveRequestedVersion('2.9.1', 'minor')).toBe('2.10.0');
+	});
+
+	it('passes an explicit version through', () => {
+		expect(resolveRequestedVersion('2.9.1', '4.0.0-beta.1')).toBe('4.0.0-beta.1');
+	});
+
+	it('rejects anything that is neither a level nor a version', () => {
+		expect(() => resolveRequestedVersion('2.9.1', 'next')).toThrow(
+			'invalid version "next", expected one of major, minor, patch or "x.y.z"',
+		);
 	});
 });

@@ -40,8 +40,11 @@ const { injectMarkdown } = await import('./commands/markdown.js');
 
 vi.mock('./lib/log.js', () => ({
 	setVerbose: vi.fn(),
+	panic: vi.fn(() => {
+		throw new Error('panic');
+	}),
 }));
-const { setVerbose } = await import('./lib/log.js');
+const { panic, setVerbose } = await import('./lib/log.js');
 
 vi.mock(import('fs'), async (importOriginal) => {
 	const fs = await importOriginal();
@@ -232,31 +235,51 @@ describe('release-tool CLI', () => {
 		it('should call release with default path and options', async () => {
 			await run('release-npm');
 
-			expect(release).toHaveBeenCalledWith(process.cwd(), 'main', false);
+			expect(release).toHaveBeenCalledWith(process.cwd(), 'main', false, undefined);
 		});
 
 		it('should call release with specified path', async () => {
 			await run('release-npm', './packages/core');
 
-			expect(release).toHaveBeenCalledWith(expect.stringContaining('packages/core'), 'main', false);
+			expect(release).toHaveBeenCalledWith(expect.stringContaining('packages/core'), 'main', false, undefined);
 		});
 
 		it('should call release with dry-run flag', async () => {
 			await run('release-npm', '-n');
 
-			expect(release).toHaveBeenCalledWith(process.cwd(), 'main', true);
+			expect(release).toHaveBeenCalledWith(process.cwd(), 'main', true, undefined);
 		});
 
 		it('should call release with --dry-run flag', async () => {
 			await run('release-npm', '--dry-run');
 
-			expect(release).toHaveBeenCalledWith(process.cwd(), 'main', true);
+			expect(release).toHaveBeenCalledWith(process.cwd(), 'main', true, undefined);
 		});
 
 		it('should call release with path and dry-run flag', async () => {
 			await run('release-npm', '-n', './packages/cli');
 
-			expect(release).toHaveBeenCalledWith(expect.stringContaining('packages/cli'), 'main', true);
+			expect(release).toHaveBeenCalledWith(expect.stringContaining('packages/cli'), 'main', true, undefined);
+		});
+
+		it('should pass a bump level on to release', async () => {
+			await run('release-npm', '--bump', 'minor');
+
+			expect(release).toHaveBeenCalledWith(process.cwd(), 'main', false, 'minor');
+		});
+
+		it('should pass an explicit version on to release', async () => {
+			await run('release-npm', '-b', '2.10.0');
+
+			expect(release).toHaveBeenCalledWith(process.cwd(), 'main', false, '2.10.0');
+		});
+
+		it.each(['major', 'minor', 'patch', '2.10.0'])('should reject "%s" as a path', async (value) => {
+			// the argument is the project path, so a version there would look for a directory
+			await expect(run('release-npm', value)).rejects.toThrow('panic');
+
+			expect(panic).toHaveBeenCalledWith(`"${value}" is a version, not a path. Did you mean "--bump ${value}"?`);
+			expect(release).not.toHaveBeenCalled();
 		});
 	});
 

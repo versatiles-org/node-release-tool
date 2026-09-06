@@ -12,7 +12,7 @@ import { upgradeDependencies } from './commands/deps-upgrade.js';
 import { generateDependencyGraph } from './commands/deps-graph.js';
 import { check } from './commands/check.js';
 import { generateTypescriptDocs } from './commands/doc-typescript.js';
-import { setVerbose } from './lib/log.js';
+import { panic, setVerbose } from './lib/log.js';
 
 /**
  * Main CLI program, configured with custom text styling for titles, commands, options, etc.
@@ -179,9 +179,18 @@ program
 	.command('release-npm')
 	.description('Publish an npm package from the specified path to the npm registry.')
 	.option('-n, --dry-run', 'Show what would be done without making any changes')
+	.option(
+		'-b, --bump <version>',
+		'Version to release: "major", "minor", "patch" or an explicit "x.y.z". Skips the prompt, e.g. for CI.',
+	)
 	.argument('[path]', 'Root path of the Node.js project. Defaults to the current directory.')
-	.action((path: string | null, options: { dryRun?: boolean }) => {
-		void release(resolve(process.cwd(), path ?? '.'), 'main', options.dryRun ?? false);
+	.action((path: string | null, options: { dryRun?: boolean; bump?: string }) => {
+		// "release-npm minor" reads like a version, but the argument is the project path, so the
+		// release would look for a directory named "minor" instead of raising the version.
+		if (path !== null && /^(major|minor|patch|\d+\.\d+\.\d+)$/.test(path)) {
+			panic(`"${path}" is a version, not a path. Did you mean "--bump ${path}"?`);
+		}
+		void release(resolve(process.cwd(), path ?? '.'), 'main', options.dryRun ?? false, options.bump);
 	});
 
 if (process.env.NODE_ENV !== 'test') {

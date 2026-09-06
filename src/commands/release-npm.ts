@@ -2,6 +2,7 @@
 
 import { readFileSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
+import { valid } from 'semver';
 import select from '@inquirer/select';
 import { updateChangelog } from '../lib/changelog.js';
 import { releaseError, validationError } from '../lib/errors.js';
@@ -47,6 +48,54 @@ export interface ReleaseOptions {
 	branch?: string;
 	/** If true, simulate the release without making changes (default: false) */
 	dryRun?: boolean;
+	/** Version to release, skipping the interactive prompt (see {@link resolveRequestedVersion}) */
+	version?: string;
+}
+
+/** Bump levels accepted instead of an explicit version. */
+const BUMP_LEVELS = ['major', 'minor', 'patch'] as const;
+
+/** A bump level relative to the current version. */
+export type BumpLevel = (typeof BUMP_LEVELS)[number];
+
+/**
+ * Applies a bump level to a version, e.g. `"minor"` on `"2.9.1"` gives `"2.10.0"`.
+ *
+ * @param version - The current version as `x.y.z`.
+ * @param level - The part of the version to raise.
+ * @returns The raised version.
+ * @throws A validation error if the current version is not `x.y.z`.
+ */
+export function bumpVersion(version: string, level: BumpLevel): string {
+	const parts = version.split('.').map((part) => parseInt(part, 10));
+	if (parts.length !== 3 || parts.some((part) => isNaN(part))) {
+		throw validationError('invalid version format, expected x.y.z');
+	}
+	const [major, minor, patch] = parts;
+	switch (level) {
+		case 'major':
+			return `${major + 1}.0.0`;
+		case 'minor':
+			return `${major}.${minor + 1}.0`;
+		case 'patch':
+			return `${major}.${minor}.${patch + 1}`;
+	}
+}
+
+/**
+ * Resolves the version requested on the command line, which is either a bump level such as
+ * `"minor"` or an explicit version such as `"2.10.0"`.
+ *
+ * @param current - The version currently in package.json.
+ * @param requested - The bump level or version that was requested.
+ * @returns The version to release.
+ * @throws A validation error if the request is neither a bump level nor a valid version.
+ */
+export function resolveRequestedVersion(current: string, requested: string): string {
+	const level = BUMP_LEVELS.find((candidate) => candidate === requested);
+	if (level) return bumpVersion(current, level);
+	if (valid(requested)) return requested;
+	throw validationError(`invalid version "${requested}", expected one of ${BUMP_LEVELS.join(', ')} or "x.y.z"`);
 }
 
 /**
@@ -91,7 +140,12 @@ function isValidPackageJson(pkg: unknown): pkg is PackageJson {
  * await release('/path/to/project', 'release');
  * ```
  */
-export async function release(directory: string, branch = 'main', dryRun = false): Promise<void> {
+export async function release(
+	directory: string,
+	branch = 'main',
+	dryRun = false,
+	requestedVersion?: string,
+): Promise<void> {
 	const shell = new Shell(directory);
 	const { getCommitsBetween, getCurrentGitHubCommit, getLastGitHubTag } = getGit(directory);
 
@@ -321,6 +375,14 @@ export async function release(directory: string, branch = 'main', dryRun = false
 	}
 
 	async function getNewVersion(versionPackage: string, commits: ParsedCommit[]): Promise<string> {
+		// A version given on the command line skips the prompt, so that the release can also run
+		// where no one can answer it, e.g. in CI.
+		if (requestedVersion !== undefined) {
+			const versionRequested = resolveRequestedVersion(versionPackage, requestedVersion);
+			info(`releasing version ${versionRequested}`);
+			return versionRequested;
+		}
+
 		// Determine suggested bump based on conventional commits
 		const suggestedBump = getSuggestedBump(commits);
 		// choices: [current, patch, minor, major] -> indices [0, 1, 2, 3]
@@ -344,24 +406,12 @@ export async function release(directory: string, branch = 'main', dryRun = false
 		return versionNew;
 
 		function bump(index: 0 | 1 | 2): { name: string; value: string } {
-			const p = versionPackage.split('.').map((v) => parseInt(v, 10));
-			if (p.length !== 3) throw validationError('invalid version format, expected x.y.z');
-			switch (index) {
-				case 0:
-					p[0]++;
-					p[1] = 0;
-					p[2] = 0;
-					break;
-				case 1:
-					p[1]++;
-					p[2] = 0;
-					break;
-				case 2:
-					p[2]++;
-					break;
-			}
-			const name = p.map((n, i) => (i == index ? `\x1b[1m${n}` : `${n}`)).join('.') + '\x1b[22m';
-			const value = p.join('.');
+			const value = bumpVersion(versionPackage, BUMP_LEVELS[index]);
+			const name =
+				value
+					.split('.')
+					.map((part, i) => (i == index ? `\x1b[1m${part}` : part))
+					.join('.') + '\x1b[22m';
 			return { name, value };
 		}
 	}

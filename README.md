@@ -232,12 +232,14 @@ Usage: vrt release-npm [options] [path]
 Publish an npm package from the specified path to the npm registry.
 
 Arguments:
-  path           Root path of the Node.js project. Defaults to the current
-                 directory.
+  path                  Root path of the Node.js project. Defaults to the
+                        current directory.
 
 Options:
-  -h, --help     display help for command
-  -n, --dry-run  Show what would be done without making any changes
+  -b, --bump <version>  Version to release: "major", "minor", "patch" or an
+                        explicit "x.y.z". Skips the prompt, e.g. for CI.
+  -h, --help            display help for command
+  -n, --dry-run         Show what would be done without making any changes
 ```
 
 # Development
