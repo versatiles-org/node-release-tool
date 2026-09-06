@@ -42,13 +42,18 @@ export class Shell {
 	/** The working directory for all commands. */
 	private cwd: string;
 
+	/** Environment for all commands, or undefined to inherit the current one. */
+	private env: NodeJS.ProcessEnv | undefined;
+
 	/**
 	 * Creates a new Shell instance.
 	 *
 	 * @param cwd - The working directory for executing commands.
+	 * @param env - Environment variables for the commands. Defaults to the current environment.
 	 */
-	constructor(cwd: string) {
+	constructor(cwd: string, env?: NodeJS.ProcessEnv) {
 		this.cwd = cwd;
+		this.env = env;
 	}
 
 	/**
@@ -130,7 +135,7 @@ export class Shell {
 		return await new Promise((resolve, reject) => {
 			const stdout: Buffer[] = [];
 			const stderr: Buffer[] = [];
-			const cp = spawn(command, args, { cwd: this.cwd })
+			const cp = spawn(command, args, { cwd: this.cwd, ...(this.env ? { env: this.env } : {}) })
 				.on('error', (error) =>
 					reject(
 						new ShellError({

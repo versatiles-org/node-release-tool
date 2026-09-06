@@ -122,6 +122,17 @@ describe('Shell', () => {
 			expect(result.stdout).toBe('hello world\n');
 		});
 
+		it('inherits the current environment by default', async () => {
+			const result = await shell.exec('sh', ['-c', 'echo "$PATH"']);
+			expect(result.stdout.trim()).toBe(process.env.PATH);
+		});
+
+		it('uses the environment given to the constructor', async () => {
+			const custom = new Shell(cwd, { VRT_TEST_VALUE: 'from-the-constructor' });
+			const result = await custom.exec('sh', ['-c', 'echo "$VRT_TEST_VALUE"']);
+			expect(result.stdout.trim()).toBe('from-the-constructor');
+		});
+
 		it('throws on non-zero exit code', async () => {
 			const mockError = vi.spyOn(console, 'error');
 			mockError.mockImplementationOnce(() => {});
