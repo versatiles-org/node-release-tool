@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.0] - 2026-09-06
+
+### Features
+
+- add --no-peer option to upgradeDependencies for ignoring peer dependency ranges ([51591cf](https://github.com/versatiles-org/node-release-tool/commit/51591cfc0e16f90d2b28f009886edfb284ec5348))
+- enhance upgradeDependencies to temporarily park modules during upgrades ([cc98f72](https://github.com/versatiles-org/node-release-tool/commit/cc98f725895aabf3f79c7b1790b5e95fbc8c105a))
+- add environment variable support to Shell class ([7345226](https://github.com/versatiles-org/node-release-tool/commit/73452260a0be156481d21b64df7db7072042e278))
+- refactor command execution to use Shell class for improved error handling and output management ([b336a92](https://github.com/versatiles-org/node-release-tool/commit/b336a9201c5b236de87460e889900fdfffa333e0))
+- update Shell class to merge environment variables and remove undefined ones ([65c4762](https://github.com/versatiles-org/node-release-tool/commit/65c4762f8ccdf89b5318a9da5180170736516d29))
+- add tests for declared dependencies and runtime imports in package.test.ts ([5bdcf9c](https://github.com/versatiles-org/node-release-tool/commit/5bdcf9c25aa5686f216a72f141fdca3e33e25dd8))
+- add handling for missing working directory in Shell class ([76c38bd](https://github.com/versatiles-org/node-release-tool/commit/76c38bd2947c267b56e950483a4052dbb86718fd))
+- add version bumping functionality and update release command options ([ce61039](https://github.com/versatiles-org/node-release-tool/commit/ce61039fe6fca1bc3705226e29f2fb8a15a6d2de))
+
+### Bug Fixes
+
+- update dependency graph in README for accurate representation ([f5a49cc](https://github.com/versatiles-org/node-release-tool/commit/f5a49cc0854b89c12259660d770b92e6fe80d53b))
+
+### Chores
+
+- remove unused TypeScript ESLint dependencies ([ebc9904](https://github.com/versatiles-org/node-release-tool/commit/ebc99047c3008977dbaddb236d3890af96ca273d))
+- update dependencies and devDependencies in package.json ([cec2728](https://github.com/versatiles-org/node-release-tool/commit/cec2728ca41ca952eb62a970b3a712986a2fd4d6))
+- move mdast-util-to-markdown dependency to devDependencies ([39f4a6f](https://github.com/versatiles-org/node-release-tool/commit/39f4a6f807e563c8ece575c9c81f97f718f86d8d))
+
 ## [2.9.1] - 2026-08-18
 
 ### Chores
