@@ -150,6 +150,8 @@ Options:
   --ignore <package[@range]>  Do not upgrade this dependency, optionally only up
                               to a semver range, e.g. "path-to-regexp@<7.0.0"
                               (repeatable). (default: [])
+  --no-peer                   Upgrade to the latest version even when a peer
+                              dependency of another package does not allow it.
 ```
 
 ## Subcommand: `vrt doc-command`

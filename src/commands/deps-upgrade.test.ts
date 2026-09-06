@@ -91,6 +91,7 @@ describe('upgradeDependencies', () => {
 			cwd: '/test/directory',
 			packageFile: PACKAGE_JSON,
 			upgrade: true,
+			peer: false,
 		});
 
 		// Verify check was called for each step
@@ -187,6 +188,40 @@ describe('upgradeDependencies', () => {
 		);
 	});
 
+	describe('peer dependencies', () => {
+		const PEER_WARNING = 'Ignoring peer dependency ranges, the upgraded dependencies may fail to install';
+
+		it('should respect peer ranges when enabled', async () => {
+			await upgradeDependencies('/test/directory', { peer: true });
+
+			expect(ncuOptions().peer).toBe(true);
+			expect(vi.mocked(warn)).not.toHaveBeenCalled();
+		});
+
+		it('should leave the check off by default and warn', async () => {
+			await upgradeDependencies('/test/directory');
+
+			expect(ncuOptions().peer).toBe(false);
+			expect(vi.mocked(warn)).toHaveBeenCalledWith(PEER_WARNING);
+		});
+
+		it('should ignore peer ranges and warn when the option is disabled', async () => {
+			await upgradeDependencies('/test/directory', { peer: false });
+
+			expect(ncuOptions().peer).toBe(false);
+			expect(vi.mocked(warn)).toHaveBeenCalledWith(PEER_WARNING);
+		});
+
+		it('should combine peer ranges with ignore rules', async () => {
+			mockPackageContent('{"vrt":{"depsUpgrade":{"ignore":["path-to-regexp"]}}}');
+
+			await upgradeDependencies('/test/directory', { peer: true });
+
+			expect(ncuOptions().peer).toBe(true);
+			expect(ncuOptions().reject).toStrictEqual(['path-to-regexp']);
+		});
+	});
+
 	describe('ignored dependencies', () => {
 		it('should reject ignored packages without a range', async () => {
 			mockPackageContent('{"vrt":{"depsUpgrade":{"ignore":["path-to-regexp","typescript"]}}}');
@@ -258,6 +293,7 @@ describe('upgradeDependencies', () => {
 				cwd: '/test/directory',
 				packageFile: PACKAGE_JSON,
 				upgrade: true,
+				peer: false,
 			});
 		});
 	});

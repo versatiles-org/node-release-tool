@@ -88,8 +88,12 @@ program
 		(value: string, prev: string[] = []) => prev.concat(value),
 		[] as string[],
 	)
-	.action((opts: { ignore: string[] }) => {
-		void upgradeDependencies(process.cwd(), { ignore: opts.ignore });
+	.option(
+		'--no-peer',
+		'Upgrade to the latest version even when a peer dependency of another package does not allow it.',
+	)
+	.action((opts: { ignore: string[]; peer: boolean }) => {
+		void upgradeDependencies(process.cwd(), { ignore: opts.ignore, peer: opts.peer });
 	});
 
 /**

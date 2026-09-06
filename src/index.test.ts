@@ -101,7 +101,7 @@ describe('release-tool CLI', () => {
 		it('should call upgradeDependencies with current working directory', async () => {
 			await run('deps-upgrade');
 
-			expect(upgradeDependencies).toHaveBeenCalledWith(process.cwd(), { ignore: [] });
+			expect(upgradeDependencies).toHaveBeenCalledWith(process.cwd(), { ignore: [], peer: true });
 		});
 
 		it('should collect repeated --ignore options', async () => {
@@ -109,7 +109,14 @@ describe('release-tool CLI', () => {
 
 			expect(upgradeDependencies).toHaveBeenCalledWith(process.cwd(), {
 				ignore: ['path-to-regexp@<7.0.0', 'typescript'],
+				peer: true,
 			});
+		});
+
+		it('should disable the peer check with --no-peer', async () => {
+			await run('deps-upgrade', '--no-peer');
+
+			expect(upgradeDependencies).toHaveBeenCalledWith(process.cwd(), { ignore: [], peer: false });
 		});
 	});
 

@@ -22,6 +22,22 @@ export interface UpgradeOptions {
 	 * e.g. `"path-to-regexp@<7.0.0"`. Merged with the rules from package.json.
 	 */
 	ignore?: string[];
+
+	/**
+	 * Whether upgrades must stay within the peer dependency ranges declared by the other
+	 * dependencies (default: `false`).
+	 *
+	 * Without this, a package is always bumped to its latest release, even when another
+	 * dependency does not accept that version yet. Upgrading `typescript` to a major that
+	 * `typedoc` does not list as a peer, for example, makes the following `npm install`
+	 * fail with `ERESOLVE` and rolls the whole upgrade back. With it, such a package is
+	 * bumped to the highest version that every peer range still allows, so the rest of the
+	 * upgrade succeeds.
+	 *
+	 * The `vrt deps-upgrade` command enables this by default and exposes `--no-peer` to
+	 * switch it off, so the safe behaviour is the one users get.
+	 */
+	peer?: boolean;
 }
 
 /**
@@ -31,7 +47,9 @@ export interface UpgradeOptions {
  * This function performs the following steps:
  * 1. Backs up `package.json` and `package-lock.json` so a failed upgrade can be rolled back.
  * 2. Reads the project's package.json file and updates any existing dependencies to their latest
- *    versions, skipping the dependencies that are ignored (see {@link parseIgnoreRules}).
+ *    versions, skipping the dependencies that are ignored (see {@link parseIgnoreRules}) and,
+ *    if {@link UpgradeOptions.peer} is set, capping the rest at the versions the declared peer
+ *    dependencies still accept.
  * 3. Removes all installed modules (`node_modules`) and the lock file (`package-lock.json`).
  * 4. Reinstalls and updates all dependencies.
  * 5. Logs a message indicating that all dependencies are up to date.
@@ -65,6 +83,11 @@ export async function upgradeDependencies(directory: string, options: UpgradeOpt
 	for (const [name, rule] of rules) {
 		info(rule === true ? `Ignoring dependency "${name}"` : `Ignoring versions of "${name}" outside of "${rule}"`);
 	}
+
+	// Ignoring peer ranges produces upgrades that cannot be installed, so the CLI turns this
+	// on by default; as a library option it stays opt-in.
+	const peer = options.peer ?? false;
+	if (!peer) warn('Ignoring peer dependency ranges, the upgraded dependencies may fail to install');
 
 	// Packages that must not be touched at all.
 	const rejected = Array.from(rules)
@@ -108,6 +131,7 @@ export async function upgradeDependencies(directory: string, options: UpgradeOpt
 				// must be absolute: ncu resolves a relative packageFile against process.cwd(), not `cwd`
 				packageFile: packageFilename,
 				upgrade: true,
+				peer,
 				...(rejected.length > 0 ? { reject: rejected } : {}),
 				...(limited.size > 0
 					? {
