@@ -1,4 +1,4 @@
-import cp from 'child_process';
+import { Shell } from '../lib/shell.js';
 import { getErrorMessage } from '../lib/utils.js';
 
 /**
@@ -40,44 +40,25 @@ export async function generateCommandDocumentation(command: string): Promise<str
  * @returns A Promise resolving to an object containing the Markdown documentation and a list of subcommands.
  */
 async function getCommandResults(command: string): Promise<{ markdown: string; subcommands: string[] }> {
-	return new Promise((resolve, reject) => {
-		const env = {
-			...process.env,
-			NODE_ENV: undefined,
-			NODE_DISABLE_COLORS: '1',
-			NO_COLORS: '1',
-			FORCE_COLOR: '0',
-		};
-
-		// Spawn a child process to run the command with the '--help' flag.
-		const childProcess = cp.spawn('npm', ['--offline', 'exec', '--', ...command.split(' '), '--help'], { env });
-		let output = '';
-
-		// Collect output data from the process.
-		childProcess.stdout.on('data', (data) => (output += String(data)));
-		childProcess.stderr.on('data', (data) => {
-			console.error(`stderr: ${data}`);
-		});
-
-		// Handle process errors.
-		childProcess.on('error', (error) => {
-			reject(new Error(`Failed to start subprocess: ${error.message}`));
-		});
-
-		// Handle process exit.
-		childProcess.on('close', (code) => {
-			if (code !== 0) {
-				reject(new Error(`Command failed with exit code ${code}`));
-				return;
-			}
-			const result = output.trim();
-			// Resolve with the formatted output and a list of subcommands.
-			resolve({
-				markdown: `\`\`\`console\n$ ${command}\n${result}\n\`\`\`\n`,
-				subcommands: extractSubcommands(result),
-			});
-		});
+	// The help output is captured into the documentation, so colours must not end up in it.
+	const shell = new Shell(process.cwd(), {
+		...process.env,
+		NODE_ENV: undefined,
+		NODE_DISABLE_COLORS: '1',
+		NO_COLORS: '1',
+		FORCE_COLOR: '0',
 	});
+
+	// The subprocess writes progress notices to stderr that say nothing about the documentation,
+	// so its output is only reported when the command actually fails: exec() then rejects with a
+	// ShellError carrying the captured stderr, instead of printing it on every run.
+	const { stdout } = await shell.exec('npm', ['--offline', 'exec', '--', ...command.split(' '), '--help']);
+
+	const result = stdout.trim();
+	return {
+		markdown: `\`\`\`console\n$ ${command}\n${result}\n\`\`\`\n`,
+		subcommands: extractSubcommands(result),
+	};
 }
 
 /**

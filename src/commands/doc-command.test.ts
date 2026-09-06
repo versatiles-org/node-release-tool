@@ -1,10 +1,17 @@
 import type { ChildProcessByStdio, ChildProcessWithoutNullStreams, SpawnOptions } from 'child_process';
-import cp from 'child_process';
+import { spawn } from 'child_process';
 import { EventEmitter } from 'events';
 import type { Writable } from 'stream';
 import { Readable } from 'stream';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { generateCommandDocumentation } from './doc-command.js';
+
+// Shell imports spawn as a named binding, so the module itself has to be mocked; spying on the
+// property of the default export would leave that binding untouched.
+vi.mock('child_process', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('child_process')>();
+	return { ...actual, spawn: vi.fn(actual.spawn) };
+});
 
 /**
  * Creates a mock Readable stream with the given text content.
@@ -30,11 +37,22 @@ function createMockChildProcess(stdout: string): ChildProcessWithoutNullStreams 
 	return mockProcess;
 }
 
+/**
+ * Creates a mock child process that writes to stderr and exits with the given code.
+ */
+function createFailingChildProcess(stderr: string, code: number): ChildProcessWithoutNullStreams {
+	const mockProcess = new EventEmitter() as ChildProcessByStdio<Writable, Readable, Readable>;
+	mockProcess.stdout = createMockReadable('');
+	mockProcess.stderr = createMockReadable(stderr);
+	process.nextTick(() => mockProcess.emit('close', code));
+	return mockProcess;
+}
+
 describe('generateCommandDocumentation', () => {
-	let spawnSpy: ReturnType<typeof vi.spyOn>;
+	const spawnSpy = vi.mocked(spawn);
 
 	beforeEach(() => {
-		spawnSpy = vi.spyOn(cp, 'spawn');
+		spawnSpy.mockReset();
 	});
 
 	afterEach(() => {
@@ -158,5 +176,37 @@ Options:
 		expect(documentation).toContain('$ simple-cmd');
 		expect(documentation).toContain('Usage: simple-cmd');
 		expect(documentation).not.toContain('# Subcommand');
+	});
+
+	describe('failing subprocess', () => {
+		it('reports the captured stderr instead of a bare exit code', async () => {
+			spawnSpy.mockImplementation((): ChildProcessWithoutNullStreams => {
+				return createFailingChildProcess('boom: the command exploded\n', 1);
+			});
+
+			await expect(generateCommandDocumentation('broken-cmd')).rejects.toMatchObject({
+				name: 'ShellError',
+				exitCode: 1,
+				stderr: 'boom: the command exploded\n',
+			});
+		});
+
+		it('keeps stderr out of the output while the command succeeds', async () => {
+			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+			spawnSpy.mockImplementation((): ChildProcessWithoutNullStreams => {
+				const mockProcess = new EventEmitter() as ChildProcessByStdio<Writable, Readable, Readable>;
+				mockProcess.stdout = createMockReadable('Usage: noisy-cmd');
+				mockProcess.stderr = createMockReadable('npm notice something irrelevant\n');
+				process.nextTick(() => mockProcess.emit('close', 0));
+				return mockProcess;
+			});
+
+			const documentation = await generateCommandDocumentation('noisy-cmd');
+
+			// the notice is neither printed nor mixed into the generated documentation
+			expect(errorSpy).not.toHaveBeenCalled();
+			expect(documentation).not.toContain('npm notice');
+			errorSpy.mockRestore();
+		});
 	});
 });
