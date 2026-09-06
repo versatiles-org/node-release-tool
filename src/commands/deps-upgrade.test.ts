@@ -15,14 +15,18 @@ vi.mock('../lib/log.js', () => ({
 
 vi.mock('fs', () => ({
 	existsSync: vi.fn(() => true),
+	mkdtempSync: vi.fn(() => '/tmp/vrt-deps-upgrade-test'),
 	readFileSync: vi.fn(() => ''),
+	renameSync: vi.fn(),
 	rmSync: vi.fn(),
 	writeFileSync: vi.fn(),
 }));
 
+vi.mock('os', () => ({ tmpdir: vi.fn(() => '/tmp') }));
+
 const mockedShellInstance = {
 	run: vi.fn(async () => ({ code: 0, signal: null, stdout: '', stderr: '' })),
-	stdout: vi.fn(async () => ''),
+	stdout: vi.fn(async (_command: string) => ''),
 	ok: vi.fn(async () => true),
 };
 vi.mock('../lib/shell.js', () => ({
@@ -33,12 +37,27 @@ vi.mock('../lib/shell.js', () => ({
 
 const ncu = (await import('npm-check-updates')).default;
 const { check, info, panic, warn } = await import('../lib/log.js');
-const { existsSync, readFileSync, rmSync, writeFileSync } = await import('fs');
+const { existsSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } = await import('fs');
 const { Shell } = await import('../lib/shell.js');
 const { parseIgnoreRules, upgradeDependencies } = await import('./deps-upgrade.js');
 
 const PACKAGE_JSON = '/test/directory/package.json';
 const LOCK_FILE = '/test/directory/package-lock.json';
+const MODULES = '/test/directory/node_modules';
+const RESCUE_DIR = '/tmp/vrt-deps-upgrade-test';
+const RESCUED_MODULES = '/tmp/vrt-deps-upgrade-test/node_modules';
+
+const RESOLVE = 'npm install --package-lock-only --ignore-scripts';
+const VERIFY = 'npm ci --dry-run --ignore-scripts';
+const INSTALL = 'npm ci';
+
+/** Lets every step succeed except the given command. */
+function failCommand(command: string): void {
+	vi.mocked(mockedShellInstance.stdout).mockImplementation(async (cmd: string) => {
+		if (cmd === command) throw new Error(`${command} failed`);
+		return '';
+	});
+}
 
 /** Returns the options of the last ncu call. */
 function ncuOptions(): Record<string, unknown> {
@@ -61,6 +80,9 @@ describe('upgradeDependencies', () => {
 		vi.mocked(existsSync).mockReturnValue(true);
 		mockPackageContent(PACKAGE_CONTENT);
 		vi.mocked(mockedShellInstance.ok).mockResolvedValue(true);
+		// clearAllMocks keeps implementations, so the ones set per test have to be reset here
+		vi.mocked(mockedShellInstance.stdout).mockImplementation(async () => '');
+		vi.mocked(renameSync).mockImplementation(() => undefined);
 
 		// mimics check(): on failure the cleanup callback runs, then the error is propagated
 		vi.mocked(check).mockImplementation(
@@ -97,18 +119,27 @@ describe('upgradeDependencies', () => {
 		// Verify check was called for each step
 		expect(vi.mocked(check).mock.calls.map((c) => c[0])).toStrictEqual([
 			'Upgrade all dependencies',
-			'Reinstall all dependencies',
+			'Resolve the new dependencies',
+			'Verify the new dependencies',
+			'Install all dependencies',
 		]);
 
 		// Verify shell commands were executed
-		expect(vi.mocked(mockedShellInstance.run).mock.calls).toStrictEqual([
-			['rm -f package-lock.json && rm -rf node_modules', false],
+		expect(vi.mocked(mockedShellInstance.run)).not.toHaveBeenCalled();
+		expect(vi.mocked(mockedShellInstance.stdout).mock.calls).toStrictEqual([[RESOLVE], [VERIFY], [INSTALL]]);
+
+		// The modules are parked outside the project, so they never appear in the project directory
+		expect(vi.mocked(mkdtempSync)).toHaveBeenCalledWith('/tmp/vrt-deps-upgrade-');
+
+		// The modules are parked, not deleted, and the parked copy is dropped after the install
+		expect(vi.mocked(renameSync).mock.calls).toStrictEqual([[MODULES, RESCUED_MODULES]]);
+		expect(vi.mocked(rmSync).mock.calls).toStrictEqual([
+			[LOCK_FILE, { force: true }],
+			[RESCUE_DIR, { recursive: true, force: true }],
 		]);
-		expect(vi.mocked(mockedShellInstance.stdout).mock.calls).toStrictEqual([['npm i']]);
 
 		// Verify nothing was rolled back
 		expect(vi.mocked(writeFileSync)).not.toHaveBeenCalled();
-		expect(vi.mocked(rmSync)).not.toHaveBeenCalled();
 
 		// Verify info was called at the end
 		expect(vi.mocked(info)).toHaveBeenCalledWith('All dependencies are up to date');
@@ -150,42 +181,106 @@ describe('upgradeDependencies', () => {
 		await expect(upgradeDependencies('/test/directory')).rejects.toThrow('shell command failed');
 	});
 
-	it('should restore both files and reinstall when the install fails', async () => {
-		vi.mocked(mockedShellInstance.stdout).mockRejectedValueOnce(new Error('install failed'));
+	it('should restore both files without touching the modules when resolving fails', async () => {
+		failCommand(RESOLVE);
 
-		await expect(upgradeDependencies('/test/directory')).rejects.toThrow('install failed');
+		await expect(upgradeDependencies('/test/directory')).rejects.toThrow(`${RESOLVE} failed`);
 
 		expect(vi.mocked(writeFileSync).mock.calls).toStrictEqual([
 			[PACKAGE_JSON, PACKAGE_CONTENT],
 			[LOCK_FILE, 'old package-lock.json'],
 		]);
-		expect(vi.mocked(mockedShellInstance.ok).mock.calls).toStrictEqual([['npm ci']]);
+		// the modules were never given up, so nothing has to be moved back or reinstalled
+		expect(vi.mocked(renameSync)).not.toHaveBeenCalled();
+		expect(vi.mocked(mockedShellInstance.ok)).not.toHaveBeenCalled();
 		expect(vi.mocked(info)).toHaveBeenCalledWith('Restored package.json and package-lock.json');
-		expect(vi.mocked(info)).toHaveBeenCalledWith('Reinstalled the previous dependencies');
+		expect(vi.mocked(info)).not.toHaveBeenCalledWith('All dependencies are up to date');
+	});
+
+	it('should stop before the modules are given up when the verification fails', async () => {
+		failCommand(VERIFY);
+
+		await expect(upgradeDependencies('/test/directory')).rejects.toThrow(`${VERIFY} failed`);
+
+		expect(vi.mocked(mockedShellInstance.stdout).mock.calls).toStrictEqual([[RESOLVE], [VERIFY]]);
+		expect(vi.mocked(renameSync)).not.toHaveBeenCalled();
+		expect(vi.mocked(mockedShellInstance.ok)).not.toHaveBeenCalled();
+	});
+
+	it('should move the modules back when the install fails', async () => {
+		failCommand(INSTALL);
+
+		await expect(upgradeDependencies('/test/directory')).rejects.toThrow(`${INSTALL} failed`);
+
+		expect(vi.mocked(writeFileSync).mock.calls).toStrictEqual([
+			[PACKAGE_JSON, PACKAGE_CONTENT],
+			[LOCK_FILE, 'old package-lock.json'],
+		]);
+		// moved aside before the install, then back again, instead of being downloaded anew
+		expect(vi.mocked(renameSync).mock.calls).toStrictEqual([
+			[MODULES, RESCUED_MODULES],
+			[RESCUED_MODULES, MODULES],
+		]);
+		expect(vi.mocked(rmSync)).toHaveBeenCalledWith(MODULES, { recursive: true, force: true });
+		expect(vi.mocked(mockedShellInstance.ok)).not.toHaveBeenCalled();
+		expect(vi.mocked(info)).toHaveBeenCalledWith('Restored the previously installed dependencies');
 		expect(vi.mocked(info)).not.toHaveBeenCalledWith('All dependencies are up to date');
 	});
 
 	it('should delete the lock file on rollback if there was none before', async () => {
+		// nothing exists: no lock file to back up and no modules to park
 		vi.mocked(existsSync).mockReturnValue(false);
-		vi.mocked(mockedShellInstance.stdout).mockRejectedValueOnce(new Error('install failed'));
+		failCommand(INSTALL);
 
-		await expect(upgradeDependencies('/test/directory')).rejects.toThrow('install failed');
+		await expect(upgradeDependencies('/test/directory')).rejects.toThrow(`${INSTALL} failed`);
 
 		expect(vi.mocked(writeFileSync).mock.calls).toStrictEqual([[PACKAGE_JSON, PACKAGE_CONTENT]]);
-		expect(vi.mocked(rmSync).mock.calls).toStrictEqual([[LOCK_FILE, { force: true }]]);
-		expect(vi.mocked(mockedShellInstance.ok).mock.calls).toStrictEqual([['npm install']]);
+		expect(vi.mocked(rmSync).mock.calls).toStrictEqual([
+			[LOCK_FILE, { force: true }],
+			[LOCK_FILE, { force: true }],
+			[RESCUE_DIR, { recursive: true, force: true }],
+		]);
+		expect(vi.mocked(mockedShellInstance.ok)).not.toHaveBeenCalled();
 		expect(vi.mocked(info)).toHaveBeenCalledWith('Restored package.json');
 	});
 
-	it('should warn if the previous dependencies cannot be reinstalled', async () => {
-		vi.mocked(mockedShellInstance.stdout).mockRejectedValueOnce(new Error('install failed'));
-		vi.mocked(mockedShellInstance.ok).mockResolvedValueOnce(false);
+	describe('modules on another filesystem', () => {
+		/** Makes the move into the temporary directory fail the way a cross-device rename does. */
+		function failRenameWith(code: string): void {
+			vi.mocked(renameSync).mockImplementationOnce(() => {
+				throw Object.assign(new Error('rename failed'), { code });
+			});
+		}
 
-		await expect(upgradeDependencies('/test/directory')).rejects.toThrow('install failed');
+		it('should delete and reinstall the modules when they cannot be moved', async () => {
+			failRenameWith('EXDEV');
+			failCommand(INSTALL);
 
-		expect(vi.mocked(warn)).toHaveBeenCalledWith(
-			'Could not reinstall the previous dependencies, please run "npm install" manually',
-		);
+			await expect(upgradeDependencies('/test/directory')).rejects.toThrow(`${INSTALL} failed`);
+
+			// copying a whole tree would cost more than the reinstall, so it is deleted instead
+			expect(vi.mocked(rmSync)).toHaveBeenCalledWith(MODULES, { recursive: true, force: true });
+			expect(vi.mocked(mockedShellInstance.ok).mock.calls).toStrictEqual([['npm ci']]);
+			expect(vi.mocked(info)).toHaveBeenCalledWith('Reinstalled the previous dependencies');
+		});
+
+		it('should warn if the previous dependencies cannot be reinstalled', async () => {
+			failRenameWith('EXDEV');
+			failCommand(INSTALL);
+			vi.mocked(mockedShellInstance.ok).mockResolvedValueOnce(false);
+
+			await expect(upgradeDependencies('/test/directory')).rejects.toThrow(`${INSTALL} failed`);
+
+			expect(vi.mocked(warn)).toHaveBeenCalledWith(
+				'Could not reinstall the previous dependencies, please run "npm install" manually',
+			);
+		});
+
+		it('should propagate rename errors other than EXDEV', async () => {
+			failRenameWith('EACCES');
+
+			await expect(upgradeDependencies('/test/directory')).rejects.toThrow('rename failed');
+		});
 	});
 
 	describe('peer dependencies', () => {

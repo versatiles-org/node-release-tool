@@ -1,5 +1,6 @@
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { existsSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'fs';
 import ncu from 'npm-check-updates';
+import { tmpdir } from 'os';
 import { join } from 'path';
 import { satisfies, validRange } from 'semver';
 import { formatError, validationError } from '../lib/errors.js';
@@ -50,13 +51,16 @@ export interface UpgradeOptions {
  *    versions, skipping the dependencies that are ignored (see {@link parseIgnoreRules}) and,
  *    if {@link UpgradeOptions.peer} is set, capping the rest at the versions the declared peer
  *    dependencies still accept.
- * 3. Removes all installed modules (`node_modules`) and the lock file (`package-lock.json`).
- * 4. Reinstalls and updates all dependencies.
- * 5. Logs a message indicating that all dependencies are up to date.
+ * 3. Rebuilds the lock file from scratch and verifies it with `npm ci --dry-run`, while the
+ *    installed modules are still in place. An upgrade that cannot be installed therefore fails
+ *    here, before anything has been given up.
+ * 4. Moves the installed modules into a temporary directory and installs the new ones.
+ * 5. Discards the moved modules and logs that all dependencies are up to date.
  *
  * If any step fails, `package.json` and `package-lock.json` are restored to their previous state
- * and the previously installed dependencies are reinstalled, so that a failed upgrade does not
- * leave the project half-upgraded.
+ * and the previously installed modules are moved back, so that a failed upgrade does not leave
+ * the project half-upgraded. Up to step 4 that costs nothing, because the modules have not been
+ * touched yet; afterwards they are moved back instead of being downloaded again.
  *
  * @param directory - The path to the directory containing the Node.js project.
  * @param options - Additional options, e.g. dependencies to ignore.
@@ -66,11 +70,15 @@ export async function upgradeDependencies(directory: string, options: UpgradeOpt
 	const shell = new Shell(directory);
 	const packageFilename = join(directory, 'package.json');
 	const lockFilename = join(directory, 'package-lock.json');
+	const modulesPath = join(directory, 'node_modules');
 
 	// Snapshot the current state before anything is modified, so a failed upgrade can be undone.
+	// Both files are small enough to keep in memory; the installed modules are not, so they are
+	// parked in a temporary directory (see below) instead.
 	const packageBackup = readFileSync(packageFilename, 'utf8');
 	const lockBackup = existsSync(lockFilename) ? readFileSync(lockFilename, 'utf8') : null;
-	let modulesRemoved = false;
+	let modulesRescued = false;
+	let modulesDeleted = false;
 
 	let rules: IgnoreRules;
 	try {
@@ -99,8 +107,13 @@ export async function upgradeDependencies(directory: string, options: UpgradeOpt
 		Array.from(rules).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
 	);
 
+	// The installed modules are moved here instead of being deleted, so that a failed install is
+	// undone by moving them back rather than by downloading everything again.
+	const rescueDirectory = mkdtempSync(join(tmpdir(), 'vrt-deps-upgrade-'));
+	const rescuedModules = join(rescueDirectory, 'node_modules');
+
 	/**
-	 * Restores the backed up files and, if they were already deleted, the installed modules.
+	 * Restores the backed up files and, if they were already given up, the installed modules.
 	 */
 	async function rollback(): Promise<void> {
 		writeFileSync(packageFilename, packageBackup);
@@ -112,15 +125,28 @@ export async function upgradeDependencies(directory: string, options: UpgradeOpt
 			info('Restored package.json and package-lock.json');
 		}
 
-		if (!modulesRemoved) return;
-
-		// node_modules was deleted before the failing install, so rebuild the previous state.
-		const reinstalled = await shell.ok(lockBackup === null ? 'npm install' : 'npm ci');
-		if (reinstalled) {
-			info('Reinstalled the previous dependencies');
-		} else {
-			warn('Could not reinstall the previous dependencies, please run "npm install" manually');
+		if (modulesRescued) {
+			// A failed install leaves a partial tree behind, so drop it before moving the old one back.
+			rmSync(modulesPath, { recursive: true, force: true });
+			renameSync(rescuedModules, modulesPath);
+			modulesRescued = false;
+			info('Restored the previously installed dependencies');
+		} else if (modulesDeleted) {
+			// The modules could not be parked, so the previous state has to be installed again.
+			const reinstalled = await shell.ok(lockBackup === null ? 'npm install' : 'npm ci');
+			if (reinstalled) {
+				info('Reinstalled the previous dependencies');
+			} else {
+				warn('Could not reinstall the previous dependencies, please run "npm install" manually');
+			}
 		}
+
+		discardRescueDirectory();
+	}
+
+	/** Removes the temporary directory, including any modules still parked in it. */
+	function discardRescueDirectory(): void {
+		rmSync(rescueDirectory, { recursive: true, force: true });
 	}
 
 	await check(
@@ -149,10 +175,40 @@ export async function upgradeDependencies(directory: string, options: UpgradeOpt
 		rollback,
 	);
 
-	await shell.run('rm -f package-lock.json && rm -rf node_modules', false);
-	modulesRemoved = true;
+	// The lock file is rebuilt from scratch, because resolving the new versions on top of the
+	// previous resolution hides conflicts that a fresh install would run into.
+	rmSync(lockFilename, { force: true });
 
-	await check('Reinstall all dependencies', shell.stdout('npm i'), rollback);
+	await check(
+		'Resolve the new dependencies',
+		shell.stdout('npm install --package-lock-only --ignore-scripts'),
+		rollback,
+	);
+
+	// Resolving alone is not conclusive while node_modules is still in place: npm then reuses the
+	// installed tree and accepts versions that a clean install rejects. "npm ci --dry-run" checks
+	// the new lock file strictly, and does so without touching the installed modules. Scripts are
+	// skipped because verifying must not run the project's install hooks a second time.
+	await check('Verify the new dependencies', shell.stdout('npm ci --dry-run --ignore-scripts'), rollback);
+
+	// Only now, with the new tree known to be installable, are the modules given up.
+	if (existsSync(modulesPath)) {
+		try {
+			renameSync(modulesPath, rescuedModules);
+			modulesRescued = true;
+		} catch (error) {
+			// EXDEV: the temporary directory is on another filesystem, so the modules cannot be
+			// renamed. Copying a whole node_modules tree costs more than the reinstall it saves,
+			// so they are deleted and a rollback falls back to reinstalling them.
+			if ((error as NodeJS.ErrnoException).code !== 'EXDEV') throw error;
+			rmSync(modulesPath, { recursive: true, force: true });
+		}
+		modulesDeleted = true;
+	}
+
+	await check('Install all dependencies', shell.stdout('npm ci'), rollback);
+
+	discardRescueDirectory();
 
 	// Final log message
 	info('All dependencies are up to date');
