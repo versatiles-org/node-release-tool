@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.0] - 2026-09-16
+
+### Features
+
+- add subgraph direction option to deps-graph command and update related tests ([f879835](https://github.com/versatiles-org/node-release-tool/commit/f8798358aa8a077acfbf5d28e4d3df167ec3293d))
+- add --merge-outgoing option to deps-graph command and update related tests ([86a6d89](https://github.com/versatiles-org/node-release-tool/commit/86a6d892155c3f8999f3a9c7f48682ab4c081bbe))
+
+### Chores
+
+- update dependencies to latest versions ([da0e904](https://github.com/versatiles-org/node-release-tool/commit/da0e9043fd3d205ecd16d2e2f21d8ceecbe29273))
+
 ## [2.10.0] - 2026-09-06
 
 ### Features
