@@ -18,8 +18,38 @@ export interface GraphModel {
 }
 
 const FONT_SIZE = 12;
-/** Approximate advance of one character of a monospace font at {@link FONT_SIZE}. */
-const CHAR_WIDTH = 7.2;
+const FONT_FAMILY = "Helvetica, Arial, 'Liberation Sans', sans-serif";
+
+/**
+ * Advance widths of Helvetica in 1/1000 em, shared by the metric-compatible
+ * Arial and Liberation Sans. Used to size boxes without measuring text.
+ */
+const CHAR_WIDTHS = charWidths({
+	222: 'ijl',
+	278: ' ./:;!,ftI[]',
+	333: '-()r{}',
+	389: '*',
+	500: 'ckszvxyJ',
+	556: '0123456789abdeghnopqu_$#?L',
+	584: '+=<>~',
+	611: 'FTZ',
+	667: '&ABEKPSVXY',
+	722: 'wCDHNRU',
+	778: 'GOQ',
+	833: 'mM',
+	944: 'W',
+});
+/** Bold widths where they differ from {@link CHAR_WIDTHS}. */
+const BOLD_CHAR_WIDTHS = charWidths({
+	278: 'ijl',
+	333: 'ft-',
+	389: 'r',
+	556: 'ckszvxyae',
+	611: 'bdghnopqu',
+	778: 'w',
+	889: 'm',
+});
+const DEFAULT_CHAR_WIDTH = 556;
 const NODE_HEIGHT = 24;
 const NODE_PADDING = 8;
 const DIRECTORY_LABEL_HEIGHT = 22;
@@ -59,7 +89,7 @@ const STYLE = `
 	.depth2 { fill: #e8ecea; }
 	.depth3 { fill: #dfe4e2; }
 	.file { fill: #ffffff; stroke: #9aa6a1; stroke-width: 1; }
-	text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: ${FONT_SIZE}px; }
+	text { font-family: ${FONT_FAMILY}; font-size: ${FONT_SIZE}px; }
 	.label { fill: #1b2220; text-anchor: middle; }
 	.directory-label { fill: #66736d; font-weight: 600; }
 	.edge { fill: none; stroke: #5f6b66; stroke-width: 1; stroke-opacity: 0.7; }
@@ -139,8 +169,8 @@ export async function renderSvgGraph(model: GraphModel): Promise<string> {
 			);
 			const label = basename(node.id);
 			directoryLabels.push(
-				`<rect class="depth${level}" x="${num(x + DIRECTORY_PADDING - 3)}" y="${num(y + 4)}" width="${num(textWidth(label) + 6)}" height="16" rx="2"/>`,
-				text('directory-label', x + DIRECTORY_PADDING, y + 16, label),
+				`<rect class="depth${level}" x="${num(x + DIRECTORY_PADDING - 3)}" y="${num(y + 4)}" width="${num(textWidth(label, true) + 6)}" height="16" rx="2"/>`,
+				text('directory-label', x + DIRECTORY_PADDING, y + 16, label, true),
 			);
 			node.children.forEach((child) => drawNode(child, depth + 1));
 		} else {
@@ -166,7 +196,7 @@ export async function renderSvgGraph(model: GraphModel): Promise<string> {
 		`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
 		'<title>Dependency graph</title>',
 		`<style>${STYLE}</style>`,
-		'<defs><marker id="arrow" viewBox="0 0 8 8" refX="8" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path class="arrowhead" d="M0,0 L8,4 L0,8 z"/></marker></defs>',
+		'<defs><marker id="arrow" viewBox="0 0 8 8" refX="8" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path class="arrowhead" d="M0,0 L8,4 L0,8 z"/></marker></defs>',
 		`<rect class="background" width="${width}" height="${height}"/>`,
 		...shapes,
 		...directoryLabels,
@@ -204,7 +234,7 @@ function buildDirectoryNode(directory: string, context: BuildContext): ElkNode {
 			'elk.nodeSize.constraints': '[MINIMUM_SIZE]',
 			// Width and height are swapped on purpose: with direction DOWN and INCLUDE_CHILDREN,
 			// ELK applies the minimum size without rotating it, so "(0, w)" yields width w.
-			'elk.nodeSize.minimum': `(0, ${textWidth(basename(directory)) + 2 * DIRECTORY_PADDING})`,
+			'elk.nodeSize.minimum': `(0, ${textWidth(basename(directory), true) + 2 * DIRECTORY_PADDING})`,
 		},
 		children: [
 			...context.directories.filter(isChild).map((d) => buildDirectoryNode(d, context)),
@@ -227,14 +257,28 @@ function buildFileNode(file: string, context: BuildContext): ElkNode {
 
 /**
  * Renders a text element. `textLength` pins the rendered width to the width
- * used for the layout, so a different monospace font can not overflow its box.
+ * used for the layout, so a font with other metrics can not overflow its box.
  */
-function text(className: string, x: number, y: number, content: string): string {
-	return `<text class="${className}" x="${num(x)}" y="${num(y)}" textLength="${num(textWidth(content))}" lengthAdjust="spacingAndGlyphs">${escapeXml(content)}</text>`;
+function text(className: string, x: number, y: number, content: string, bold = false): string {
+	return `<text class="${className}" x="${num(x)}" y="${num(y)}" textLength="${num(textWidth(content, bold))}" lengthAdjust="spacingAndGlyphs">${escapeXml(content)}</text>`;
 }
 
-function textWidth(content: string): number {
-	return content.length * CHAR_WIDTH;
+/** Estimates the rendered width of `content` in pixels. */
+function textWidth(content: string, bold = false): number {
+	let width = 0;
+	for (const char of content) {
+		width += (bold ? BOLD_CHAR_WIDTHS.get(char) : undefined) ?? CHAR_WIDTHS.get(char) ?? DEFAULT_CHAR_WIDTH;
+	}
+	return (width * FONT_SIZE) / 1000;
+}
+
+/** Turns a map of width to characters into a map of character to width. */
+function charWidths(groups: Record<number, string>): Map<string, number> {
+	const widths = new Map<string, number>();
+	for (const [width, chars] of Object.entries(groups)) {
+		for (const char of chars) widths.set(char, Number(width));
+	}
+	return widths;
 }
 
 function parentOf(path: string): string {

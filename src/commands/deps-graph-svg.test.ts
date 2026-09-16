@@ -70,4 +70,15 @@ describe('renderSvgGraph', () => {
 		expect(labels).toHaveLength(3);
 		expect(Math.min(...labels)).toBeGreaterThan(lastEdge);
 	});
+
+	it('sizes boxes by the proportional width of their labels', async () => {
+		const svg = await renderSvgGraph({ files: ['src/iiii.ts', 'src/mmmm.ts'], edges: [] });
+
+		const width = (label: string): number =>
+			Number(new RegExp(`textLength="([\\d.]+)"[^>]*>${label}<`).exec(svg)![1]);
+		// Helvetica: "i" is 222/1000 em, "m" 833/1000 em, "." 278 and "t", "s" 278 and 500 at 12 px
+		expect(width('iiii.ts')).toBeCloseTo(((4 * 222 + 278 + 278 + 500) * 12) / 1000);
+		expect(width('mmmm.ts')).toBeCloseTo(((4 * 833 + 278 + 278 + 500) * 12) / 1000);
+		expect(svg).toContain('font-family: Helvetica, Arial');
+	});
 });
