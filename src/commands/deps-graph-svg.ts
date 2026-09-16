@@ -1,5 +1,5 @@
 import ELK from 'elkjs/lib/elk.bundled.js';
-import type { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
+import type { ElkExtendedEdge, ElkNode, ElkPort } from 'elkjs/lib/elk.bundled.js';
 
 /**
  * A dependency edge. `from` is a file path or, for merged edges, a directory path.
@@ -36,8 +36,20 @@ const LAYOUT_OPTIONS: Record<string, string> = {
 	'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
 	'elk.spacing.nodeNode': '16',
 	'elk.layered.spacing.nodeNodeBetweenLayers': '28',
-	'elk.spacing.edgeEdge': '6',
-	'elk.layered.spacing.edgeEdgeBetweenLayers': '6',
+	// the same spacing for horizontal and vertical edge segments
+	'elk.spacing.edgeEdge': '8',
+	'elk.layered.spacing.edgeEdgeBetweenLayers': '8',
+};
+
+/**
+ * Options for file nodes: every edge gets its own port, incoming on top and
+ * outgoing at the bottom, packed around the center. Without explicit ports ELK
+ * spreads edges over the whole node width, so the spacing between edges would
+ * differ from node to node.
+ */
+const FILE_PORT_OPTIONS: Record<string, string> = {
+	'elk.portConstraints': 'FIXED_SIDE',
+	'elk.portAlignment.default': 'CENTER',
 };
 
 const STYLE = `
@@ -70,7 +82,8 @@ const STYLE = `
  * Lays out a dependency graph with ELK and renders it as a standalone SVG.
  *
  * Files are drawn as boxes nested in boxes for their directories, edges are
- * routed orthogonally from top to bottom. Colors follow the viewer's color
+ * routed orthogonally from top to bottom with evenly spaced ports. Directory
+ * labels are drawn on top of edges, on a background in the directory's color. Colors follow the viewer's color
  * scheme via `prefers-color-scheme`. The output is deterministic, so it only
  * changes when the graph changes.
  *
@@ -82,6 +95,20 @@ export async function renderSvgGraph(model: GraphModel): Promise<string> {
 	const roots = directories.filter((d) => !d.includes('/'));
 	const topFiles = model.files.filter((f) => !f.includes('/'));
 
+	const ports = new Map<string, ElkPort[]>();
+	const addPort = (node: string, side: 'NORTH' | 'SOUTH', id: string): string => {
+		const list = ports.get(node) ?? [];
+		if (list.length === 0) ports.set(node, list);
+		list.push({ id, width: 0, height: 0, layoutOptions: { 'elk.port.side': side } });
+		return id;
+	};
+	const edges = model.edges.map((edge, index): ElkExtendedEdge => ({
+		id: `edge${index}`,
+		sources: [addPort(edge.from, 'SOUTH', `${edge.from}#out${index}`)],
+		targets: [addPort(edge.to, 'NORTH', `${edge.to}#in${index}`)],
+	}));
+	const context: BuildContext = { directories, files: model.files, ports };
+
 	const graph: ElkNode = {
 		id: '#root',
 		layoutOptions: {
@@ -90,12 +117,11 @@ export async function renderSvgGraph(model: GraphModel): Promise<string> {
 			'elk.json.edgeCoords': 'ROOT',
 			'elk.json.shapeCoords': 'ROOT',
 		},
-		children: [...roots.map((d) => buildDirectoryNode(d, directories, model.files)), ...topFiles.map(buildFileNode)],
-		edges: model.edges.map((edge, index): ElkExtendedEdge => ({
-			id: `edge${index}`,
-			sources: [edge.from],
-			targets: [edge.to],
-		})),
+		children: [
+			...roots.map((d) => buildDirectoryNode(d, context)),
+			...topFiles.map((f) => buildFileNode(f, context)),
+		],
+		edges,
 	};
 
 	// elkjs is CommonJS with an ES-style default export in its typings, so TypeScript
@@ -103,12 +129,18 @@ export async function renderSvgGraph(model: GraphModel): Promise<string> {
 	const layout = await new ELK.default().layout(graph);
 
 	const shapes: string[] = [];
+	const directoryLabels: string[] = [];
 	const drawNode = (node: ElkNode, depth: number): void => {
 		const { x = 0, y = 0, width = 0, height = 0 } = node;
 		if (node.children) {
+			const level = Math.min(depth, 3);
 			shapes.push(
-				`<rect class="directory depth${Math.min(depth, 3)}" x="${num(x)}" y="${num(y)}" width="${num(width)}" height="${num(height)}" rx="6"/>`,
-				text('directory-label', x + DIRECTORY_PADDING, y + 16, basename(node.id)),
+				`<rect class="directory depth${level}" x="${num(x)}" y="${num(y)}" width="${num(width)}" height="${num(height)}" rx="6"/>`,
+			);
+			const label = basename(node.id);
+			directoryLabels.push(
+				`<rect class="depth${level}" x="${num(x + DIRECTORY_PADDING - 3)}" y="${num(y + 4)}" width="${num(textWidth(label) + 6)}" height="16" rx="2"/>`,
+				text('directory-label', x + DIRECTORY_PADDING, y + 16, label),
 			);
 			node.children.forEach((child) => drawNode(child, depth + 1));
 		} else {
@@ -137,6 +169,7 @@ export async function renderSvgGraph(model: GraphModel): Promise<string> {
 		'<defs><marker id="arrow" viewBox="0 0 8 8" refX="8" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path class="arrowhead" d="M0,0 L8,4 L0,8 z"/></marker></defs>',
 		`<rect class="background" width="${width}" height="${height}"/>`,
 		...shapes,
+		...directoryLabels,
 		'</svg>',
 		'',
 	].join('\n');
@@ -155,7 +188,13 @@ function getDirectories(files: string[]): string[] {
 	return [...directories];
 }
 
-function buildDirectoryNode(directory: string, directories: string[], files: string[]): ElkNode {
+interface BuildContext {
+	directories: string[];
+	files: string[];
+	ports: Map<string, ElkPort[]>;
+}
+
+function buildDirectoryNode(directory: string, context: BuildContext): ElkNode {
 	const isChild = (path: string): boolean => parentOf(path) === directory;
 	return {
 		id: directory,
@@ -168,14 +207,22 @@ function buildDirectoryNode(directory: string, directories: string[], files: str
 			'elk.nodeSize.minimum': `(0, ${textWidth(basename(directory)) + 2 * DIRECTORY_PADDING})`,
 		},
 		children: [
-			...directories.filter(isChild).map((d) => buildDirectoryNode(d, directories, files)),
-			...files.filter(isChild).map(buildFileNode),
+			...context.directories.filter(isChild).map((d) => buildDirectoryNode(d, context)),
+			...context.files.filter(isChild).map((f) => buildFileNode(f, context)),
 		],
+		// ports of merged edges that start at this directory
+		ports: context.ports.get(directory) ?? [],
 	};
 }
 
-function buildFileNode(file: string): ElkNode {
-	return { id: file, width: textWidth(basename(file)) + 2 * NODE_PADDING, height: NODE_HEIGHT };
+function buildFileNode(file: string, context: BuildContext): ElkNode {
+	return {
+		id: file,
+		width: textWidth(basename(file)) + 2 * NODE_PADDING,
+		height: NODE_HEIGHT,
+		layoutOptions: FILE_PORT_OPTIONS,
+		ports: context.ports.get(file) ?? [],
+	};
 }
 
 /**
