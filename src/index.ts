@@ -56,6 +56,15 @@ program
 program
 	.command('deps-graph')
 	.description('Analyze project files and output a dependency graph as Mermaid markup.')
+	.addHelpText(
+		'after',
+		[
+			'',
+			'All options can also be set in vrt.config.json, e.g.:',
+			'  { "deps-graph": { "merge-outgoing": ["src/*"] } }',
+			'CLI options are added to the values from vrt.config.json.',
+		].join('\n'),
+	)
 	.option(
 		'--collapse-dir <glob>',
 		'Collapse all files matching the glob into a single node (repeatable).',

@@ -1,6 +1,7 @@
 import { cruise, format } from 'dependency-cruiser';
 import type { ICruiseResult, IModule } from 'dependency-cruiser';
 import picomatch from 'picomatch';
+import { CONFIG_FILENAME, readConfigSection } from '../lib/config.js';
 import { panic, warn } from '../lib/log.js';
 
 /**
@@ -36,6 +37,17 @@ export interface DepsGraphOptions {
 	 */
 	mergeOutgoing?: string[];
 }
+
+/**
+ * Maps the keys of the `deps-graph` section in `vrt.config.json`, which mirror
+ * the CLI flags, to the corresponding {@link DepsGraphOptions} properties.
+ */
+const CONFIG_KEYS = {
+	'collapse-dir': 'collapseDir',
+	exclude: 'exclude',
+	'merge-outgoing': 'mergeOutgoing',
+	'subgraph-direction': 'subgraphDirection',
+} as const satisfies Record<string, keyof DepsGraphOptions>;
 
 const DIRECTIONS = ['TB', 'TD', 'BT', 'LR', 'RL'] as const;
 type Direction = (typeof DIRECTIONS)[number];
@@ -73,11 +85,16 @@ const INTERNAL_EXCLUDES = ['\\.(test|d|mock)\\.ts$', 'node_modules', '__mocks__/
  * diagram to stdout. The output is wrapped in markdown code blocks for
  * easy inclusion in documentation.
  *
+ * Graph-shaping options are read from the `deps-graph` section of the
+ * project's `vrt.config.json` (see {@link readDepsGraphConfig}) and extended
+ * by the given options.
+ *
  * @param directory - The project directory to analyze
- * @param options - Optional graph-shaping flags (collapse, exclude, subgraph direction, merge outgoing)
+ * @param cliOptions - Optional graph-shaping flags (collapse, exclude, subgraph direction, merge outgoing)
  * @throws {VrtError} If dependency analysis fails
  */
-export async function generateDependencyGraph(directory: string, options: DepsGraphOptions = {}): Promise<void> {
+export async function generateDependencyGraph(directory: string, cliOptions: DepsGraphOptions = {}): Promise<void> {
+	const options = mergeOptions(readDepsGraphConfig(directory), cliOptions);
 	const directionRules = (options.subgraphDirection ?? []).map(parseDirectionRule);
 	const mergeRules = (options.mergeOutgoing ?? []).map(parseGlobRule);
 	const userExcludes = (options.exclude ?? []).map(globToCruiseRegex);
@@ -124,6 +141,50 @@ export async function generateDependencyGraph(directory: string, options: DepsGr
 	output += `\nclassDef subgraphs fill-opacity:0.1, fill:#888, color:#888, stroke:#888;`;
 
 	process.stdout.write(Buffer.from('```mermaid\n' + output + '\n```\n'));
+}
+
+/**
+ * Reads graph-shaping options from the `deps-graph` section of the
+ * `vrt.config.json` in `directory`. Keys are the CLI flag names, values are
+ * arrays of strings, e.g.:
+ *
+ * ```json
+ * { "deps-graph": { "merge-outgoing": ["src/*"], "collapse-dir": ["src/themes/*"] } }
+ * ```
+ *
+ * Returns empty options if there is no `vrt.config.json` or no such section.
+ *
+ * @throws {VrtError} If `vrt.config.json` can not be parsed or the section is invalid
+ */
+export function readDepsGraphConfig(directory: string): DepsGraphOptions {
+	const section = readConfigSection(directory, 'deps-graph');
+	if (!section) return {};
+
+	const options: DepsGraphOptions = {};
+	for (const [key, value] of Object.entries(section)) {
+		if (!Object.hasOwn(CONFIG_KEYS, key)) {
+			panic(
+				`${CONFIG_FILENAME}: unknown key "deps-graph.${key}", expected one of: ${Object.keys(CONFIG_KEYS).join(', ')}`,
+			);
+		}
+		if (!Array.isArray(value) || !value.every((v) => typeof v === 'string')) {
+			panic(`${CONFIG_FILENAME}: "deps-graph.${key}" must be an array of strings`);
+		}
+		options[CONFIG_KEYS[key as keyof typeof CONFIG_KEYS]] = value;
+	}
+	return options;
+}
+
+/**
+ * Concatenates the option lists of `config` and `overrides`. Values from
+ * `overrides` come last, so they win where the last match counts.
+ */
+function mergeOptions(config: DepsGraphOptions, overrides: DepsGraphOptions): DepsGraphOptions {
+	const merged: DepsGraphOptions = {};
+	for (const key of Object.values(CONFIG_KEYS)) {
+		merged[key] = [...(config[key] ?? []), ...(overrides[key] ?? [])];
+	}
+	return merged;
 }
 
 /**

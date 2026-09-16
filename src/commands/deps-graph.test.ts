@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, MockInstance, vi } from 'vitest';
 import type { ICruiseResult, IModule, IReporterOutput } from 'dependency-cruiser';
+import { mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 
 // 1. Mock dependency-cruiser to control the output of `cruise` and `format`
 vi.mock('dependency-cruiser', () => ({
@@ -18,7 +21,7 @@ vi.mock('../lib/log.js', () => ({
 // 3. Import the mocked modules and the function under test
 const { cruise, format } = await import('dependency-cruiser');
 const { panic, warn } = await import('../lib/log.js');
-const { generateDependencyGraph } = await import('./deps-graph.js');
+const { generateDependencyGraph, readDepsGraphConfig } = await import('./deps-graph.js');
 
 /** Build a minimal ICruiseResult with the given modules; all other fields stubbed. */
 function fakeCruiseResult(modules: Pick<IModule, 'source' | 'dependencies'>[]): ICruiseResult {
@@ -296,6 +299,73 @@ describe('generateDependencyGraph', () => {
 
 			expect(warn).toHaveBeenCalledWith('merge outgoing glob "src/nope" did not match any directory');
 			expect(edges()).toHaveLength(7);
+		});
+	});
+
+	describe('vrt.config.json', () => {
+		let directory: string;
+
+		function writeConfig(content: unknown): void {
+			writeFileSync(join(directory, 'vrt.config.json'), JSON.stringify(content));
+		}
+
+		beforeEach(() => {
+			directory = mkdtempSync(join(tmpdir(), 'vrt-deps-graph-'));
+		});
+
+		afterEach(() => {
+			rmSync(directory, { recursive: true, force: true });
+		});
+
+		it('reads options from the "deps-graph" section', () => {
+			writeConfig({
+				'deps-graph': {
+					'collapse-dir': ['src/themes/*'],
+					exclude: ['**/_planned.ts'],
+					'merge-outgoing': ['src/*'],
+					'subgraph-direction': ['src/lib=LR'],
+				},
+			});
+
+			expect(readDepsGraphConfig(directory)).toEqual({
+				collapseDir: ['src/themes/*'],
+				exclude: ['**/_planned.ts'],
+				mergeOutgoing: ['src/*'],
+				subgraphDirection: ['src/lib=LR'],
+			});
+		});
+
+		it('returns empty options without config file or section', () => {
+			expect(readDepsGraphConfig(directory)).toEqual({});
+			writeConfig({});
+			expect(readDepsGraphConfig(directory)).toEqual({});
+		});
+
+		it.each([
+			[{ 'deps-graph': { collapseDir: ['src'] } }, 'unknown key "deps-graph.collapseDir"'],
+			[{ 'deps-graph': { exclude: 'src' } }, '"deps-graph.exclude" must be an array of strings'],
+			[{ 'deps-graph': { exclude: [1] } }, '"deps-graph.exclude" must be an array of strings'],
+		])('panics on invalid config %j', (content, message) => {
+			writeConfig(content);
+			expect(() => readDepsGraphConfig(directory)).toThrow(message);
+		});
+
+		it('combines config and CLI options, CLI options last', async () => {
+			writeConfig({ 'deps-graph': { exclude: ['**/a.ts'], 'subgraph-direction': ['src=LR'] } });
+			vi.mocked(format).mockResolvedValueOnce({
+				output: 'flowchart LR\nsubgraph 0["src"]\n1["a.ts"]\nend',
+			} as IReporterOutput);
+
+			await generateDependencyGraph(directory, { exclude: ['**/b.ts'], subgraphDirection: ['src=RL'] });
+
+			const excludePatterns = vi.mocked(cruise).mock.calls[0][1]!.exclude as string[];
+			expect(excludePatterns.findIndex((p) => p.includes('a\\.ts'))).toBeGreaterThan(-1);
+			expect(excludePatterns.findIndex((p) => p.includes('b\\.ts'))).toBeGreaterThan(
+				excludePatterns.findIndex((p) => p.includes('a\\.ts')),
+			);
+
+			const output = (mockStdoutWrite.mock.calls[0][0] as Buffer).toString();
+			expect(output).toContain('subgraph 0["src"]\ndirection RL\n');
 		});
 	});
 });

@@ -88,6 +88,19 @@ vrt deps-graph --subgraph-direction 'src/lib=LR' --subgraph-direction 'src/comma
 vrt deps-graph --merge-outgoing 'src/commands'
 ```
 
+Instead of passing long lists of flags, you can put the options into a `vrt.config.json` in your project directory. The keys are the flag names; CLI flags are added to these values:
+
+```JSON
+{
+  "deps-graph": {
+    "collapse-dir": ["src/themes/*", "src/omt/layers/*"],
+    "exclude": ["**/_planned.ts"],
+    "merge-outgoing": ["src/*"],
+    "subgraph-direction": ["src/lib=LR"]
+  }
+}
+```
+
 # Command `vrt`
 
 <!--- This chapter is generated automatically --->
@@ -148,6 +161,10 @@ Options:
   --subgraph-direction <glob=dir>  Set the flow direction (TB, BT, LR, RL) of
                                    directory subgraphs matching the glob, e.g.
                                    "src/lib=LR" (repeatable). (default: [])
+
+All options can also be set in vrt.config.json, e.g.:
+  { "deps-graph": { "merge-outgoing": ["src/*"] } }
+CLI options are added to the values from vrt.config.json.
 ```
 
 ## Subcommand: `vrt deps-upgrade`
@@ -272,53 +289,56 @@ subgraph 0["src"]
 subgraph 1["commands"]
 2["check.ts"]
 6["deps-graph.ts"]
-7["deps-upgrade.ts"]
-9["doc-command.ts"]
-B["doc-typescript.ts"]
-C["markdown.ts"]
-D["release-npm.ts"]
+8["deps-upgrade.ts"]
+A["doc-command.ts"]
+C["doc-typescript.ts"]
+D["markdown.ts"]
+E["release-npm.ts"]
 end
 subgraph 3["lib"]
 4["log.ts"]
 5["errors.ts"]
-8["shell.ts"]
-A["utils.ts"]
-E["changelog.ts"]
-F["git.ts"]
-G["retry.ts"]
-I["benchmark.ts"]
+7["config.ts"]
+9["shell.ts"]
+B["utils.ts"]
+F["changelog.ts"]
+G["git.ts"]
+H["retry.ts"]
+J["benchmark.ts"]
 end
-H["index.ts"]
+I["index.ts"]
 end
 2-->4
 4-->5
+6-->7
 6-->4
-7-->5
 7-->4
-7-->8
 8-->5
 8-->4
-9-->8
-9-->A
-B-->4
-C-->5
-C-->A
-D-->E
+8-->9
+9-->5
+9-->4
+A-->9
+A-->B
+C-->4
 D-->5
-D-->F
-D-->4
-D-->G
-D-->8
+D-->B
 E-->F
-F-->8
-H-->2
-H-->6
-H-->7
-H-->9
-H-->B
-H-->C
-H-->D
-H-->4
+E-->5
+E-->G
+E-->4
+E-->H
+E-->9
+F-->G
+G-->9
+I-->2
+I-->6
+I-->8
+I-->A
+I-->C
+I-->D
+I-->E
+I-->4
 
 class 0,1,3 subgraphs;
 classDef subgraphs fill-opacity:0.1, fill:#888, color:#888, stroke:#888;
