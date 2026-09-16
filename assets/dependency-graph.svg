@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1023" height="617" viewBox="0 0 1023 617">
+<title>Dependency graph</title>
+<style>
+	.background { fill: #ffffff; }
+	.directory { stroke: #c5ccc9; stroke-width: 1; }
+	.depth1 { fill: #f2f4f3; }
+	.depth2 { fill: #e8ecea; }
+	.depth3 { fill: #dfe4e2; }
+	.file { fill: #ffffff; stroke: #9aa6a1; stroke-width: 1; }
+	text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+	.label { fill: #1b2220; text-anchor: middle; }
+	.directory-label { fill: #66736d; font-weight: 600; }
+	.edge { fill: none; stroke: #5f6b66; stroke-width: 1; stroke-opacity: 0.7; }
+	.arrowhead { fill: #5f6b66; }
+	@media (prefers-color-scheme: dark) {
+		.background { fill: #0d1117; }
+		.directory { stroke: #39424d; }
+		.depth1 { fill: #161b22; }
+		.depth2 { fill: #1c232c; }
+		.depth3 { fill: #232b35; }
+		.file { fill: #0d1117; stroke: #5c6773; }
+		.label { fill: #e6edf3; }
+		.directory-label { fill: #8b949e; }
+		.edge { stroke: #8b949e; }
+		.arrowhead { fill: #8b949e; }
+	}
+</style>
+<defs><marker id="arrow" viewBox="0 0 8 8" refX="8" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path class="arrowhead" d="M0,0 L8,4 L0,8 z"/></marker></defs>
+<rect class="background" width="1023" height="617"/>
+<rect class="directory depth1" x="12" y="12" width="999" height="593" rx="6"/>
+<text class="directory-label" x="22" y="28" textLength="21.6" lengthAdjust="spacingAndGlyphs">src</text>
+<rect class="directory depth2" x="22" y="105" width="967.4" height="118" rx="6"/>
+<text class="directory-label" x="32" y="121" textLength="57.6" lengthAdjust="spacingAndGlyphs">commands</text>
+<rect class="file" x="751" y="133" width="73.6" height="24" rx="4"/>
+<text class="label" x="787.8" y="149" textLength="57.6" lengthAdjust="spacingAndGlyphs">check.ts</text>
+<rect class="file" x="550" y="189" width="138.4" height="24" rx="4"/>
+<text class="label" x="619.2" y="205" textLength="122.4" lengthAdjust="spacingAndGlyphs">deps-graph-svg.ts</text>
+<rect class="file" x="625" y="133" width="109.6" height="24" rx="4"/>
+<text class="label" x="679.8" y="149" textLength="93.6" lengthAdjust="spacingAndGlyphs">deps-graph.ts</text>
+<rect class="file" x="277" y="133" width="124" height="24" rx="4"/>
+<text class="label" x="339" y="149" textLength="108" lengthAdjust="spacingAndGlyphs">deps-upgrade.ts</text>
+<rect class="file" x="144" y="133" width="116.8" height="24" rx="4"/>
+<text class="label" x="202.4" y="149" textLength="100.8" lengthAdjust="spacingAndGlyphs">doc-command.ts</text>
+<rect class="file" x="841" y="133" width="138.4" height="24" rx="4"/>
+<text class="label" x="910.2" y="149" textLength="122.4" lengthAdjust="spacingAndGlyphs">doc-typescript.ts</text>
+<rect class="file" x="32" y="133" width="95.2" height="24" rx="4"/>
+<text class="label" x="79.6" y="149" textLength="79.2" lengthAdjust="spacingAndGlyphs">markdown.ts</text>
+<rect class="file" x="417" y="133" width="116.8" height="24" rx="4"/>
+<text class="label" x="475.4" y="149" textLength="100.8" lengthAdjust="spacingAndGlyphs">release-npm.ts</text>
+<rect class="directory depth2" x="176" y="285" width="778.4" height="310" rx="6"/>
+<text class="directory-label" x="186" y="301" textLength="21.6" lengthAdjust="spacingAndGlyphs">lib</text>
+<rect class="file" x="683" y="509" width="59.2" height="24" rx="4"/>
+<text class="label" x="712.6" y="525" textLength="43.2" lengthAdjust="spacingAndGlyphs">log.ts</text>
+<rect class="file" x="307" y="561" width="80.8" height="24" rx="4"/>
+<text class="label" x="347.4" y="577" textLength="64.8" lengthAdjust="spacingAndGlyphs">errors.ts</text>
+<rect class="file" x="720" y="447" width="80.8" height="24" rx="4"/>
+<text class="label" x="760.4" y="463" textLength="64.8" lengthAdjust="spacingAndGlyphs">config.ts</text>
+<rect class="file" x="385" y="391" width="59.2" height="24" rx="4"/>
+<text class="label" x="414.6" y="407" textLength="43.2" lengthAdjust="spacingAndGlyphs">git.ts</text>
+<rect class="file" x="322" y="447" width="73.6" height="24" rx="4"/>
+<text class="label" x="358.8" y="463" textLength="57.6" lengthAdjust="spacingAndGlyphs">shell.ts</text>
+<rect class="file" x="568" y="339" width="124" height="24" rx="4"/>
+<text class="label" x="630" y="355" textLength="108" lengthAdjust="spacingAndGlyphs">release-link.ts</text>
+<rect class="file" x="197" y="339" width="73.6" height="24" rx="4"/>
+<text class="label" x="233.8" y="355" textLength="57.6" lengthAdjust="spacingAndGlyphs">utils.ts</text>
+<rect class="file" x="332" y="339" width="102.4" height="24" rx="4"/>
+<text class="label" x="383.2" y="355" textLength="86.4" lengthAdjust="spacingAndGlyphs">changelog.ts</text>
+<rect class="file" x="466" y="339" width="73.6" height="24" rx="4"/>
+<text class="label" x="502.8" y="355" textLength="57.6" lengthAdjust="spacingAndGlyphs">retry.ts</text>
+<rect class="file" x="842" y="339" width="102.4" height="24" rx="4"/>
+<text class="label" x="893.2" y="355" textLength="86.4" lengthAdjust="spacingAndGlyphs">benchmark.ts</text>
+<rect class="file" x="639" y="40" width="73.6" height="24" rx="4"/>
+<text class="label" x="675.8" y="56" textLength="57.6" lengthAdjust="spacingAndGlyphs">index.ts</text>
+<path class="edge" d="M788,157 L788,236 L811,236 L811,487 L722,487 L722,509" marker-end="url(#arrow)"/>
+<path class="edge" d="M713,533 L713,543 L374,543 L374,561" marker-end="url(#arrow)"/>
+<path class="edge" d="M719,157 L719,236 L760,236 L760,447" marker-end="url(#arrow)"/>
+<path class="edge" d="M641,157 L641,167 L529,167 L529,242 L560,242 L560,323 L557,323 L557,379 L429,379 L429,391" marker-end="url(#arrow)"/>
+<path class="edge" d="M703,157 L703,167 L709,167 L709,509" marker-end="url(#arrow)"/>
+<path class="edge" d="M688,157 L688,167 L699,167 L699,323 L651,323 L651,339" marker-end="url(#arrow)"/>
+<path class="edge" d="M656,157 L656,173 L539,173 L539,236 L689,236 L689,329 L702,329 L702,431 L383,431 L383,447" marker-end="url(#arrow)"/>
+<path class="edge" d="M672,157 L672,179 L619,179 L619,189" marker-end="url(#arrow)"/>
+<path class="edge" d="M760,471 L760,481 L716,481 L716,509" marker-end="url(#arrow)"/>
+<path class="edge" d="M415,415 L415,425 L371,425 L371,447" marker-end="url(#arrow)"/>
+<path class="edge" d="M347,471 L347,561" marker-end="url(#arrow)"/>
+<path class="edge" d="M371,471 L371,487 L696,487 L696,509" marker-end="url(#arrow)"/>
+<path class="edge" d="M308,157 L308,236 L291,236 L291,543 L334,543 L334,561" marker-end="url(#arrow)"/>
+<path class="edge" d="M370,157 L370,248 L311,248 L311,499 L690,499 L690,509" marker-end="url(#arrow)"/>
+<path class="edge" d="M339,157 L339,242 L301,242 L301,431 L347,431 L347,447" marker-end="url(#arrow)"/>
+<path class="edge" d="M222,157 L222,236 L281,236 L281,437 L334,437 L334,447" marker-end="url(#arrow)"/>
+<path class="edge" d="M183,157 L183,242 L246,242 L246,339" marker-end="url(#arrow)"/>
+<path class="edge" d="M910,157 L910,236 L821,236 L821,493 L729,493 L729,509" marker-end="url(#arrow)"/>
+<path class="edge" d="M64,157 L64,254 L186,254 L186,549 L320,549 L320,561" marker-end="url(#arrow)"/>
+<path class="edge" d="M95,157 L95,248 L222,248 L222,339" marker-end="url(#arrow)"/>
+<path class="edge" d="M446,157 L446,260 L383,260 L383,339" marker-end="url(#arrow)"/>
+<path class="edge" d="M475,157 L475,272 L455,272 L455,493 L361,493 L361,561" marker-end="url(#arrow)"/>
+<path class="edge" d="M461,157 L461,266 L445,266 L445,373 L415,373 L415,391" marker-end="url(#arrow)"/>
+<path class="edge" d="M519,157 L519,248 L550,248 L550,481 L703,481 L703,509" marker-end="url(#arrow)"/>
+<path class="edge" d="M505,157 L505,254 L540,254 L540,329 L609,329 L609,339" marker-end="url(#arrow)"/>
+<path class="edge" d="M490,157 L490,260 L503,260 L503,339" marker-end="url(#arrow)"/>
+<path class="edge" d="M432,157 L432,254 L321,254 L321,425 L359,425 L359,447" marker-end="url(#arrow)"/>
+<path class="edge" d="M383,363 L383,373 L400,373 L400,391" marker-end="url(#arrow)"/>
+<path class="edge" d="M688,64 L688,86 L788,86 L788,133" marker-end="url(#arrow)"/>
+<path class="edge" d="M680,64 L680,133" marker-end="url(#arrow)"/>
+<path class="edge" d="M664,64 L664,86 L339,86 L339,133" marker-end="url(#arrow)"/>
+<path class="edge" d="M655,64 L655,80 L202,80 L202,133" marker-end="url(#arrow)"/>
+<path class="edge" d="M696,64 L696,80 L910,80 L910,133" marker-end="url(#arrow)"/>
+<path class="edge" d="M647,64 L647,74 L80,74 L80,133" marker-end="url(#arrow)"/>
+<path class="edge" d="M672,64 L672,92 L475,92 L475,133" marker-end="url(#arrow)"/>
+<path class="edge" d="M704,64 L704,74 L1000,74 L1000,242 L831,242 L831,499 L736,499 L736,509" marker-end="url(#arrow)"/>
+</svg>

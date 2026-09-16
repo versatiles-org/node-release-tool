@@ -17,7 +17,7 @@
     "dev": "tsx src/index.ts",
     "doc": "npm run doc:command && npm run doc:graph",
     "doc:command": "tsx src/index.ts doc-command vrt | tsx src/index.ts doc-insert README.md '# Command'",
-    "doc:graph": "tsx src/index.ts deps-graph | tsx src/index.ts doc-insert README.md '## Dependency Graph'",
+    "doc:graph": "tsx src/index.ts deps-graph --svg assets/dependency-graph.svg | tsx src/index.ts doc-insert README.md '## Dependency Graph'",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint . --color",

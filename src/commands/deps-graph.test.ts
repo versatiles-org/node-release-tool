@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, MockInstance, vi } from 'vitest';
 import type { ICruiseResult, IModule, IReporterOutput } from 'dependency-cruiser';
+import { execFileSync } from 'child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -16,6 +17,8 @@ vi.mock('../lib/log.js', () => ({
 		throw new Error(message);
 	}),
 	warn: vi.fn(),
+	debug: vi.fn(),
+	isVerbose: vi.fn(() => false),
 }));
 
 // Capture the graph model instead of running the ELK layout (tested in deps-graph-svg.test.ts)
@@ -457,6 +460,21 @@ describe('generateDependencyGraph', () => {
 			expect(warn).toHaveBeenCalledWith(
 				'no GitHub repository URL in package.json, using a relative link for the dependency graph',
 			);
+		});
+
+		it('warns if the SVG file is ignored by git', async () => {
+			rmSync(join(directory, '.git'), { recursive: true });
+			execFileSync('git', ['init', '--quiet'], { cwd: directory });
+			writeFileSync(join(directory, '.gitignore'), '/docs/\n');
+
+			await generateDependencyGraph(directory, { svg: 'docs/graph.svg' });
+			expect(warn).toHaveBeenCalledWith(
+				'docs/graph.svg is ignored by git, so the image link will be broken on GitHub and npm',
+			);
+
+			vi.mocked(warn).mockClear();
+			await generateDependencyGraph(directory, { svg: 'assets/graph.svg' });
+			expect(warn).not.toHaveBeenCalled();
 		});
 
 		it('warns that subgraph directions are ignored', async () => {

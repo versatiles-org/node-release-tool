@@ -7,6 +7,7 @@ import { CONFIG_FILENAME, readConfigSection } from '../lib/config.js';
 import { extractGitHubRepoUrl } from '../lib/git.js';
 import { panic, warn } from '../lib/log.js';
 import { getReleaseBaseUrl, RELEASE_VERSION_ENV } from '../lib/release-link.js';
+import { Shell } from '../lib/shell.js';
 import { type GraphEdge, type GraphModel, renderSvgGraph } from './deps-graph-svg.js';
 
 /**
@@ -139,6 +140,9 @@ export async function generateDependencyGraph(directory: string, cliOptions: Dep
 		const svgPath = resolve(directory, options.svg);
 		mkdirSync(dirname(svgPath), { recursive: true });
 		writeFileSync(svgPath, svg);
+		if (await isIgnoredByGit(directory, svgPath)) {
+			warn(`${options.svg} is ignored by git, so the image link will be broken on GitHub and npm`);
+		}
 		process.stdout.write(`![Dependency graph](${getImageUrl(directory, options.svg)})\n`);
 		return;
 	}
@@ -420,6 +424,19 @@ function buildGraphModel(result: ICruiseResult, mergeRules: GlobRule[]): GraphMo
 	warnUnusedRules(mergeRules, used, 'merge outgoing');
 
 	return { files, edges };
+}
+
+/**
+ * Whether git ignores the file, so it would never be committed. Returns false
+ * outside of a git repository or if git is not available.
+ */
+async function isIgnoredByGit(directory: string, path: string): Promise<boolean> {
+	try {
+		const result = await new Shell(directory).exec('git', ['check-ignore', '--quiet', path], false, true);
+		return result.code === 0;
+	} catch {
+		return false;
+	}
 }
 
 /**
