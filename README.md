@@ -111,7 +111,9 @@ GitHub renders Mermaid without the ELK layout, and npmjs.com doesn't render Merm
 vrt deps-graph --svg docs/dependency-graph.svg | vrt doc-insert README.md '## Dependency Graph'
 ```
 
-The link is relative (`![Dependency graph](docs/dependency-graph.svg)`), so GitHub always shows the graph of the current commit. The SVG adapts to light and dark mode.
+The output is an image that links to the raw SVG file: `[![Dependency graph](docs/dependency-graph.svg)](docs/dependency-graph.svg?raw=true)`. The paths are relative, so GitHub always shows the graph of the current commit. The SVG adapts to light and dark mode.
+
+In the README the graph is a static image. Clicking it opens the SVG itself, which is interactive: hovering a file highlights its outgoing dependencies in orange and its incoming ones in blue, including the connected files, and dims all other connections. Hovering a directory label highlights the connections merged by `--merge-outgoing`. This is plain CSS, without scripts, so it also works on `raw.githubusercontent.com`.
 
 On npmjs.com, a README must show the graph of its own version, even after the file changes in later commits. `vrt release-npm` takes care of that:
 
@@ -300,4 +302,4 @@ Options:
 
 <!--- This chapter is generated automatically --->
 
-![Dependency graph](assets/dependency-graph.svg)
+[![Dependency graph](assets/dependency-graph.svg)](assets/dependency-graph.svg?raw=true)

@@ -143,7 +143,9 @@ export async function generateDependencyGraph(directory: string, cliOptions: Dep
 		if (await isIgnoredByGit(directory, svgPath)) {
 			warn(`${options.svg} is ignored by git, so the image link will be broken on GitHub and npm`);
 		}
-		process.stdout.write(`![Dependency graph](${getImageUrl(directory, options.svg)})\n`);
+		// link the image to the raw file, where the SVG is interactive (hover highlighting)
+		const url = getImageUrl(directory, options.svg);
+		process.stdout.write(`[![Dependency graph](${url})](${url}?raw=true)\n`);
 		return;
 	}
 
@@ -369,7 +371,8 @@ function mergeOutgoingEdges(output: string, rules: GlobRule[]): string {
 /**
  * Merges edges that start inside `container` and point to the same target
  * outside of it into a single edge starting at `container`. Targets reached by
- * only one edge are left untouched.
+ * only one edge are left untouched. A merged edge lists the sources it replaces
+ * in `via`, including the sources of edges that were merged before.
  *
  * @param isInside - Whether a node or container id lies (indirectly) inside another container
  */
@@ -385,12 +388,18 @@ function mergeEdgesFrom(
 		if (isOutgoing(edge)) counts.set(edge.to, (counts.get(edge.to) ?? 0) + 1);
 	}
 
-	const merged = new Set<string>();
+	const merged = new Map<string, GraphEdge & { via: string[] }>();
 	return edges.flatMap((edge) => {
 		if (!isOutgoing(edge) || (counts.get(edge.to) ?? 0) < 2) return [edge];
-		if (merged.has(edge.to)) return [];
-		merged.add(edge.to);
-		return [{ from: container, to: edge.to }];
+		const sources = [...(edge.via ?? []), edge.from];
+		const existing = merged.get(edge.to);
+		if (existing) {
+			existing.via.push(...sources.filter((source) => !existing.via.includes(source)));
+			return [];
+		}
+		const mergedEdge = { from: container, to: edge.to, via: sources };
+		merged.set(edge.to, mergedEdge);
+		return [mergedEdge];
 	});
 }
 

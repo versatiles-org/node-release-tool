@@ -418,7 +418,7 @@ describe('generateDependencyGraph', () => {
 			await generateDependencyGraph(directory, { svg: 'docs/graph.svg' });
 
 			expect(readFileSync(join(directory, 'docs/graph.svg'), 'utf8')).toBe('<svg/>');
-			expect(output()).toBe('![Dependency graph](docs/graph.svg)\n');
+			expect(output()).toBe('[![Dependency graph](docs/graph.svg)](docs/graph.svg?raw=true)\n');
 			expect(format).not.toHaveBeenCalled();
 		});
 
@@ -428,8 +428,8 @@ describe('generateDependencyGraph', () => {
 			expect(vi.mocked(renderSvgGraph).mock.calls[0][0]).toStrictEqual({
 				files: ['src/a/b.ts', 'src/a/c.ts', 'src/x.ts', 'src/y.ts'],
 				edges: [
-					{ from: 'src/a', to: 'src/x.ts' },
-					{ from: 'src/a', to: 'src/y.ts' },
+					{ from: 'src/a', to: 'src/x.ts', via: ['src/a/b.ts', 'src/a/c.ts'] },
+					{ from: 'src/a', to: 'src/y.ts', via: ['src/a/b.ts', 'src/a/c.ts'] },
 					{ from: 'src/a/c.ts', to: 'src/a/b.ts' },
 				],
 			});
@@ -446,7 +446,8 @@ describe('generateDependencyGraph', () => {
 			await generateDependencyGraph(directory, { svg: 'docs/graph.svg' });
 
 			expect(output()).toBe(
-				'![Dependency graph](https://raw.githubusercontent.com/owner/repo/v2.0.0/docs/graph.svg)\n',
+				'[![Dependency graph](https://raw.githubusercontent.com/owner/repo/v2.0.0/docs/graph.svg)]' +
+					'(https://raw.githubusercontent.com/owner/repo/v2.0.0/docs/graph.svg?raw=true)\n',
 			);
 		});
 
@@ -456,7 +457,7 @@ describe('generateDependencyGraph', () => {
 
 			await generateDependencyGraph(directory, { svg: 'docs/graph.svg' });
 
-			expect(output()).toBe('![Dependency graph](docs/graph.svg)\n');
+			expect(output()).toBe('[![Dependency graph](docs/graph.svg)](docs/graph.svg?raw=true)\n');
 			expect(warn).toHaveBeenCalledWith(
 				'no GitHub repository URL in package.json, using a relative link for the dependency graph',
 			);
@@ -488,11 +489,11 @@ describe('generateDependencyGraph', () => {
 			expect(readDepsGraphConfig(directory)).toEqual({ svg: 'config.svg' });
 
 			await generateDependencyGraph(directory);
-			expect(output()).toBe('![Dependency graph](config.svg)\n');
+			expect(output()).toBe('[![Dependency graph](config.svg)](config.svg?raw=true)\n');
 
 			mockStdoutWrite.mockClear();
 			await generateDependencyGraph(directory, { svg: 'cli.svg' });
-			expect(output()).toBe('![Dependency graph](cli.svg)\n');
+			expect(output()).toBe('[![Dependency graph](cli.svg)](cli.svg?raw=true)\n');
 		});
 
 		it('panics on an invalid SVG path in vrt.config.json', () => {

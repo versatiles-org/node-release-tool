@@ -7,6 +7,8 @@ import type { ElkExtendedEdge, ElkNode, ElkPort } from 'elkjs/lib/elk.bundled.js
 export interface GraphEdge {
 	from: string;
 	to: string;
+	/** For merged edges: the files and directories whose edges were merged into this one. */
+	via?: string[];
 }
 
 /**
@@ -94,7 +96,16 @@ const STYLE = `
 	.directory-label { fill: #66736d; font-weight: 600; }
 	.edge { fill: none; stroke: #5f6b66; stroke-width: 1; stroke-opacity: 0.7; }
 	.arrowhead { fill: #5f6b66; }
+	svg { --outgoing: #d9480f; --incoming: #1971c2; }
+	.background, .directory, .edge { pointer-events: none; }
+	.node { cursor: default; }
+	.node:hover .file { stroke-width: 2; }
+	.arrowhead-dim { fill: #5f6b66; fill-opacity: 0.15; }
+	.arrowhead-outgoing { fill: var(--outgoing); }
+	.arrowhead-incoming { fill: var(--incoming); }
 	@media (prefers-color-scheme: dark) {
+		svg { --outgoing: #ff922b; --incoming: #4dabf7; }
+		.arrowhead-dim { fill: #8b949e; }
 		.background { fill: #0d1117; }
 		.directory { stroke: #39424d; }
 		.depth1 { fill: #161b22; }
@@ -117,6 +128,10 @@ const STYLE = `
  * scheme via `prefers-color-scheme`. The output is deterministic, so it only
  * changes when the graph changes.
  *
+ * When the SVG is opened directly (not as `<img>`), hovering a file or a
+ * directory label highlights its outgoing and incoming edges and the connected
+ * files, and dims all other edges. This is pure CSS, see {@link hoverStyle}.
+ *
  * @param model - Files and edges; edge sources may be directory paths
  * @returns The SVG document
  */
@@ -138,6 +153,8 @@ export async function renderSvgGraph(model: GraphModel): Promise<string> {
 		targets: [addPort(edge.to, 'NORTH', `${edge.to}#in${index}`)],
 	}));
 	const context: BuildContext = { directories, files: model.files, ports };
+	const ids = new Map([...model.files, ...directories].map((path, index) => [path, `n${index}`]));
+	const idOf = (path: string): string => ids.get(path) ?? '';
 
 	const graph: ElkNode = {
 		id: '#root',
@@ -169,40 +186,90 @@ export async function renderSvgGraph(model: GraphModel): Promise<string> {
 			);
 			const label = basename(node.id);
 			directoryLabels.push(
+				`<g class="node ${idOf(node.id)}">`,
 				`<rect class="depth${level}" x="${num(x + DIRECTORY_PADDING - 3)}" y="${num(y + 4)}" width="${num(textWidth(label, true) + 6)}" height="16" rx="2"/>`,
 				text('directory-label', x + DIRECTORY_PADDING, y + 16, label, true),
+				'</g>',
 			);
 			node.children.forEach((child) => drawNode(child, depth + 1));
 		} else {
 			shapes.push(
+				`<g class="node ${idOf(node.id)}">`,
 				`<rect class="file" x="${num(x)}" y="${num(y)}" width="${num(width)}" height="${num(height)}" rx="4"/>`,
 				text('label', x + width / 2, y + height / 2 + 4, basename(node.id)),
+				'</g>',
 			);
 		}
 	};
 	layout.children?.forEach((child) => drawNode(child, 1));
 
-	for (const edge of layout.edges ?? []) {
+	(layout.edges ?? []).forEach((edge, index) => {
+		const { from, to, via = [] } = model.edges[index];
+		const classes = ['edge', ...[from, ...via].map((source) => `from-${idOf(source)}`), `to-${idOf(to)}`];
 		for (const section of edge.sections ?? []) {
 			const points = [section.startPoint, ...(section.bendPoints ?? []), section.endPoint];
 			const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${num(p.x)},${num(p.y)}`).join(' ');
-			shapes.push(`<path class="edge" d="${path}" marker-end="url(#arrow)"/>`);
+			shapes.push(`<path class="${classes.join(' ')}" d="${path}" marker-end="url(#arrow)"/>`);
 		}
-	}
+	});
 
 	const width = Math.ceil(layout.width ?? 0);
 	const height = Math.ceil(layout.height ?? 0);
 	return [
 		`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
 		'<title>Dependency graph</title>',
-		`<style>${STYLE}</style>`,
-		'<defs><marker id="arrow" viewBox="0 0 8 8" refX="8" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path class="arrowhead" d="M0,0 L8,4 L0,8 z"/></marker></defs>',
+		`<style>${STYLE}${hoverStyle(model, idOf)}</style>`,
+		'<defs>',
+		marker('arrow', 'arrowhead'),
+		marker('arrow-dim', 'arrowhead-dim'),
+		marker('arrow-outgoing', 'arrowhead-outgoing'),
+		marker('arrow-incoming', 'arrowhead-incoming'),
+		'</defs>',
 		`<rect class="background" width="${width}" height="${height}"/>`,
 		...shapes,
 		...directoryLabels,
 		'</svg>',
 		'',
 	].join('\n');
+}
+
+/**
+ * Builds the CSS that highlights the edges of a hovered node. CSS can not
+ * relate a hovered node to its edges generically, so there is one selector per
+ * node, e.g. `svg:has(.n3:hover) .from-n3`, and one per edge for the connected
+ * files. Arrowheads switch to differently colored markers, because WebKit does
+ * not support `context-stroke` in markers.
+ */
+function hoverStyle(model: GraphModel, idOf: (path: string) => string): string {
+	const files = new Set(model.files);
+	const outgoing = new Set<string>();
+	const incoming = new Set<string>();
+	const targets = new Set<string>();
+	const sources = new Set<string>();
+	for (const { from, to, via = [] } of model.edges) {
+		const target = idOf(to);
+		incoming.add(`svg:has(.${target}:hover) .to-${target}`);
+		for (const path of [from, ...via]) {
+			const source = idOf(path);
+			outgoing.add(`svg:has(.${source}:hover) .from-${source}`);
+			targets.add(`svg:has(.${source}:hover) .${target} .file`);
+			if (files.has(path)) sources.add(`svg:has(.${target}:hover) .${source} .file`);
+		}
+	}
+	if (incoming.size === 0) return '';
+	const rule = (selectors: Set<string>, declarations: string): string =>
+		selectors.size > 0 ? `\t${[...selectors].join(', ')} { ${declarations} }\n` : '';
+	return [
+		'\tsvg:has(.node:hover) .edge { stroke-opacity: 0.15; marker-end: url(#arrow-dim); }\n',
+		rule(outgoing, 'stroke: var(--outgoing); stroke-opacity: 1; marker-end: url(#arrow-outgoing);'),
+		rule(incoming, 'stroke: var(--incoming); stroke-opacity: 1; marker-end: url(#arrow-incoming);'),
+		rule(targets, 'stroke: var(--outgoing);'),
+		rule(sources, 'stroke: var(--incoming);'),
+	].join('');
+}
+
+function marker(id: string, className: string): string {
+	return `<marker id="${id}" viewBox="0 0 8 8" refX="8" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path class="${className}" d="M0,0 L8,4 L0,8 z"/></marker>`;
 }
 
 /**

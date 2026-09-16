@@ -55,6 +55,11 @@ describe('release links', () => {
 			expect(unpinReleaseLinks(markdown, base)).toBe('![graph](docs/graph.svg)\n[doc](docs/a.md) and [again](b.md)');
 		});
 
+		it('restores both URLs of a linked image, keeping the query', () => {
+			const markdown = `[![graph](${base}docs/graph.svg)](${base}docs/graph.svg?raw=true)`;
+			expect(unpinReleaseLinks(markdown, base)).toBe('[![graph](docs/graph.svg)](docs/graph.svg?raw=true)');
+		});
+
 		it('keeps links to other versions and plain text mentions', () => {
 			const markdown = `[old](https://raw.githubusercontent.com/owner/repo/v1.2.2/a.md) ${base}a.md`;
 			expect(unpinReleaseLinks(markdown, base)).toBe(markdown);
