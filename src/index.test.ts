@@ -101,6 +101,7 @@ describe('release-tool CLI', () => {
 				exclude: [],
 				mergeOutgoing: [],
 				subgraphDirection: [],
+				svg: undefined,
 			});
 		});
 
@@ -112,6 +113,19 @@ describe('release-tool CLI', () => {
 				exclude: [],
 				mergeOutgoing: [],
 				subgraphDirection: ['src/lib=LR', 'src/commands=RL'],
+				svg: undefined,
+			});
+		});
+
+		it('should pass the --svg option', async () => {
+			await run('deps-graph', '--svg', 'docs/graph.svg');
+
+			expect(generateDependencyGraph).toHaveBeenCalledWith(process.cwd(), {
+				collapseDir: [],
+				exclude: [],
+				mergeOutgoing: [],
+				subgraphDirection: [],
+				svg: 'docs/graph.svg',
 			});
 		});
 
@@ -123,6 +137,7 @@ describe('release-tool CLI', () => {
 				exclude: [],
 				mergeOutgoing: ['src/lib', 'src/commands'],
 				subgraphDirection: [],
+				svg: undefined,
 			});
 		});
 	});

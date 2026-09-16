@@ -1,8 +1,13 @@
 import { cruise, format } from 'dependency-cruiser';
 import type { ICruiseResult, IModule } from 'dependency-cruiser';
+import { mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { dirname, relative, resolve, sep } from 'path';
 import picomatch from 'picomatch';
 import { CONFIG_FILENAME, readConfigSection } from '../lib/config.js';
+import { extractGitHubRepoUrl } from '../lib/git.js';
 import { panic, warn } from '../lib/log.js';
+import { getReleaseBaseUrl, RELEASE_VERSION_ENV } from '../lib/release-link.js';
+import { type GraphEdge, type GraphModel, renderSvgGraph } from './deps-graph-svg.js';
 
 /**
  * Options for {@link generateDependencyGraph}.
@@ -36,18 +41,25 @@ export interface DepsGraphOptions {
 	 * innermost first.
 	 */
 	mergeOutgoing?: string[];
+	/**
+	 * Path of an SVG file. If set, the graph is laid out with ELK and written to
+	 * this file, and a Markdown image link to it is printed instead of Mermaid
+	 * markup. The link is relative, except while `release-npm` publishes a
+	 * package: then it points to the file at the release's git tag.
+	 */
+	svg?: string;
 }
 
 /**
- * Maps the keys of the `deps-graph` section in `vrt.config.json`, which mirror
- * the CLI flags, to the corresponding {@link DepsGraphOptions} properties.
+ * Maps the list keys of the `deps-graph` section in `vrt.config.json`, which
+ * mirror the CLI flags, to the corresponding {@link DepsGraphOptions} properties.
  */
-const CONFIG_KEYS = {
+const LIST_CONFIG_KEYS = {
 	'collapse-dir': 'collapseDir',
 	exclude: 'exclude',
 	'merge-outgoing': 'mergeOutgoing',
 	'subgraph-direction': 'subgraphDirection',
-} as const satisfies Record<string, keyof DepsGraphOptions>;
+} as const satisfies Record<string, Exclude<keyof DepsGraphOptions, 'svg'>>;
 
 const DIRECTIONS = ['TB', 'TD', 'BT', 'LR', 'RL'] as const;
 type Direction = (typeof DIRECTIONS)[number];
@@ -79,18 +91,19 @@ interface MermaidStructure {
 const INTERNAL_EXCLUDES = ['\\.(test|d|mock)\\.ts$', 'node_modules', '__mocks__/'];
 
 /**
- * Generates a Mermaid dependency graph for the project's source files.
+ * Generates a dependency graph for the project's source files.
  *
  * Uses dependency-cruiser to analyze imports and outputs a Mermaid flowchart
  * diagram to stdout. The output is wrapped in markdown code blocks for
- * easy inclusion in documentation.
+ * easy inclusion in documentation. With the `svg` option, the graph is written
+ * as SVG file instead and a Markdown image link to it is printed.
  *
  * Graph-shaping options are read from the `deps-graph` section of the
  * project's `vrt.config.json` (see {@link readDepsGraphConfig}) and extended
  * by the given options.
  *
  * @param directory - The project directory to analyze
- * @param cliOptions - Optional graph-shaping flags (collapse, exclude, subgraph direction, merge outgoing)
+ * @param cliOptions - Optional graph-shaping flags (collapse, exclude, subgraph direction, merge outgoing, svg)
  * @throws {VrtError} If dependency analysis fails
  */
 export async function generateDependencyGraph(directory: string, cliOptions: DepsGraphOptions = {}): Promise<void> {
@@ -120,6 +133,16 @@ export async function generateDependencyGraph(directory: string, cliOptions: Dep
 		cruiseResult = collapseModules(cruiseResult, collapsers);
 	}
 
+	if (options.svg !== undefined) {
+		if (directionRules.length > 0) warn('subgraph direction is not supported for SVG output and is ignored');
+		const svg = await renderSvgGraph(buildGraphModel(cruiseResult, mergeRules));
+		const svgPath = resolve(directory, options.svg);
+		mkdirSync(dirname(svgPath), { recursive: true });
+		writeFileSync(svgPath, svg);
+		process.stdout.write(`![Dependency graph](${getImageUrl(directory, options.svg)})\n`);
+		return;
+	}
+
 	const formatted = await format(cruiseResult, { outputType: 'mermaid' });
 	let output = formatted.output;
 	if (typeof output !== 'string') {
@@ -146,10 +169,10 @@ export async function generateDependencyGraph(directory: string, cliOptions: Dep
 /**
  * Reads graph-shaping options from the `deps-graph` section of the
  * `vrt.config.json` in `directory`. Keys are the CLI flag names, values are
- * arrays of strings, e.g.:
+ * arrays of strings, except for `svg`, which is a string, e.g.:
  *
  * ```json
- * { "deps-graph": { "merge-outgoing": ["src/*"], "collapse-dir": ["src/themes/*"] } }
+ * { "deps-graph": { "merge-outgoing": ["src/*"], "svg": "docs/dependency-graph.svg" } }
  * ```
  *
  * Returns empty options if there is no `vrt.config.json` or no such section.
@@ -162,26 +185,31 @@ export function readDepsGraphConfig(directory: string): DepsGraphOptions {
 
 	const options: DepsGraphOptions = {};
 	for (const [key, value] of Object.entries(section)) {
-		if (!Object.hasOwn(CONFIG_KEYS, key)) {
-			panic(
-				`${CONFIG_FILENAME}: unknown key "deps-graph.${key}", expected one of: ${Object.keys(CONFIG_KEYS).join(', ')}`,
-			);
+		if (key === 'svg') {
+			if (typeof value !== 'string' || !value) panic(`${CONFIG_FILENAME}: "deps-graph.svg" must be a file path`);
+			options.svg = value;
+			continue;
+		}
+		if (!Object.hasOwn(LIST_CONFIG_KEYS, key)) {
+			const keys = [...Object.keys(LIST_CONFIG_KEYS), 'svg'].join(', ');
+			panic(`${CONFIG_FILENAME}: unknown key "deps-graph.${key}", expected one of: ${keys}`);
 		}
 		if (!Array.isArray(value) || !value.every((v) => typeof v === 'string')) {
 			panic(`${CONFIG_FILENAME}: "deps-graph.${key}" must be an array of strings`);
 		}
-		options[CONFIG_KEYS[key as keyof typeof CONFIG_KEYS]] = value;
+		options[LIST_CONFIG_KEYS[key as keyof typeof LIST_CONFIG_KEYS]] = value;
 	}
 	return options;
 }
 
 /**
  * Concatenates the option lists of `config` and `overrides`. Values from
- * `overrides` come last, so they win where the last match counts.
+ * `overrides` come last, so they win where the last match counts. A `svg`
+ * path in `overrides` replaces the one from `config`.
  */
 function mergeOptions(config: DepsGraphOptions, overrides: DepsGraphOptions): DepsGraphOptions {
-	const merged: DepsGraphOptions = {};
-	for (const key of Object.values(CONFIG_KEYS)) {
+	const merged: DepsGraphOptions = { svg: overrides.svg ?? config.svg };
+	for (const key of Object.values(LIST_CONFIG_KEYS)) {
 		merged[key] = [...(config[key] ?? []), ...(overrides[key] ?? [])];
 	}
 	return merged;
@@ -305,7 +333,7 @@ function mergeOutgoingEdges(output: string, rules: GlobRule[]): string {
 	};
 
 	const edgeLines = new Set<number>();
-	let edges: { from: string; to: string }[] = [];
+	let edges: GraphEdge[] = [];
 	lines.forEach((line, index) => {
 		const edge = /^\s*(\w+)-->(\w+)\s*$/.exec(line);
 		if (!edge) return;
@@ -319,22 +347,7 @@ function mergeOutgoingEdges(output: string, rules: GlobRule[]): string {
 		const matching = rules.filter((r) => r.isMatch(subgraph.path));
 		if (matching.length === 0) continue;
 		matching.forEach((r) => used.add(r));
-
-		const isOutgoing = (edge: { from: string; to: string }): boolean =>
-			isInside(edge.from, subgraph.id) && !isInside(edge.to, subgraph.id);
-
-		const counts = new Map<string, number>();
-		for (const edge of edges) {
-			if (isOutgoing(edge)) counts.set(edge.to, (counts.get(edge.to) ?? 0) + 1);
-		}
-
-		const merged = new Set<string>();
-		edges = edges.flatMap((edge) => {
-			if (!isOutgoing(edge) || (counts.get(edge.to) ?? 0) < 2) return [edge];
-			if (merged.has(edge.to)) return [];
-			merged.add(edge.to);
-			return [{ from: subgraph.id, to: edge.to }];
-		});
+		edges = mergeEdgesFrom(edges, subgraph.id, isInside);
 	}
 
 	warnUnusedRules(rules, used, 'merge outgoing');
@@ -347,6 +360,92 @@ function mergeOutgoingEdges(output: string, rules: GlobRule[]): string {
 			return edgeLines.has(index) ? [] : [line];
 		})
 		.join('\n');
+}
+
+/**
+ * Merges edges that start inside `container` and point to the same target
+ * outside of it into a single edge starting at `container`. Targets reached by
+ * only one edge are left untouched.
+ *
+ * @param isInside - Whether a node or container id lies (indirectly) inside another container
+ */
+function mergeEdgesFrom(
+	edges: GraphEdge[],
+	container: string,
+	isInside: (id: string, ancestor: string) => boolean,
+): GraphEdge[] {
+	const isOutgoing = (edge: GraphEdge): boolean => isInside(edge.from, container) && !isInside(edge.to, container);
+
+	const counts = new Map<string, number>();
+	for (const edge of edges) {
+		if (isOutgoing(edge)) counts.set(edge.to, (counts.get(edge.to) ?? 0) + 1);
+	}
+
+	const merged = new Set<string>();
+	return edges.flatMap((edge) => {
+		if (!isOutgoing(edge) || (counts.get(edge.to) ?? 0) < 2) return [edge];
+		if (merged.has(edge.to)) return [];
+		merged.add(edge.to);
+		return [{ from: container, to: edge.to }];
+	});
+}
+
+/**
+ * Converts the cruise result into files and edges for SVG rendering, merging
+ * outgoing edges of directories that match `mergeRules` (inner before outer
+ * directories, like {@link mergeOutgoingEdges}).
+ */
+function buildGraphModel(result: ICruiseResult, mergeRules: GlobRule[]): GraphModel {
+	const files = result.modules.map((m) => m.source);
+	let edges: GraphEdge[] = result.modules.flatMap((m) =>
+		m.dependencies.map((d) => ({ from: m.source, to: d.resolved })),
+	);
+
+	const directories = new Set<string>();
+	for (const file of files) {
+		const segments = file.split('/');
+		for (let i = 1; i < segments.length; i++) directories.add(segments.slice(0, i).join('/'));
+	}
+	const depth = (path: string): number => path.split('/').length;
+	const innerFirst = [...directories].sort((a, b) => depth(b) - depth(a));
+	const isInside = (path: string, ancestor: string): boolean => path.startsWith(ancestor + '/');
+
+	const used = new Set<GlobRule>();
+	for (const directory of innerFirst) {
+		const matching = mergeRules.filter((r) => r.isMatch(directory));
+		if (matching.length === 0) continue;
+		matching.forEach((r) => used.add(r));
+		edges = mergeEdgesFrom(edges, directory, isInside);
+	}
+	warnUnusedRules(mergeRules, used, 'merge outgoing');
+
+	return { files, edges };
+}
+
+/**
+ * Returns the URL for the image link to the SVG file: relative to `directory`,
+ * or, while `release-npm` publishes (see {@link RELEASE_VERSION_ENV}), pointing
+ * to the file at the git tag of the release, so that the published README
+ * always shows the graph of its version.
+ */
+function getImageUrl(directory: string, svgPath: string): string {
+	const relativePath = relative(resolve(directory), resolve(directory, svgPath)).split(sep).join('/');
+	const version = process.env[RELEASE_VERSION_ENV];
+	if (!version) return relativePath;
+
+	let repository: unknown;
+	try {
+		repository = (JSON.parse(readFileSync(resolve(directory, 'package.json'), 'utf8')) as { repository?: unknown })
+			.repository;
+	} catch {
+		repository = undefined;
+	}
+	const repoUrl = extractGitHubRepoUrl(repository);
+	if (!repoUrl) {
+		warn('no GitHub repository URL in package.json, using a relative link for the dependency graph');
+		return relativePath;
+	}
+	return getReleaseBaseUrl(repoUrl, version, directory) + relativePath;
 }
 
 /**

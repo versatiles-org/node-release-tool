@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, MockInstance, vi } from 'vitest';
 import type { ICruiseResult, IModule, IReporterOutput } from 'dependency-cruiser';
-import { mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
@@ -18,9 +18,15 @@ vi.mock('../lib/log.js', () => ({
 	warn: vi.fn(),
 }));
 
+// Capture the graph model instead of running the ELK layout (tested in deps-graph-svg.test.ts)
+vi.mock('./deps-graph-svg.js', () => ({
+	renderSvgGraph: vi.fn(async () => '<svg/>'),
+}));
+
 // 3. Import the mocked modules and the function under test
 const { cruise, format } = await import('dependency-cruiser');
 const { panic, warn } = await import('../lib/log.js');
+const { renderSvgGraph } = await import('./deps-graph-svg.js');
 const { generateDependencyGraph, readDepsGraphConfig } = await import('./deps-graph.js');
 
 /** Build a minimal ICruiseResult with the given modules; all other fields stubbed. */
@@ -366,6 +372,114 @@ describe('generateDependencyGraph', () => {
 
 			const output = (mockStdoutWrite.mock.calls[0][0] as Buffer).toString();
 			expect(output).toContain('subgraph 0["src"]\ndirection RL\n');
+		});
+	});
+
+	describe('--svg', () => {
+		let directory: string;
+
+		function output(): string {
+			return mockStdoutWrite.mock.calls.map((c) => c[0].toString()).join('');
+		}
+
+		beforeEach(() => {
+			directory = mkdtempSync(join(tmpdir(), 'vrt-deps-graph-svg-'));
+			mkdirSync(join(directory, '.git'));
+			delete process.env.VRT_RELEASE_VERSION;
+			vi.mocked(cruise).mockResolvedValue({
+				output: fakeCruiseResult([
+					{
+						source: 'src/a/b.ts',
+						dependencies: [{ resolved: 'src/x.ts' }, { resolved: 'src/y.ts' }] as IModule['dependencies'],
+					},
+					{
+						source: 'src/a/c.ts',
+						dependencies: [
+							{ resolved: 'src/x.ts' },
+							{ resolved: 'src/y.ts' },
+							{ resolved: 'src/a/b.ts' },
+						] as IModule['dependencies'],
+					},
+					{ source: 'src/x.ts', dependencies: [] },
+					{ source: 'src/y.ts', dependencies: [] },
+				]),
+			} as IReporterOutput);
+		});
+
+		afterEach(() => {
+			delete process.env.VRT_RELEASE_VERSION;
+			rmSync(directory, { recursive: true, force: true });
+		});
+
+		it('writes the SVG and prints a relative image link instead of Mermaid', async () => {
+			await generateDependencyGraph(directory, { svg: 'docs/graph.svg' });
+
+			expect(readFileSync(join(directory, 'docs/graph.svg'), 'utf8')).toBe('<svg/>');
+			expect(output()).toBe('![Dependency graph](docs/graph.svg)\n');
+			expect(format).not.toHaveBeenCalled();
+		});
+
+		it('merges outgoing edges of matching directories in the graph model', async () => {
+			await generateDependencyGraph(directory, { svg: 'graph.svg', mergeOutgoing: ['src/a'] });
+
+			expect(vi.mocked(renderSvgGraph).mock.calls[0][0]).toStrictEqual({
+				files: ['src/a/b.ts', 'src/a/c.ts', 'src/x.ts', 'src/y.ts'],
+				edges: [
+					{ from: 'src/a', to: 'src/x.ts' },
+					{ from: 'src/a', to: 'src/y.ts' },
+					{ from: 'src/a/c.ts', to: 'src/a/b.ts' },
+				],
+			});
+			expect(warn).not.toHaveBeenCalled();
+		});
+
+		it('links to the file at the release tag while release-npm publishes', async () => {
+			writeFileSync(
+				join(directory, 'package.json'),
+				JSON.stringify({ repository: { url: 'git+https://github.com/owner/repo.git' } }),
+			);
+			process.env.VRT_RELEASE_VERSION = '2.0.0';
+
+			await generateDependencyGraph(directory, { svg: 'docs/graph.svg' });
+
+			expect(output()).toBe(
+				'![Dependency graph](https://raw.githubusercontent.com/owner/repo/v2.0.0/docs/graph.svg)\n',
+			);
+		});
+
+		it('falls back to a relative link without GitHub repository', async () => {
+			writeFileSync(join(directory, 'package.json'), JSON.stringify({ name: 'test' }));
+			process.env.VRT_RELEASE_VERSION = '2.0.0';
+
+			await generateDependencyGraph(directory, { svg: 'docs/graph.svg' });
+
+			expect(output()).toBe('![Dependency graph](docs/graph.svg)\n');
+			expect(warn).toHaveBeenCalledWith(
+				'no GitHub repository URL in package.json, using a relative link for the dependency graph',
+			);
+		});
+
+		it('warns that subgraph directions are ignored', async () => {
+			await generateDependencyGraph(directory, { svg: 'graph.svg', subgraphDirection: ['src/a=LR'] });
+
+			expect(warn).toHaveBeenCalledWith('subgraph direction is not supported for SVG output and is ignored');
+		});
+
+		it('reads the SVG path from vrt.config.json, overridden by the CLI option', async () => {
+			writeFileSync(join(directory, 'vrt.config.json'), JSON.stringify({ 'deps-graph': { svg: 'config.svg' } }));
+			expect(readDepsGraphConfig(directory)).toEqual({ svg: 'config.svg' });
+
+			await generateDependencyGraph(directory);
+			expect(output()).toBe('![Dependency graph](config.svg)\n');
+
+			mockStdoutWrite.mockClear();
+			await generateDependencyGraph(directory, { svg: 'cli.svg' });
+			expect(output()).toBe('![Dependency graph](cli.svg)\n');
+		});
+
+		it('panics on an invalid SVG path in vrt.config.json', () => {
+			writeFileSync(join(directory, 'vrt.config.json'), JSON.stringify({ 'deps-graph': { svg: ['a.svg'] } }));
+			expect(() => readDepsGraphConfig(directory)).toThrow('"deps-graph.svg" must be a file path');
 		});
 	});
 });

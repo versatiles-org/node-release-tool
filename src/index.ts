@@ -89,13 +89,24 @@ program
 		(value: string, prev: string[] = []) => prev.concat(value),
 		[] as string[],
 	)
+	.option(
+		'--svg <file>',
+		'Write the graph as SVG to the file and output a Markdown image link to it instead of Mermaid markup.',
+	)
 	.action(
-		(opts: { collapseDir: string[]; exclude: string[]; mergeOutgoing: string[]; subgraphDirection: string[] }) => {
+		(opts: {
+			collapseDir: string[];
+			exclude: string[];
+			mergeOutgoing: string[];
+			subgraphDirection: string[];
+			svg?: string;
+		}) => {
 			void generateDependencyGraph(process.cwd(), {
 				collapseDir: opts.collapseDir,
 				exclude: opts.exclude,
 				mergeOutgoing: opts.mergeOutgoing,
 				subgraphDirection: opts.subgraphDirection,
+				svg: opts.svg,
 			});
 		},
 	);

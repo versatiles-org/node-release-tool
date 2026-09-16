@@ -16,6 +16,7 @@ import {
 	type ParsedCommit,
 } from '../lib/git.js';
 import { check, info, panic, warn } from '../lib/log.js';
+import { getReleaseBaseUrl, RELEASE_VERSION_ENV, unpinReleaseLinks } from '../lib/release-link.js';
 import { withRetry } from '../lib/retry.js';
 import { Shell } from '../lib/shell.js';
 
@@ -119,8 +120,9 @@ function isValidPackageJson(pkg: unknown): pkg is PackageJson {
  * 5. Runs project checks
  * 6. Updates package.json version
  * 7. Updates CHANGELOG.md
- * 8. Publishes to npm (if not private)
- * 9. Creates git commit and tag
+ * 8. Publishes to npm (if not private), with links in generated docs pinned to the release tag,
+ *    then restores those links to relative ones
+ * 9. Creates git commit and tag (fails if the tag already exists, so tagged files never change)
  * 10. Pushes to remote and creates GitHub release
  *
  * @param directory - The project directory containing package.json
@@ -215,11 +217,12 @@ export async function release(
 		info('    npm i --package-lock-only');
 		info('    Update CHANGELOG.md');
 		if (!isPrivatePackage) {
-			info('    npm publish --access public');
+			info(`    ${RELEASE_VERSION_ENV}=${nextVersion} npm publish --access public`);
+			if (repoUrl) info('    Restore relative links in changed Markdown files');
 		}
 		info('    git add .');
 		info(`    git commit -m "v${nextVersion}"`);
-		info(`    git tag -f -a "v${nextVersion}" -m "new release: v${nextVersion}"`);
+		info(`    git tag -a "v${nextVersion}" -m "new release: v${nextVersion}"`);
 		info('    git push --atomic --no-verify --follow-tags');
 		info(`    gh release create/edit "v${nextVersion}"`);
 		info('Dry-run complete - no changes were made');
@@ -241,19 +244,24 @@ export async function release(
 	}
 
 	if (!isPrivatePackage) {
-		// npm publish (with retry for transient network failures)
+		// npm publish (with retry for transient network failures). The version in the environment lets
+		// generated docs, e.g. `vrt deps-graph --svg`, link to files at the release tag while packing.
+		const publishShell = new Shell(directory, { [RELEASE_VERSION_ENV]: nextVersion });
 		await check(
 			'npm publish',
-			withRetry(() => shell.runInteractive('npm publish --access public'), {
+			withRetry(() => publishShell.runInteractive('npm publish --access public'), {
 				onRetry: (attempt, error) => warn(`npm publish failed (attempt ${attempt}): ${error.message}, retrying...`),
 			}),
 		);
+
+		// the committed docs keep relative links, so GitHub shows the files of the current commit
+		if (repoUrl) await check('restore relative links', restoreRelativeLinks(repoUrl));
 	}
 
 	// git push
 	await check('git add', shell.run('git add .'));
 	await check('git commit', shell.run(`git commit -m "v${nextVersion}"`));
-	await check('git tag', shell.run(`git tag -f -a "v${nextVersion}" -m "new release: v${nextVersion}"`));
+	await check('git tag', shell.run(`git tag -a "v${nextVersion}" -m "new release: v${nextVersion}"`));
 	await check(
 		'git push',
 		withRetry(() => shell.run('git push --atomic --no-verify --follow-tags'), {
@@ -284,6 +292,21 @@ export async function release(
 	info('Finished');
 
 	return;
+
+	/**
+	 * Turns links to files at the release tag, written while `npm publish` ran, back into
+	 * relative links in all changed Markdown files.
+	 */
+	async function restoreRelativeLinks(url: string): Promise<void> {
+		const baseUrl = getReleaseBaseUrl(url, nextVersion, directory);
+		const { stdout } = await shell.exec('git', ['diff', '--name-only', '--relative', '--', '*.md']);
+		for (const file of stdout.split('\n').filter(Boolean)) {
+			const path = resolve(directory, file);
+			const content = readFileSync(path, 'utf8');
+			const restored = unpinReleaseLinks(content, baseUrl);
+			if (restored !== content) writeFileSync(path, restored);
+		}
+	}
 
 	async function verifyNpmAuth(): Promise<void> {
 		try {

@@ -90,6 +90,12 @@ describe('release function', () => {
 			throw Error();
 		});
 		vi.mocked(mockedShellInstance.ok).mockResolvedValue(true);
+		vi.mocked(mockedShellInstance.exec).mockImplementation(async () => ({
+			code: 0,
+			signal: '',
+			stdout: '',
+			stderr: '',
+		}));
 
 		mockGit = {
 			getCommitsBetween: vi.fn(async () => [
@@ -155,6 +161,7 @@ describe('release function', () => {
 			'run checks',
 			'update version',
 			'npm publish',
+			'restore relative links',
 			'git add',
 			'git commit',
 			'git tag',
@@ -214,10 +221,11 @@ describe('release function', () => {
 			['npm i --package-lock-only'],
 			['git add .'],
 			['git commit -m "v1.1.0"'],
-			['git tag -f -a "v1.1.0" -m "new release: v1.1.0"'],
+			['git tag -a "v1.1.0" -m "new release: v1.1.0"'],
 			['git push --atomic --no-verify --follow-tags'],
 		]);
 		expect(vi.mocked(mockedShellInstance.exec).mock.calls).toStrictEqual([
+			['git', ['diff', '--name-only', '--relative', '--', '*.md']],
 			[
 				'gh',
 				[
@@ -265,6 +273,38 @@ describe('release function', () => {
 				'invalid version "next", expected one of major, minor, patch or "x.y.z"',
 			);
 		});
+	});
+
+	it('should publish with the release version and restore relative links afterwards', async () => {
+		const { Shell } = await import('../lib/shell.js');
+		const pinned = '![Dependency graph](https://raw.githubusercontent.com/owner/repo/v1.1.0/docs/graph.svg)';
+		vi.mocked(mockedShellInstance.exec).mockImplementation(async (command: string, args: string[]) => ({
+			code: 0,
+			signal: '',
+			stdout: command === 'git' && args[0] === 'diff' ? 'README.md\nCHANGELOG.md\n' : '',
+			stderr: '',
+		}));
+		const readme = `# Title\n\n${pinned}\n\n[other](https://raw.githubusercontent.com/owner/repo/v1.0.0/x.md)\n`;
+		const defaultRead = vi.mocked(readFileSync).getMockImplementation()!;
+		vi.mocked(readFileSync).mockImplementation((path, options) =>
+			path.toString().endsWith('README.md') ? readme : defaultRead(path, options),
+		);
+
+		await release('/test/directory', 'main');
+
+		expect(vi.mocked(Shell).mock.calls).toContainEqual(['/test/directory', { VRT_RELEASE_VERSION: '1.1.0' }]);
+
+		const readmeWrites = vi.mocked(writeFileSync).mock.calls.filter((c) => c[0].toString().endsWith('README.md'));
+		expect(readmeWrites).toStrictEqual([
+			[
+				'/test/directory/README.md',
+				'# Title\n\n![Dependency graph](docs/graph.svg)\n\n[other](https://raw.githubusercontent.com/owner/repo/v1.0.0/x.md)\n',
+			],
+		]);
+		// CHANGELOG.md contains no pinned links, so it is only written by the changelog update
+		expect(vi.mocked(writeFileSync).mock.calls.filter((c) => c[0].toString().endsWith('CHANGELOG.md'))).toHaveLength(
+			1,
+		);
 	});
 
 	it('should error on wrong branch', async () => {
@@ -332,7 +372,9 @@ describe('release function', () => {
 		expect(infoMessages).toContain('starting release process (dry-run)');
 		expect(infoMessages).toContain('Dry-run mode - the following actions would be performed:');
 		expect(infoMessages).toContain('  Version: 1.0.0 -> 1.1.0');
-		expect(infoMessages).toContain('    npm publish --access public');
+		expect(infoMessages).toContain('    VRT_RELEASE_VERSION=1.1.0 npm publish --access public');
+		expect(infoMessages).toContain('    Restore relative links in changed Markdown files');
+		expect(infoMessages).toContain('    git tag -a "v1.1.0" -m "new release: v1.1.0"');
 		expect(infoMessages).toContain('Dry-run complete - no changes were made');
 	});
 
@@ -355,7 +397,8 @@ describe('release function', () => {
 		expect(vi.mocked(mockedShellInstance.stdout).mock.calls).not.toContainEqual(['npm whoami']);
 
 		const infoMessages = vi.mocked(info).mock.calls.map((c) => c[0]);
-		expect(infoMessages).not.toContain('    npm publish --access public');
+		expect(infoMessages).not.toContain('    VRT_RELEASE_VERSION=1.1.0 npm publish --access public');
+		expect(infoMessages).not.toContain('    Restore relative links in changed Markdown files');
 		expect(infoMessages).toContain('Dry-run complete - no changes were made');
 	});
 
@@ -364,7 +407,7 @@ describe('release function', () => {
 
 		await release('/test/directory', 'main');
 
-		const execCalls = vi.mocked(mockedShellInstance.exec).mock.calls;
+		const execCalls = vi.mocked(mockedShellInstance.exec).mock.calls.filter((c) => c[0] === 'gh');
 		expect(execCalls).toHaveLength(1);
 		const [cmd, args] = execCalls[0];
 		expect(cmd).toBe('gh');

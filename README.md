@@ -101,6 +101,25 @@ Instead of passing long lists of flags, you can put the options into a `vrt.conf
 }
 ```
 
+The `svg` option (see below) can be set there too, as a string: `"svg": "docs/dependency-graph.svg"`.
+
+# Dependency graph as SVG
+
+GitHub renders Mermaid without the ELK layout, and npmjs.com doesn't render Mermaid at all. With `--svg`, `deps-graph` lays out the graph with ELK, writes it as an SVG file and prints a Markdown image link instead of Mermaid markup:
+
+```bash
+vrt deps-graph --svg docs/dependency-graph.svg | vrt doc-insert README.md '## Dependency Graph'
+```
+
+The link is relative (`![Dependency graph](docs/dependency-graph.svg)`), so GitHub always shows the graph of the current commit. The SVG adapts to light and dark mode.
+
+On npmjs.com, a README must show the graph of its own version, even after the file changes in later commits. `vrt release-npm` takes care of that:
+
+1. It runs `npm publish` with the environment variable `VRT_RELEASE_VERSION` set to the new version. When `prepack` regenerates the docs, `deps-graph` prints a link to the file at the release tag instead, e.g. `https://raw.githubusercontent.com/<owner>/<repo>/v1.2.3/docs/dependency-graph.svg`. The published package contains this link.
+2. After publishing, it turns these links in all changed Markdown files back into relative links, then commits and creates the tag. Existing tags are never overwritten, so a linked file can't change later.
+
+This requires a public GitHub repository in the `repository` field of package.json, and a `prepack` script that regenerates the README (e.g. `npm run build`, which runs `npm run doc`). `--subgraph-direction` is not supported for SVG output.
+
 # Command `vrt`
 
 <!--- This chapter is generated automatically --->
@@ -161,6 +180,9 @@ Options:
   --subgraph-direction <glob=dir>  Set the flow direction (TB, BT, LR, RL) of
                                    directory subgraphs matching the glob, e.g.
                                    "src/lib=LR" (repeatable). (default: [])
+  --svg <file>                     Write the graph as SVG to the file and output
+                                   a Markdown image link to it instead of
+                                   Mermaid markup.
 
 All options can also be set in vrt.config.json, e.g.:
   { "deps-graph": { "merge-outgoing": ["src/*"] } }
@@ -288,57 +310,63 @@ flowchart TB
 subgraph 0["src"]
 subgraph 1["commands"]
 2["check.ts"]
-6["deps-graph.ts"]
-8["deps-upgrade.ts"]
-A["doc-command.ts"]
-C["doc-typescript.ts"]
-D["markdown.ts"]
-E["release-npm.ts"]
+6["deps-graph-svg.ts"]
+7["deps-graph.ts"]
+C["deps-upgrade.ts"]
+D["doc-command.ts"]
+F["doc-typescript.ts"]
+G["markdown.ts"]
+H["release-npm.ts"]
 end
 subgraph 3["lib"]
 4["log.ts"]
 5["errors.ts"]
-7["config.ts"]
-9["shell.ts"]
-B["utils.ts"]
-F["changelog.ts"]
-G["git.ts"]
-H["retry.ts"]
-J["benchmark.ts"]
+8["config.ts"]
+9["git.ts"]
+A["shell.ts"]
+B["release-link.ts"]
+E["utils.ts"]
+I["changelog.ts"]
+J["retry.ts"]
+L["benchmark.ts"]
 end
-I["index.ts"]
+K["index.ts"]
 end
 2-->4
 4-->5
-6-->7
-6-->4
+7-->8
+7-->9
 7-->4
-8-->5
+7-->B
+7-->6
 8-->4
-8-->9
-9-->5
-9-->4
-A-->9
-A-->B
+9-->A
+A-->5
+A-->4
+C-->5
 C-->4
-D-->5
-D-->B
-E-->F
-E-->5
-E-->G
-E-->4
-E-->H
-E-->9
-F-->G
-G-->9
-I-->2
-I-->6
-I-->8
-I-->A
-I-->C
-I-->D
-I-->E
-I-->4
+C-->A
+D-->A
+D-->E
+F-->4
+G-->5
+G-->E
+H-->I
+H-->5
+H-->9
+H-->4
+H-->B
+H-->J
+H-->A
+I-->9
+K-->2
+K-->7
+K-->C
+K-->D
+K-->F
+K-->G
+K-->H
+K-->4
 
 class 0,1,3 subgraphs;
 classDef subgraphs fill-opacity:0.1, fill:#888, color:#888, stroke:#888;
