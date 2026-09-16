@@ -224,4 +224,78 @@ describe('generateDependencyGraph', () => {
 			expect(cruise).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('--merge-outgoing', () => {
+		// a/b.ts, a/c.ts, a/sub/d.ts depend on x.ts and y.ts; a/c.ts also on a/b.ts; a/b.ts alone on z.ts
+		const mermaid = [
+			'flowchart LR',
+			'',
+			'subgraph 0["src"]',
+			'subgraph 1["a"]',
+			'2["b.ts"]',
+			'3["c.ts"]',
+			'subgraph 4["sub"]',
+			'5["d.ts"]',
+			'end',
+			'end',
+			'6["x.ts"]',
+			'7["y.ts"]',
+			'8["z.ts"]',
+			'end',
+			'2-->6',
+			'2-->7',
+			'2-->8',
+			'3-->6',
+			'3-->7',
+			'3-->2',
+			'5-->6',
+			'',
+			'style 6 fill:lime',
+		].join('\n');
+
+		function edges(): string[] {
+			const output = (mockStdoutWrite.mock.calls[0][0] as Buffer).toString();
+			return output.split('\n').filter((line) => line.includes('-->'));
+		}
+
+		beforeEach(() => {
+			vi.mocked(format).mockResolvedValue({ output: mermaid } as IReporterOutput);
+		});
+
+		it('merges edges from a directory that point to the same target', async () => {
+			await generateDependencyGraph('src', { mergeOutgoing: ['src/a/sub', 'src/a/'] });
+
+			// x.ts: b, c and sub/d merged; y.ts: b and c merged; z.ts only from b; c->b is internal
+			expect(edges()).toEqual(['1-->6', '1-->7', '2-->8', '3-->2']);
+			expect(warn).not.toHaveBeenCalled();
+		});
+
+		it('only merges direct and nested children of the matching directory', async () => {
+			await generateDependencyGraph('src', { mergeOutgoing: ['src/a/sub'] });
+
+			// sub has a single outgoing edge, so nothing changes
+			expect(edges()).toEqual(['2-->6', '2-->7', '2-->8', '3-->6', '3-->7', '3-->2', '5-->6']);
+		});
+
+		it('keeps non-edge lines in place', async () => {
+			await generateDependencyGraph('src', { mergeOutgoing: ['src/a'] });
+
+			const output = (mockStdoutWrite.mock.calls[0][0] as Buffer).toString();
+			expect(output).toContain('end\n1-->6\n1-->7\n2-->8\n3-->2\n\nstyle 6 fill:lime');
+		});
+
+		it('panics on an empty glob', async () => {
+			await expect(generateDependencyGraph('src', { mergeOutgoing: ['/'] })).rejects.toThrow(
+				'invalid directory glob',
+			);
+			expect(cruise).not.toHaveBeenCalled();
+		});
+
+		it('warns about globs that match no subgraph', async () => {
+			await generateDependencyGraph('src', { mergeOutgoing: ['src/nope'] });
+
+			expect(warn).toHaveBeenCalledWith('merge outgoing glob "src/nope" did not match any directory');
+			expect(edges()).toHaveLength(7);
+		});
+	});
 });

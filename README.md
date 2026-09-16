@@ -83,6 +83,9 @@ vrt deps-graph --exclude '**/_planned.ts' --exclude '**/index.ts'
 
 # Lay out the files of selected directories left-to-right (TB, BT, LR or RL).
 vrt deps-graph --subgraph-direction 'src/lib=LR' --subgraph-direction 'src/commands=RL'
+
+# Replace edges from several files in src/commands/ to the same target with one edge from the directory.
+vrt deps-graph --merge-outgoing 'src/commands'
 ```
 
 # Command `vrt`
@@ -138,6 +141,10 @@ Options:
   --exclude <glob>                 Drop files matching the glob from the graph
                                    entirely (repeatable). (default: [])
   -h, --help                       display help for command
+  --merge-outgoing <glob>          Merge edges from files in directories
+                                   matching the glob that point to the same
+                                   target into one edge from the directory
+                                   (repeatable). (default: [])
   --subgraph-direction <glob=dir>  Set the flow direction (TB, BT, LR, RL) of
                                    directory subgraphs matching the glob, e.g.
                                    "src/lib=LR" (repeatable). (default: [])

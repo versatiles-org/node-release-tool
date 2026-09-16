@@ -74,13 +74,22 @@ program
 		(value: string, prev: string[] = []) => prev.concat(value),
 		[] as string[],
 	)
-	.action((opts: { collapseDir: string[]; exclude: string[]; subgraphDirection: string[] }) => {
-		void generateDependencyGraph(process.cwd(), {
-			collapseDir: opts.collapseDir,
-			exclude: opts.exclude,
-			subgraphDirection: opts.subgraphDirection,
-		});
-	});
+	.option(
+		'--merge-outgoing <glob>',
+		'Merge edges from files in directories matching the glob that point to the same target into one edge from the directory (repeatable).',
+		(value: string, prev: string[] = []) => prev.concat(value),
+		[] as string[],
+	)
+	.action(
+		(opts: { collapseDir: string[]; exclude: string[]; mergeOutgoing: string[]; subgraphDirection: string[] }) => {
+			void generateDependencyGraph(process.cwd(), {
+				collapseDir: opts.collapseDir,
+				exclude: opts.exclude,
+				mergeOutgoing: opts.mergeOutgoing,
+				subgraphDirection: opts.subgraphDirection,
+			});
+		},
+	);
 
 /**
  * Command: deps-upgrade

@@ -99,6 +99,7 @@ describe('release-tool CLI', () => {
 			expect(generateDependencyGraph).toHaveBeenCalledWith(process.cwd(), {
 				collapseDir: [],
 				exclude: [],
+				mergeOutgoing: [],
 				subgraphDirection: [],
 			});
 		});
@@ -109,7 +110,19 @@ describe('release-tool CLI', () => {
 			expect(generateDependencyGraph).toHaveBeenCalledWith(process.cwd(), {
 				collapseDir: [],
 				exclude: [],
+				mergeOutgoing: [],
 				subgraphDirection: ['src/lib=LR', 'src/commands=RL'],
+			});
+		});
+
+		it('should collect repeated --merge-outgoing options', async () => {
+			await run('deps-graph', '--merge-outgoing', 'src/lib', '--merge-outgoing', 'src/commands');
+
+			expect(generateDependencyGraph).toHaveBeenCalledWith(process.cwd(), {
+				collapseDir: [],
+				exclude: [],
+				mergeOutgoing: ['src/lib', 'src/commands'],
+				subgraphDirection: [],
 			});
 		});
 	});
