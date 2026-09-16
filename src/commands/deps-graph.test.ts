@@ -12,11 +12,12 @@ vi.mock('../lib/log.js', () => ({
 	panic: vi.fn((message: string) => {
 		throw new Error(message);
 	}),
+	warn: vi.fn(),
 }));
 
 // 3. Import the mocked modules and the function under test
 const { cruise, format } = await import('dependency-cruiser');
-const { panic } = await import('../lib/log.js');
+const { panic, warn } = await import('../lib/log.js');
 const { generateDependencyGraph } = await import('./deps-graph.js');
 
 /** Build a minimal ICruiseResult with the given modules; all other fields stubbed. */
@@ -158,6 +159,69 @@ describe('generateDependencyGraph', () => {
 
 			const formatArg = vi.mocked(format).mock.calls[0][0] as ICruiseResult;
 			expect(formatArg.modules.map((m) => m.source).sort()).toEqual(['src/a.ts', 'src/b.ts']);
+		});
+	});
+
+	describe('--subgraph-direction', () => {
+		const mermaid = [
+			'flowchart LR',
+			'',
+			'subgraph 0["src"]',
+			'subgraph 1["commands"]',
+			'2["check.ts"]',
+			'end',
+			'subgraph 3["lib"]',
+			'subgraph 4["utils"]',
+			'5["a.ts"]',
+			'end',
+			'6["log.ts"]',
+			'end',
+			'end',
+			'2-->6',
+		].join('\n');
+
+		function written(): string {
+			return (mockStdoutWrite.mock.calls[0][0] as Buffer).toString();
+		}
+
+		beforeEach(() => {
+			vi.mocked(format).mockResolvedValue({ output: mermaid } as IReporterOutput);
+		});
+
+		it('inserts a direction statement into subgraphs matching the glob', async () => {
+			await generateDependencyGraph('src', { subgraphDirection: ['src/lib=LR'] });
+
+			const output = written();
+			expect(output).toContain('subgraph 3["lib"]\ndirection LR\nsubgraph 4["utils"]');
+			expect(output.match(/direction/g)).toHaveLength(1);
+			expect(warn).not.toHaveBeenCalled();
+		});
+
+		it('matches nested paths with globs, accepts lowercase and lets the last rule win', async () => {
+			await generateDependencyGraph('src', {
+				subgraphDirection: ['src/*=bt', 'src/lib/utils/=RL'],
+			});
+
+			const output = written();
+			expect(output).toContain('subgraph 1["commands"]\ndirection BT\n');
+			expect(output).toContain('subgraph 3["lib"]\ndirection BT\n');
+			expect(output).toContain('subgraph 4["utils"]\ndirection RL\n');
+			// "src/*" does not match "src" itself
+			expect(output).toContain('subgraph 0["src"]\nsubgraph 1["commands"]');
+		});
+
+		it('warns about globs that match no subgraph', async () => {
+			await generateDependencyGraph('src', { subgraphDirection: ['src/nope=LR'] });
+
+			expect(warn).toHaveBeenCalledWith('subgraph direction glob "src/nope" did not match any directory');
+			expect(written()).not.toContain('direction');
+		});
+
+		it.each(['src/lib', 'src/lib=XX', '=LR'])('panics on invalid value "%s"', async (value) => {
+			await expect(generateDependencyGraph('src', { subgraphDirection: [value] })).rejects.toThrow(
+				'invalid subgraph direction',
+			);
+			expect(cruise).not.toHaveBeenCalled();
 		});
 	});
 });

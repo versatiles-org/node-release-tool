@@ -80,6 +80,9 @@ vrt deps-graph --collapse-dir 'src/regions/*.ts'
 
 # Drop trivial barrels and stubs from the graph entirely.
 vrt deps-graph --exclude '**/_planned.ts' --exclude '**/index.ts'
+
+# Lay out the files of selected directories left-to-right (TB, BT, LR or RL).
+vrt deps-graph --subgraph-direction 'src/lib=LR' --subgraph-direction 'src/commands=RL'
 ```
 
 # Command `vrt`
@@ -130,11 +133,14 @@ Usage: vrt deps-graph [options]
 Analyze project files and output a dependency graph as Mermaid markup.
 
 Options:
-  --collapse-dir <glob>  Collapse all files matching the glob into a single node
-                         (repeatable). (default: [])
-  --exclude <glob>       Drop files matching the glob from the graph entirely
-                         (repeatable). (default: [])
-  -h, --help             display help for command
+  --collapse-dir <glob>            Collapse all files matching the glob into a
+                                   single node (repeatable). (default: [])
+  --exclude <glob>                 Drop files matching the glob from the graph
+                                   entirely (repeatable). (default: [])
+  -h, --help                       display help for command
+  --subgraph-direction <glob=dir>  Set the flow direction (TB, BT, LR, RL) of
+                                   directory subgraphs matching the glob, e.g.
+                                   "src/lib=LR" (repeatable). (default: [])
 ```
 
 ## Subcommand: `vrt deps-upgrade`

@@ -68,10 +68,17 @@ program
 		(value: string, prev: string[] = []) => prev.concat(value),
 		[] as string[],
 	)
-	.action((opts: { collapseDir: string[]; exclude: string[] }) => {
+	.option(
+		'--subgraph-direction <glob=dir>',
+		'Set the flow direction (TB, BT, LR, RL) of directory subgraphs matching the glob, e.g. "src/lib=LR" (repeatable).',
+		(value: string, prev: string[] = []) => prev.concat(value),
+		[] as string[],
+	)
+	.action((opts: { collapseDir: string[]; exclude: string[]; subgraphDirection: string[] }) => {
 		void generateDependencyGraph(process.cwd(), {
 			collapseDir: opts.collapseDir,
 			exclude: opts.exclude,
+			subgraphDirection: opts.subgraphDirection,
 		});
 	});
 

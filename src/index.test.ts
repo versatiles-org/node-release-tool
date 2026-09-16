@@ -96,7 +96,21 @@ describe('release-tool CLI', () => {
 		it('should call generateDependencyGraph with current working directory', async () => {
 			await run('deps-graph');
 
-			expect(generateDependencyGraph).toHaveBeenCalledWith(process.cwd(), { collapseDir: [], exclude: [] });
+			expect(generateDependencyGraph).toHaveBeenCalledWith(process.cwd(), {
+				collapseDir: [],
+				exclude: [],
+				subgraphDirection: [],
+			});
+		});
+
+		it('should collect repeated --subgraph-direction options', async () => {
+			await run('deps-graph', '--subgraph-direction', 'src/lib=LR', '--subgraph-direction', 'src/commands=RL');
+
+			expect(generateDependencyGraph).toHaveBeenCalledWith(process.cwd(), {
+				collapseDir: [],
+				exclude: [],
+				subgraphDirection: ['src/lib=LR', 'src/commands=RL'],
+			});
 		});
 	});
 

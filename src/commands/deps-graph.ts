@@ -1,7 +1,7 @@
 import { cruise, format } from 'dependency-cruiser';
 import type { ICruiseResult, IModule } from 'dependency-cruiser';
 import picomatch from 'picomatch';
-import { panic } from '../lib/log.js';
+import { panic, warn } from '../lib/log.js';
 
 /**
  * Options for {@link generateDependencyGraph}.
@@ -20,6 +20,22 @@ export interface DepsGraphOptions {
 	 * with self-loops removed and duplicates deduplicated.
 	 */
 	collapseDir?: string[];
+	/**
+	 * Flow direction overrides for directory subgraphs, each in the form
+	 * `glob=direction` (e.g. `src/lib=LR`). The glob is matched against the
+	 * directory path of each subgraph; direction is one of `TB`, `TD`, `BT`,
+	 * `LR` or `RL`. If several globs match, the last one wins.
+	 */
+	subgraphDirection?: string[];
+}
+
+const DIRECTIONS = ['TB', 'TD', 'BT', 'LR', 'RL'] as const;
+type Direction = (typeof DIRECTIONS)[number];
+
+interface DirectionRule {
+	glob: string;
+	isMatch: (s: string) => boolean;
+	direction: Direction;
 }
 
 const INTERNAL_EXCLUDES = ['\\.(test|d|mock)\\.ts$', 'node_modules', '__mocks__/'];
@@ -32,10 +48,11 @@ const INTERNAL_EXCLUDES = ['\\.(test|d|mock)\\.ts$', 'node_modules', '__mocks__/
  * easy inclusion in documentation.
  *
  * @param directory - The project directory to analyze
- * @param options - Optional graph-shaping flags (collapse, exclude)
+ * @param options - Optional graph-shaping flags (collapse, exclude, subgraph direction)
  * @throws {VrtError} If dependency analysis fails
  */
 export async function generateDependencyGraph(directory: string, options: DepsGraphOptions = {}): Promise<void> {
+	const directionRules = (options.subgraphDirection ?? []).map(parseDirectionRule);
 	const userExcludes = (options.exclude ?? []).map(globToCruiseRegex);
 
 	let cruiseResult: ICruiseResult;
@@ -67,6 +84,9 @@ export async function generateDependencyGraph(directory: string, options: DepsGr
 	}
 
 	output = output.replace('flowchart LR', '---\nconfig:\n  layout: elk\n---\nflowchart TB');
+	if (directionRules.length > 0) {
+		output = applySubgraphDirections(output, directionRules);
+	}
 
 	const matches = Array.from(output.matchAll(/subgraph ([0-9a-z]+)/gi));
 	const subgraphIds = matches.map(([_match, id]) => id);
@@ -84,6 +104,54 @@ export async function generateDependencyGraph(directory: string, options: DepsGr
 function globToCruiseRegex(glob: string): string {
 	const re = picomatch.makeRe(glob, { dot: true });
 	return re.source;
+}
+
+/**
+ * Parses a `glob=direction` string into a {@link DirectionRule}.
+ * Splits at the last `=`, so globs may contain `=` themselves.
+ */
+function parseDirectionRule(value: string): DirectionRule {
+	const index = value.lastIndexOf('=');
+	const glob = value.slice(0, index).replace(/\/+$/, '');
+	const direction = value.slice(index + 1).toUpperCase();
+	if (index <= 0 || !glob || !(DIRECTIONS as readonly string[]).includes(direction)) {
+		panic(`invalid subgraph direction "${value}", expected "glob=${DIRECTIONS.join('|')}"`);
+	}
+	return { glob, isMatch: picomatch(glob), direction: direction as Direction };
+}
+
+/**
+ * Inserts a `direction` statement into every subgraph of the mermaid output
+ * whose directory path matches one of the rules. Subgraph paths are
+ * reconstructed from the nesting of `subgraph …["label"]` / `end` lines.
+ * Warns about rules that did not match any subgraph.
+ */
+function applySubgraphDirections(output: string, rules: DirectionRule[]): string {
+	const stack: string[] = [];
+	const used = new Set<DirectionRule>();
+	const lines: string[] = [];
+
+	for (const line of output.split('\n')) {
+		lines.push(line);
+		const subgraph = /^\s*subgraph\s+\S+?\["(.*)"\]\s*$/.exec(line);
+		if (subgraph) {
+			stack.push(subgraph[1]);
+			const path = stack.join('/');
+			const rule = rules.findLast((r) => r.isMatch(path));
+			if (rule) {
+				used.add(rule);
+				lines.push(`direction ${rule.direction}`);
+			}
+		} else if (/^\s*end\s*$/.test(line)) {
+			stack.pop();
+		}
+	}
+
+	for (const rule of rules) {
+		if (!used.has(rule)) warn(`subgraph direction glob "${rule.glob}" did not match any directory`);
+	}
+
+	return lines.join('\n');
 }
 
 /**
