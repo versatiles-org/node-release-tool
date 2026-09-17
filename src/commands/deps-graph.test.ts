@@ -459,7 +459,7 @@ describe('generateDependencyGraph', () => {
 
 			expect(output()).toBe('[![Dependency graph](docs/graph.svg)](docs/graph.svg?raw=true)\n');
 			expect(warn).toHaveBeenCalledWith(
-				'no GitHub repository URL in package.json, using a relative link for the dependency graph',
+				'no GitHub repository URL in package.json, using a relative link for docs/graph.svg',
 			);
 		});
 

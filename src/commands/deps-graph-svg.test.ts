@@ -94,46 +94,70 @@ describe('renderSvgGraph', () => {
 			],
 		};
 
-		it('marks files, directory labels and edges with node ids', async () => {
+		it('marks files, directories and edges with node ids', async () => {
 			const svg = await renderSvgGraph(merged);
 
 			expect(svg).toMatch(
 				/<g class="node n0">\n<rect class="file" [^>]*\/>\n<text class="label"[^>]*>index.ts<\/text>\n<\/g>/,
 			);
+			expect(svg).toContain('<rect class="directory depth2 node n5" ');
 			expect(svg).toMatch(
 				/<g class="node n5">\n<rect class="depth2" [^>]*\/>\n<text class="directory-label"[^>]*>lib<\/text>/,
 			);
-			expect(svg).toContain('<path class="edge from-n0 to-n1" ');
-			expect(svg).toContain('<path class="edge from-n5 from-n1 from-n2 to-n3" ');
+			// file classes (from/to) and directory classes (in/out/inner)
+			expect(svg).toContain('<path class="edge from-n0 to-n1 inner-n4 in-n5" ');
+			expect(svg).toContain('<path class="edge from-n1 from-n2 to-n3 inner-n4 out-n5 in-n6" ');
+			expect(svg).toContain('<path class="edge from-n1 to-n2 inner-n4 inner-n5" ');
 		});
 
-		it('highlights outgoing and incoming edges and connected files of the hovered node', async () => {
+		it('highlights the edges and connected files of a hovered file or directory', async () => {
 			const svg = await renderSvgGraph(merged);
 			const rule = (declarations: string): string[] => {
-				const line = svg.split('\n').find((l) => l.includes(`{ ${declarations}`));
+				const line = svg.split('\n').find((l) => l.includes('svg:has(') && l.includes(`{ ${declarations}`));
 				expect(line).toBeDefined();
 				return line!.slice(0, line!.indexOf('{')).trim().split(', ');
 			};
 
 			expect(svg).toContain('svg:has(.node:hover) .edge { stroke-opacity: 0.15; marker-end: url(#arrow-dim); }');
+			// edges inside a hovered directory stay visible
+			expect(rule('stroke-opacity: 0.7; marker-end: url(#arrow);')).toStrictEqual([
+				'svg:has(.n4:hover) .inner-n4',
+				'svg:has(.n5:hover) .inner-n5',
+			]);
 			expect(rule('stroke: var(--outgoing); stroke-opacity: 1;')).toStrictEqual([
 				'svg:has(.n0:hover) .from-n0',
-				'svg:has(.n5:hover) .from-n5',
 				'svg:has(.n1:hover) .from-n1',
 				'svg:has(.n2:hover) .from-n2',
+				'svg:has(.n5:hover) .out-n5',
 			]);
 			expect(rule('stroke: var(--incoming); stroke-opacity: 1;')).toStrictEqual([
 				'svg:has(.n1:hover) .to-n1',
+				'svg:has(.n5:hover) .in-n5',
 				'svg:has(.n3:hover) .to-n3',
+				'svg:has(.n6:hover) .in-n6',
 				'svg:has(.n2:hover) .to-n2',
 			]);
-			expect(rule('stroke: var(--outgoing); }')).toContain('svg:has(.n5:hover) .n3 .file');
-			// incoming highlights only mark files, not the directory a merged edge starts at
+			expect(rule('stroke: var(--outgoing); }')).toStrictEqual([
+				'svg:has(.n0:hover) .n1 .file',
+				'svg:has(.n1:hover) .n3 .file',
+				'svg:has(.n2:hover) .n3 .file',
+				'svg:has(.n5:hover) .n3 .file',
+				'svg:has(.n1:hover) .n2 .file',
+			]);
+			// connected files outside the hovered directory, never the directory a merged edge starts at
 			expect(rule('stroke: var(--incoming); }')).toStrictEqual([
 				'svg:has(.n1:hover) .n0 .file',
+				'svg:has(.n5:hover) .n0 .file',
 				'svg:has(.n3:hover) .n1 .file',
 				'svg:has(.n3:hover) .n2 .file',
+				'svg:has(.n6:hover) .n1 .file',
+				'svg:has(.n6:hover) .n2 .file',
 				'svg:has(.n2:hover) .n1 .file',
+			]);
+			expect(rule('stroke-width: 2;')).toStrictEqual([
+				'svg:has(.n4:hover) .directory.n4',
+				'svg:has(.n5:hover) .directory.n5',
+				'svg:has(.n6:hover) .directory.n6',
 			]);
 			for (const id of ['arrow', 'arrow-dim', 'arrow-outgoing', 'arrow-incoming']) {
 				expect(svg).toContain(`<marker id="${id}" `);

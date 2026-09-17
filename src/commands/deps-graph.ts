@@ -1,13 +1,9 @@
 import { cruise, format } from 'dependency-cruiser';
 import type { ICruiseResult, IModule } from 'dependency-cruiser';
-import { mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { dirname, relative, resolve, sep } from 'path';
 import picomatch from 'picomatch';
 import { CONFIG_FILENAME, readConfigSection } from '../lib/config.js';
-import { extractGitHubRepoUrl } from '../lib/git.js';
 import { panic, warn } from '../lib/log.js';
-import { getReleaseBaseUrl, RELEASE_VERSION_ENV } from '../lib/release-link.js';
-import { Shell } from '../lib/shell.js';
+import { writeSvgImage } from '../lib/svg-image.js';
 import { type GraphEdge, type GraphModel, renderSvgGraph } from './deps-graph-svg.js';
 
 /**
@@ -137,15 +133,7 @@ export async function generateDependencyGraph(directory: string, cliOptions: Dep
 	if (options.svg !== undefined) {
 		if (directionRules.length > 0) warn('subgraph direction is not supported for SVG output and is ignored');
 		const svg = await renderSvgGraph(buildGraphModel(cruiseResult, mergeRules));
-		const svgPath = resolve(directory, options.svg);
-		mkdirSync(dirname(svgPath), { recursive: true });
-		writeFileSync(svgPath, svg);
-		if (await isIgnoredByGit(directory, svgPath)) {
-			warn(`${options.svg} is ignored by git, so the image link will be broken on GitHub and npm`);
-		}
-		// link the image to the raw file, where the SVG is interactive (hover highlighting)
-		const url = getImageUrl(directory, options.svg);
-		process.stdout.write(`[![Dependency graph](${url})](${url}?raw=true)\n`);
+		process.stdout.write((await writeSvgImage(directory, options.svg, svg, 'Dependency graph')) + '\n');
 		return;
 	}
 
@@ -433,45 +421,6 @@ function buildGraphModel(result: ICruiseResult, mergeRules: GlobRule[]): GraphMo
 	warnUnusedRules(mergeRules, used, 'merge outgoing');
 
 	return { files, edges };
-}
-
-/**
- * Whether git ignores the file, so it would never be committed. Returns false
- * outside of a git repository or if git is not available.
- */
-async function isIgnoredByGit(directory: string, path: string): Promise<boolean> {
-	try {
-		const result = await new Shell(directory).exec('git', ['check-ignore', '--quiet', path], false, true);
-		return result.code === 0;
-	} catch {
-		return false;
-	}
-}
-
-/**
- * Returns the URL for the image link to the SVG file: relative to `directory`,
- * or, while `release-npm` publishes (see {@link RELEASE_VERSION_ENV}), pointing
- * to the file at the git tag of the release, so that the published README
- * always shows the graph of its version.
- */
-function getImageUrl(directory: string, svgPath: string): string {
-	const relativePath = relative(resolve(directory), resolve(directory, svgPath)).split(sep).join('/');
-	const version = process.env[RELEASE_VERSION_ENV];
-	if (!version) return relativePath;
-
-	let repository: unknown;
-	try {
-		repository = (JSON.parse(readFileSync(resolve(directory, 'package.json'), 'utf8')) as { repository?: unknown })
-			.repository;
-	} catch {
-		repository = undefined;
-	}
-	const repoUrl = extractGitHubRepoUrl(repository);
-	if (!repoUrl) {
-		warn('no GitHub repository URL in package.json, using a relative link for the dependency graph');
-		return relativePath;
-	}
-	return getReleaseBaseUrl(repoUrl, version, directory) + relativePath;
 }
 
 /**

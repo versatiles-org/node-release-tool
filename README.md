@@ -9,6 +9,7 @@
 Tools used for:
 
 - creating a graph of the source code as mermaid: [`vrt deps-graph`](#subcommand-vrt-deps-graph)
+- rendering a treemap as SVG, e.g. of a bundle's composition: [`vrt treemap`](#subcommand-vrt-treemap)
 - upgrading all package dependencies: [`vrt deps-upgrade`](#subcommand-vrt-deps-upgrade)
 - creating Markdown documentation of executables: [`vrt doc-command`](#subcommand-vrt-doc-command)
 - inserting Markdown into documents: [`vrt doc-insert`](#subcommand-vrt-doc-insert)
@@ -113,7 +114,7 @@ vrt deps-graph --svg docs/dependency-graph.svg | vrt doc-insert README.md '## De
 
 The output is an image that links to the raw SVG file: `[![Dependency graph](docs/dependency-graph.svg)](docs/dependency-graph.svg?raw=true)`. The paths are relative, so GitHub always shows the graph of the current commit. The SVG adapts to light and dark mode.
 
-In the README the graph is a static image. Clicking it opens the SVG itself, which is interactive: hovering a file highlights its outgoing dependencies in orange and its incoming ones in blue, including the connected files, and dims all other connections. Hovering a directory label highlights the connections merged by `--merge-outgoing`. This is plain CSS, without scripts, so it also works on `raw.githubusercontent.com`.
+In the README the graph is a static image. Clicking it opens the SVG itself, which is interactive: hovering a file highlights its outgoing dependencies in orange and its incoming ones in blue, including the connected files, and dims all other connections. Hovering a directory box or its label does the same for all connections that cross the directory's border, including those of files in subdirectories and those merged by `--merge-outgoing`; connections inside the directory stay visible. This is plain CSS, without scripts, so it also works on `raw.githubusercontent.com`.
 
 On npmjs.com, a README must show the graph of its own version, even after the file changes in later commits. `vrt release-npm` takes care of that:
 
@@ -121,6 +122,30 @@ On npmjs.com, a README must show the graph of its own version, even after the fi
 2. After publishing, it turns these links in all changed Markdown files back into relative links, then commits and creates the tag. Existing tags are never overwritten, so a linked file can't change later.
 
 This requires a public GitHub repository in the `repository` field of package.json, and a `prepack` script that regenerates the README (e.g. `npm run build`, which runs `npm run doc`). `--subgraph-direction` is not supported for SVG output.
+
+# Treemap as SVG
+
+`vrt treemap` renders a treemap from JSON on stdin, e.g. the composition of a bundle. Like `deps-graph --svg`, it writes an SVG file and prints a linked image, followed by an optional caption. The image links and release pinning work the same way:
+
+```bash
+node scripts/bundle-sizes.js | vrt treemap --svg assets/bundle-treemap.svg | vrt doc-insert README.md '## Bundle Composition'
+```
+
+The input contains the boxes as a tree. A node has a `size` or `children`; with `"unit": "bytes"` sizes are shown as B, KB or MB:
+
+```JSON
+{
+  "title": "Bundle composition",
+  "caption": "**105 KB** raw, **30.7 KB** gzipped",
+  "unit": "bytes",
+  "children": [
+    { "name": "color", "children": [{ "name": "color.ts", "size": 4198 }, { "name": "parser.ts", "size": 3789 }] },
+    { "name": "index.ts", "size": 912 }
+  ]
+}
+```
+
+Every top-level node gets its own color, and groups show their name and total size. Labels that don't fit are shortened or omitted, but every box has a tooltip with its path, size and share, which is shown when the SVG is opened directly.
 
 # Command `vrt`
 
@@ -147,6 +172,7 @@ Commands:
   doc-typescript [options]                  Generate documentation for a TypeScript project.
   help [command]                            display help for command
   release-npm [options] [path]              Publish an npm package from the specified path to the npm registry.
+  treemap [options]                         Render a treemap from JSON on stdin as SVG file and output a Markdown image link to it.
 ```
 
 ## Subcommand: `vrt check`
@@ -294,6 +320,25 @@ Options:
                         explicit "x.y.z". Skips the prompt, e.g. for CI.
   -h, --help            display help for command
   -n, --dry-run         Show what would be done without making any changes
+```
+
+## Subcommand: `vrt treemap`
+
+```console
+$ vrt treemap
+Usage: vrt treemap [options]
+
+Render a treemap from JSON on stdin as SVG file and output a Markdown image link
+to it.
+
+Options:
+  -h, --help         display help for command
+  --height <pixels>  Height of the treemap. (default: 480)
+  --svg <file>       Path of the SVG file to write.
+  --width <pixels>   Width of the treemap. (default: 880)
+
+Input: { "title"?, "caption"?, "unit"?: "bytes", "children": [node, …] }
+where a node is { "name", "size" } or { "name", "children": [node, …] }.
 ```
 
 # Development

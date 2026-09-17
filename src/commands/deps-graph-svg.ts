@@ -1,5 +1,6 @@
 import ELK from 'elkjs/lib/elk.bundled.js';
 import type { ElkExtendedEdge, ElkNode, ElkPort } from 'elkjs/lib/elk.bundled.js';
+import { escapeXml, FONT_FAMILY, textWidth as measureText, num } from '../lib/svg-text.js';
 
 /**
  * A dependency edge. `from` is a file path or, for merged edges, a directory path.
@@ -20,38 +21,6 @@ export interface GraphModel {
 }
 
 const FONT_SIZE = 12;
-const FONT_FAMILY = "Helvetica, Arial, 'Liberation Sans', sans-serif";
-
-/**
- * Advance widths of Helvetica in 1/1000 em, shared by the metric-compatible
- * Arial and Liberation Sans. Used to size boxes without measuring text.
- */
-const CHAR_WIDTHS = charWidths({
-	222: 'ijl',
-	278: ' ./:;!,ftI[]',
-	333: '-()r{}',
-	389: '*',
-	500: 'ckszvxyJ',
-	556: '0123456789abdeghnopqu_$#?L',
-	584: '+=<>~',
-	611: 'FTZ',
-	667: '&ABEKPSVXY',
-	722: 'wCDHNRU',
-	778: 'GOQ',
-	833: 'mM',
-	944: 'W',
-});
-/** Bold widths where they differ from {@link CHAR_WIDTHS}. */
-const BOLD_CHAR_WIDTHS = charWidths({
-	278: 'ijl',
-	333: 'ft-',
-	389: 'r',
-	556: 'ckszvxyae',
-	611: 'bdghnopqu',
-	778: 'w',
-	889: 'm',
-});
-const DEFAULT_CHAR_WIDTH = 556;
 const NODE_HEIGHT = 24;
 const NODE_PADDING = 8;
 const DIRECTORY_LABEL_HEIGHT = 22;
@@ -97,7 +66,7 @@ const STYLE = `
 	.edge { fill: none; stroke: #5f6b66; stroke-width: 1; stroke-opacity: 0.7; }
 	.arrowhead { fill: #5f6b66; }
 	svg { --outgoing: #d9480f; --incoming: #1971c2; }
-	.background, .directory, .edge { pointer-events: none; }
+	.background, .edge { pointer-events: none; }
 	.node { cursor: default; }
 	.node:hover .file { stroke-width: 2; }
 	.arrowhead-dim { fill: #5f6b66; fill-opacity: 0.15; }
@@ -128,9 +97,11 @@ const STYLE = `
  * scheme via `prefers-color-scheme`. The output is deterministic, so it only
  * changes when the graph changes.
  *
- * When the SVG is opened directly (not as `<img>`), hovering a file or a
- * directory label highlights its outgoing and incoming edges and the connected
- * files, and dims all other edges. This is pure CSS, see {@link hoverStyle}.
+ * When the SVG is opened directly (not as `<img>`), hovering a file highlights
+ * its outgoing and incoming edges and the connected files, and dims all other
+ * edges. Hovering a directory box or label does the same for all edges that
+ * cross the directory's border, and keeps the edges inside the directory
+ * visible. This is pure CSS, see {@link hoverStyle}.
  *
  * @param model - Files and edges; edge sources may be directory paths
  * @returns The SVG document
@@ -155,6 +126,7 @@ export async function renderSvgGraph(model: GraphModel): Promise<string> {
 	const context: BuildContext = { directories, files: model.files, ports };
 	const ids = new Map([...model.files, ...directories].map((path, index) => [path, `n${index}`]));
 	const idOf = (path: string): string => ids.get(path) ?? '';
+	const files = new Set(model.files);
 
 	const graph: ElkNode = {
 		id: '#root',
@@ -182,7 +154,7 @@ export async function renderSvgGraph(model: GraphModel): Promise<string> {
 		if (node.children) {
 			const level = Math.min(depth, 3);
 			shapes.push(
-				`<rect class="directory depth${level}" x="${num(x)}" y="${num(y)}" width="${num(width)}" height="${num(height)}" rx="6"/>`,
+				`<rect class="directory depth${level} node ${idOf(node.id)}" x="${num(x)}" y="${num(y)}" width="${num(width)}" height="${num(height)}" rx="6"/>`,
 			);
 			const label = basename(node.id);
 			directoryLabels.push(
@@ -204,8 +176,15 @@ export async function renderSvgGraph(model: GraphModel): Promise<string> {
 	layout.children?.forEach((child) => drawNode(child, 1));
 
 	(layout.edges ?? []).forEach((edge, index) => {
-		const { from, to, via = [] } = model.edges[index];
-		const classes = ['edge', ...[from, ...via].map((source) => `from-${idOf(source)}`), `to-${idOf(to)}`];
+		const modelEdge = model.edges[index];
+		const classes = [
+			'edge',
+			...fileSources(modelEdge, files).map((source) => `from-${idOf(source)}`),
+			`to-${idOf(modelEdge.to)}`,
+			...directoryRelations(modelEdge, directories).map(
+				({ directory, relation }) => `${relation}-${idOf(directory)}`,
+			),
+		];
 		for (const section of edge.sections ?? []) {
 			const points = [section.startPoint, ...(section.bendPoints ?? []), section.endPoint];
 			const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${num(p.x)},${num(p.y)}`).join(' ');
@@ -218,7 +197,7 @@ export async function renderSvgGraph(model: GraphModel): Promise<string> {
 	return [
 		`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
 		'<title>Dependency graph</title>',
-		`<style>${STYLE}${hoverStyle(model, idOf)}</style>`,
+		`<style>${STYLE}${hoverStyle(model, directories, idOf)}</style>`,
 		'<defs>',
 		marker('arrow', 'arrowhead'),
 		marker('arrow-dim', 'arrowhead-dim'),
@@ -237,35 +216,97 @@ export async function renderSvgGraph(model: GraphModel): Promise<string> {
  * Builds the CSS that highlights the edges of a hovered node. CSS can not
  * relate a hovered node to its edges generically, so there is one selector per
  * node, e.g. `svg:has(.n3:hover) .from-n3`, and one per edge for the connected
- * files. Arrowheads switch to differently colored markers, because WebKit does
- * not support `context-stroke` in markers.
+ * files. Directories use the edge classes from {@link directoryRelations}.
+ * Arrowheads switch to differently colored markers, because WebKit does not
+ * support `context-stroke` in markers.
  */
-function hoverStyle(model: GraphModel, idOf: (path: string) => string): string {
+function hoverStyle(model: GraphModel, directories: string[], idOf: (path: string) => string): string {
 	const files = new Set(model.files);
+	const inner = new Set<string>();
 	const outgoing = new Set<string>();
 	const incoming = new Set<string>();
 	const targets = new Set<string>();
 	const sources = new Set<string>();
-	for (const { from, to, via = [] } of model.edges) {
-		const target = idOf(to);
+	for (const edge of model.edges) {
+		const target = idOf(edge.to);
+		const edgeFiles = fileSources(edge, files);
+
 		incoming.add(`svg:has(.${target}:hover) .to-${target}`);
-		for (const path of [from, ...via]) {
+		for (const path of edgeFiles) {
 			const source = idOf(path);
 			outgoing.add(`svg:has(.${source}:hover) .from-${source}`);
 			targets.add(`svg:has(.${source}:hover) .${target} .file`);
-			if (files.has(path)) sources.add(`svg:has(.${target}:hover) .${source} .file`);
+			sources.add(`svg:has(.${target}:hover) .${source} .file`);
+		}
+
+		for (const { directory, relation } of directoryRelations(edge, directories)) {
+			const folder = idOf(directory);
+			const hovered = `svg:has(.${folder}:hover)`;
+			if (relation === 'inner') {
+				inner.add(`${hovered} .inner-${folder}`);
+			} else if (relation === 'out') {
+				outgoing.add(`${hovered} .out-${folder}`);
+				targets.add(`${hovered} .${target} .file`);
+			} else {
+				incoming.add(`${hovered} .in-${folder}`);
+				for (const path of edgeFiles) {
+					if (!isInside(path, directory)) sources.add(`${hovered} .${idOf(path)} .file`);
+				}
+			}
 		}
 	}
 	if (incoming.size === 0) return '';
-	const rule = (selectors: Set<string>, declarations: string): string =>
-		selectors.size > 0 ? `\t${[...selectors].join(', ')} { ${declarations} }\n` : '';
+
+	const rule = (selectors: Iterable<string>, declarations: string): string => {
+		const list = [...selectors];
+		return list.length > 0 ? `\t${list.join(', ')} { ${declarations} }\n` : '';
+	};
+	const hoveredDirectories = directories.map(idOf).map((id) => `svg:has(.${id}:hover) .directory.${id}`);
 	return [
 		'\tsvg:has(.node:hover) .edge { stroke-opacity: 0.15; marker-end: url(#arrow-dim); }\n',
+		// before the colored rules, so an edge that also crosses the border gets its color
+		rule(inner, 'stroke-opacity: 0.7; marker-end: url(#arrow);'),
 		rule(outgoing, 'stroke: var(--outgoing); stroke-opacity: 1; marker-end: url(#arrow-outgoing);'),
 		rule(incoming, 'stroke: var(--incoming); stroke-opacity: 1; marker-end: url(#arrow-incoming);'),
 		rule(targets, 'stroke: var(--outgoing);'),
 		rule(sources, 'stroke: var(--incoming);'),
+		rule(hoveredDirectories, 'stroke-width: 2;'),
 	].join('');
+}
+
+/**
+ * The files an edge starts at: its source, or for merged edges the files
+ * whose edges were merged into it.
+ */
+function fileSources(edge: GraphEdge, files: Set<string>): string[] {
+	return [edge.from, ...(edge.via ?? [])].filter((path) => files.has(path));
+}
+
+/**
+ * How an edge relates to each directory: `out` if it leaves the directory,
+ * `in` if it enters it, `inner` if it runs inside it. A merged edge with
+ * sources inside and outside of a directory can be both `in` and `inner`.
+ */
+function directoryRelations(
+	edge: GraphEdge,
+	directories: string[],
+): { directory: string; relation: 'in' | 'out' | 'inner' }[] {
+	const sources = [edge.from, ...(edge.via ?? [])];
+	return directories.flatMap((directory) => {
+		const targetInside = isInside(edge.to, directory);
+		const sourceInside = sources.some((source) => isInside(source, directory));
+		const sourceOutside = sources.some((source) => !isInside(source, directory));
+		const relations: { directory: string; relation: 'in' | 'out' | 'inner' }[] = [];
+		if (targetInside && sourceOutside) relations.push({ directory, relation: 'in' });
+		if (!targetInside && sourceInside) relations.push({ directory, relation: 'out' });
+		if (targetInside && sourceInside) relations.push({ directory, relation: 'inner' });
+		return relations;
+	});
+}
+
+/** Whether `path` is `directory` itself or lies inside it. */
+function isInside(path: string, directory: string): boolean {
+	return path === directory || path.startsWith(directory + '/');
 }
 
 function marker(id: string, className: string): string {
@@ -330,22 +371,9 @@ function text(className: string, x: number, y: number, content: string, bold = f
 	return `<text class="${className}" x="${num(x)}" y="${num(y)}" textLength="${num(textWidth(content, bold))}" lengthAdjust="spacingAndGlyphs">${escapeXml(content)}</text>`;
 }
 
-/** Estimates the rendered width of `content` in pixels. */
+/** Estimates the rendered width of a label in pixels. */
 function textWidth(content: string, bold = false): number {
-	let width = 0;
-	for (const char of content) {
-		width += (bold ? BOLD_CHAR_WIDTHS.get(char) : undefined) ?? CHAR_WIDTHS.get(char) ?? DEFAULT_CHAR_WIDTH;
-	}
-	return (width * FONT_SIZE) / 1000;
-}
-
-/** Turns a map of width to characters into a map of character to width. */
-function charWidths(groups: Record<number, string>): Map<string, number> {
-	const widths = new Map<string, number>();
-	for (const [width, chars] of Object.entries(groups)) {
-		for (const char of chars) widths.set(char, Number(width));
-	}
-	return widths;
+	return measureText(content, FONT_SIZE, bold);
 }
 
 function parentOf(path: string): string {
@@ -354,13 +382,4 @@ function parentOf(path: string): string {
 
 function basename(path: string): string {
 	return path.split('/').at(-1) ?? path;
-}
-
-/** Formats a coordinate with at most two decimals to keep the SVG small. */
-function num(value: number): string {
-	return String(Math.round(value * 100) / 100);
-}
-
-function escapeXml(value: string): string {
-	return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }

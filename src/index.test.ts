@@ -7,6 +7,11 @@ vi.mock('./commands/check.js', () => ({
 }));
 const { check } = await import('./commands/check.js');
 
+vi.mock('./commands/treemap.js', () => ({
+	generateTreemap: vi.fn().mockResolvedValue(undefined),
+}));
+const { generateTreemap } = await import('./commands/treemap.js');
+
 vi.mock('./commands/deps-graph.js', () => ({
 	generateDependencyGraph: vi.fn().mockResolvedValue(undefined),
 }));
@@ -208,6 +213,30 @@ describe('release-tool CLI', () => {
 
 			// Commander calls process.exit(1) for invalid arguments
 			await expect(run('doc-insert', nonExistentFile)).rejects.toThrow('process.exit');
+		});
+	});
+
+	describe('treemap command', () => {
+		it('should pass stdin and options to generateTreemap', async () => {
+			const originalStdin = process.stdin;
+			const input = '{"children":[{"name":"a","size":1}]}';
+			Object.defineProperty(process, 'stdin', { value: Readable.from([Buffer.from(input)]), writable: true });
+
+			try {
+				await run('treemap', '--svg', 'assets/treemap.svg', '--width', '600');
+
+				expect(generateTreemap).toHaveBeenCalledWith(process.cwd(), input, {
+					svg: 'assets/treemap.svg',
+					width: 600,
+					height: 480,
+				});
+			} finally {
+				Object.defineProperty(process, 'stdin', { value: originalStdin, writable: true });
+			}
+		});
+
+		it('should exit with error for an invalid size', async () => {
+			await expect(run('treemap', '--svg', 'a.svg', '--width', '-5')).rejects.toThrow('process.exit');
 		});
 	});
 

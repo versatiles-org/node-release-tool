@@ -12,6 +12,7 @@ import { upgradeDependencies } from './commands/deps-upgrade.js';
 import { generateDependencyGraph } from './commands/deps-graph.js';
 import { check } from './commands/check.js';
 import { generateTypescriptDocs } from './commands/doc-typescript.js';
+import { generateTreemap } from './commands/treemap.js';
 import { panic, setVerbose } from './lib/log.js';
 
 /**
@@ -174,6 +175,32 @@ program
 	});
 
 /**
+ * Command: treemap
+ * Renders a treemap from JSON on stdin as SVG file and outputs a Markdown image link to it.
+ */
+program
+	.command('treemap')
+	.description('Render a treemap from JSON on stdin as SVG file and output a Markdown image link to it.')
+	.requiredOption('--svg <file>', 'Path of the SVG file to write.')
+	.option('--width <pixels>', 'Width of the treemap.', parsePositiveInteger, 880)
+	.option('--height <pixels>', 'Height of the treemap.', parsePositiveInteger, 480)
+	.addHelpText(
+		'after',
+		[
+			'',
+			'Input: { "title"?, "caption"?, "unit"?: "bytes", "children": [node, …] }',
+			'where a node is { "name", "size" } or { "name", "children": [node, …] }.',
+		].join('\n'),
+	)
+	.action(async (opts: { svg: string; width: number; height: number }) => {
+		const buffers = [];
+		for await (const data of process.stdin) {
+			buffers.push(data);
+		}
+		await generateTreemap(process.cwd(), Buffer.concat(buffers).toString(), opts);
+	});
+
+/**
  * Command: doc-toc
  * Updates or generates a Table of Contents in a Markdown file under a specified heading.
  */
@@ -240,6 +267,14 @@ if (process.env.NODE_ENV !== 'test') {
  * @param filename - The filename to check.
  * @returns The resolved full path if the file exists.
  */
+function parsePositiveInteger(value: string): number {
+	const number = Number(value);
+	if (!Number.isInteger(number) || number <= 0) {
+		throw new InvalidArgumentError(`Expected a positive integer, got "${value}".`);
+	}
+	return number;
+}
+
 function checkFilename(filename: string): string {
 	const fullname = resolve(cwd(), filename);
 	if (!existsSync(fullname)) {
