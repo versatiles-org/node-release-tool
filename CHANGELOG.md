@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.13.0] - 2026-09-16
+
+### Features
+
+- add SVG output option for dependency graph generation ([8e2e41b](https://github.com/versatiles-org/node-release-tool/commit/8e2e41ba51afc1df7cc5d83063818520b8e7a82e))
+- update dependency graph generation to use SVG output and add git ignore warning ([b7f96a5](https://github.com/versatiles-org/node-release-tool/commit/b7f96a57c31aa03bf5411ac89a82232177d6e4cf))
+- update SVG dependency graph layout and tests ([86e1583](https://github.com/versatiles-org/node-release-tool/commit/86e1583b470c06e8b53cba994b90b0cfe76b1cea))
+- add hover highlighting for dependency graph edges and nodes ([ccfb658](https://github.com/versatiles-org/node-release-tool/commit/ccfb658b410bca4c09f1ba4b53fe84d847291c8e))
+
+### Code Refactoring
+
+- update SVG rendering to use Helvetica font and adjust dimensions ([6368345](https://github.com/versatiles-org/node-release-tool/commit/6368345661c417d9e41056dca94fec0355f04ec6))
+
 ## [2.12.0] - 2026-09-16
 
 ### Features
