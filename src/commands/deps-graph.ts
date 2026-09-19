@@ -1,5 +1,7 @@
-import { cruise, format } from 'dependency-cruiser';
 import type { ICruiseResult, IModule } from 'dependency-cruiser';
+import Module from 'node:module';
+import { delimiter, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import picomatch from 'picomatch';
 import { CONFIG_FILENAME, readConfigSection } from '../lib/config.js';
 import { panic, warn } from '../lib/log.js';
@@ -109,6 +111,8 @@ export async function generateDependencyGraph(directory: string, cliOptions: Dep
 	const mergeRules = (options.mergeOutgoing ?? []).map(parseGlobRule);
 	const userExcludes = (options.exclude ?? []).map(globToCruiseRegex);
 
+	const { cruise, format } = await loadDependencyCruiser(directory);
+
 	let cruiseResult: ICruiseResult;
 	try {
 		const result = await cruise([directory], {
@@ -158,6 +162,49 @@ export async function generateDependencyGraph(directory: string, cliOptions: Dep
 	output += `\nclassDef subgraphs fill-opacity:0.1, fill:#888, color:#888, stroke:#888;`;
 
 	process.stdout.write(Buffer.from('```mermaid\n' + output + '\n```\n'));
+}
+
+/**
+ * ESM resolve hook for {@link loadDependencyCruiser}: if a bare specifier can
+ * not be resolved from the importing module, it is resolved from the project
+ * directory instead.
+ */
+const FALLBACK_RESOLVE_HOOK = `
+let parentURL;
+export function initialize(data) { parentURL = data.parentURL; }
+export async function resolve(specifier, context, next) {
+	try {
+		return await next(specifier, context);
+	} catch (error) {
+		if (error?.code !== 'ERR_MODULE_NOT_FOUND' || /^[./]|^[a-z]+:/i.test(specifier)) throw error;
+		return next(specifier, { ...context, parentURL });
+	}
+}`;
+
+/**
+ * Imports dependency-cruiser so that it can use the compilers installed in the
+ * analyzed project.
+ *
+ * On import, dependency-cruiser checks which compilers (`svelte/compiler`,
+ * `typescript`, `vue-template-compiler`, …) are available with `require` and
+ * loads some of them with `import`, both relative to its own location. If vrt
+ * is not installed next to them, e.g. when run via `npx`, files like `.svelte`
+ * are silently skipped or parsed incorrectly. Therefore the project's
+ * `node_modules` are added as fallback for both: to the global module paths
+ * (`NODE_PATH`) for `require` and via a resolve hook for `import`.
+ */
+async function loadDependencyCruiser(directory: string): Promise<typeof import('dependency-cruiser')> {
+	const nodeModules = resolve(directory, 'node_modules');
+	const paths = (process.env.NODE_PATH ?? '').split(delimiter).filter(Boolean);
+	if (!paths.includes(nodeModules)) {
+		process.env.NODE_PATH = [...paths, nodeModules].join(delimiter);
+		(Module as unknown as { _initPaths: () => void })._initPaths();
+		// `module.register` is available since Node 20.6
+		Module.register?.('data:text/javascript,' + encodeURIComponent(FALLBACK_RESOLVE_HOOK), {
+			data: { parentURL: pathToFileURL(resolve(directory, 'package.json')).href },
+		});
+	}
+	return import('dependency-cruiser');
 }
 
 /**
