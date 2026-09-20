@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.16.0] - 2026-09-20
+
+### Features
+
+- add bundle-treemap command to visualize bundle composition ([2aeff6d](https://github.com/versatiles-org/node-release-tool/commit/2aeff6dc4bf8bf27a10b0867784b4327cd331f42))
+- enhance directory removal logic with retry mechanism for macOS compatibility ([ed67c35](https://github.com/versatiles-org/node-release-tool/commit/ed67c352fabd8e9045012f663aa702092a8e0658))
+- add stdin support to Shell.exec and implement writeSvgImage tests ([edf7c50](https://github.com/versatiles-org/node-release-tool/commit/edf7c500108b549bd1d5ac4e97a31990c8e828bc))
+
 ## [2.15.0] - 2026-09-19
 
 ### Features
