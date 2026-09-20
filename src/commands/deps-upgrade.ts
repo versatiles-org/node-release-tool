@@ -42,6 +42,16 @@ export interface UpgradeOptions {
 }
 
 /**
+ * Options for deleting a whole directory tree.
+ *
+ * A `node_modules` tree is large enough that something can change inside it while it is being
+ * walked - on macOS, Finder and Spotlight write a `.DS_Store` into a directory that was just
+ * emptied - which makes the final `rmdir` fail with `ENOTEMPTY`. `force` does not cover that,
+ * it only suppresses `ENOENT`, so the removal is retried instead.
+ */
+const REMOVE_TREE = { recursive: true, force: true, maxRetries: 10, retryDelay: 100 } as const;
+
+/**
  * Upgrades the dependencies in a package.json file to their latest versions, removes existing
  * installed modules, and reinstalls them in the specified directory.
  *
@@ -127,7 +137,7 @@ export async function upgradeDependencies(directory: string, options: UpgradeOpt
 
 		if (modulesRescued) {
 			// A failed install leaves a partial tree behind, so drop it before moving the old one back.
-			rmSync(modulesPath, { recursive: true, force: true });
+			rmSync(modulesPath, REMOVE_TREE);
 			renameSync(rescuedModules, modulesPath);
 			modulesRescued = false;
 			info('Restored the previously installed dependencies');
@@ -144,9 +154,19 @@ export async function upgradeDependencies(directory: string, options: UpgradeOpt
 		discardRescueDirectory();
 	}
 
-	/** Removes the temporary directory, including any modules still parked in it. */
+	/**
+	 * Removes the temporary directory, including any modules still parked in it.
+	 *
+	 * Never throws: this runs when the upgrade is already done, or after a rollback has restored
+	 * everything, so a directory that the operating system cleans up anyway must not fail the
+	 * command or mask the error that caused the rollback.
+	 */
 	function discardRescueDirectory(): void {
-		rmSync(rescueDirectory, { recursive: true, force: true });
+		try {
+			rmSync(rescueDirectory, REMOVE_TREE);
+		} catch (error) {
+			warn(`Could not remove the temporary directory ${rescueDirectory}: ${formatError(error)}`);
+		}
 	}
 
 	await check(
@@ -201,7 +221,7 @@ export async function upgradeDependencies(directory: string, options: UpgradeOpt
 			// renamed. Copying a whole node_modules tree costs more than the reinstall it saves,
 			// so they are deleted and a rollback falls back to reinstalling them.
 			if ((error as NodeJS.ErrnoException).code !== 'EXDEV') throw error;
-			rmSync(modulesPath, { recursive: true, force: true });
+			rmSync(modulesPath, REMOVE_TREE);
 		}
 		modulesDeleted = true;
 	}

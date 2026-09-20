@@ -47,6 +47,9 @@ const MODULES = '/test/directory/node_modules';
 const RESCUE_DIR = '/tmp/vrt-deps-upgrade-test';
 const RESCUED_MODULES = '/tmp/vrt-deps-upgrade-test/node_modules';
 
+/** How a whole directory tree is removed: retrying, because macOS can report a spurious ENOTEMPTY. */
+const REMOVE_TREE = { recursive: true, force: true, maxRetries: 10, retryDelay: 100 };
+
 const RESOLVE = 'npm install --package-lock-only --ignore-scripts';
 const VERIFY = 'npm ci --dry-run --ignore-scripts';
 const INSTALL = 'npm ci';
@@ -83,6 +86,7 @@ describe('upgradeDependencies', () => {
 		// clearAllMocks keeps implementations, so the ones set per test have to be reset here
 		vi.mocked(mockedShellInstance.stdout).mockImplementation(async () => '');
 		vi.mocked(renameSync).mockImplementation(() => undefined);
+		vi.mocked(rmSync).mockImplementation(() => undefined);
 
 		// mimics check(): on failure the cleanup callback runs, then the error is propagated
 		vi.mocked(check).mockImplementation(
@@ -135,13 +139,28 @@ describe('upgradeDependencies', () => {
 		expect(vi.mocked(renameSync).mock.calls).toStrictEqual([[MODULES, RESCUED_MODULES]]);
 		expect(vi.mocked(rmSync).mock.calls).toStrictEqual([
 			[LOCK_FILE, { force: true }],
-			[RESCUE_DIR, { recursive: true, force: true }],
+			[RESCUE_DIR, REMOVE_TREE],
 		]);
 
 		// Verify nothing was rolled back
 		expect(vi.mocked(writeFileSync)).not.toHaveBeenCalled();
 
 		// Verify info was called at the end
+		expect(vi.mocked(info)).toHaveBeenCalledWith('All dependencies are up to date');
+	});
+
+	it('should only warn if the temporary directory cannot be removed', async () => {
+		// the upgrade is done at this point, so a leftover directory in the OS temp directory
+		// must not turn a successful upgrade into a crash
+		vi.mocked(rmSync).mockImplementation((path) => {
+			if (path === RESCUE_DIR) throw Object.assign(new Error('Directory not empty'), { code: 'ENOTEMPTY' });
+		});
+
+		await expect(upgradeDependencies('/test/directory')).resolves.toBeUndefined();
+
+		expect(vi.mocked(warn)).toHaveBeenCalledWith(
+			expect.stringContaining(`Could not remove the temporary directory ${RESCUE_DIR}`),
+		);
 		expect(vi.mocked(info)).toHaveBeenCalledWith('All dependencies are up to date');
 	});
 
@@ -221,7 +240,7 @@ describe('upgradeDependencies', () => {
 			[MODULES, RESCUED_MODULES],
 			[RESCUED_MODULES, MODULES],
 		]);
-		expect(vi.mocked(rmSync)).toHaveBeenCalledWith(MODULES, { recursive: true, force: true });
+		expect(vi.mocked(rmSync)).toHaveBeenCalledWith(MODULES, REMOVE_TREE);
 		expect(vi.mocked(mockedShellInstance.ok)).not.toHaveBeenCalled();
 		expect(vi.mocked(info)).toHaveBeenCalledWith('Restored the previously installed dependencies');
 		expect(vi.mocked(info)).not.toHaveBeenCalledWith('All dependencies are up to date');
@@ -238,7 +257,7 @@ describe('upgradeDependencies', () => {
 		expect(vi.mocked(rmSync).mock.calls).toStrictEqual([
 			[LOCK_FILE, { force: true }],
 			[LOCK_FILE, { force: true }],
-			[RESCUE_DIR, { recursive: true, force: true }],
+			[RESCUE_DIR, REMOVE_TREE],
 		]);
 		expect(vi.mocked(mockedShellInstance.ok)).not.toHaveBeenCalled();
 		expect(vi.mocked(info)).toHaveBeenCalledWith('Restored package.json');
@@ -259,7 +278,7 @@ describe('upgradeDependencies', () => {
 			await expect(upgradeDependencies('/test/directory')).rejects.toThrow(`${INSTALL} failed`);
 
 			// copying a whole tree would cost more than the reinstall, so it is deleted instead
-			expect(vi.mocked(rmSync)).toHaveBeenCalledWith(MODULES, { recursive: true, force: true });
+			expect(vi.mocked(rmSync)).toHaveBeenCalledWith(MODULES, REMOVE_TREE);
 			expect(vi.mocked(mockedShellInstance.ok).mock.calls).toStrictEqual([['npm ci']]);
 			expect(vi.mocked(info)).toHaveBeenCalledWith('Reinstalled the previous dependencies');
 		});
