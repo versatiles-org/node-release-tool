@@ -13,6 +13,7 @@ import { generateDependencyGraph } from './commands/deps-graph.js';
 import { check } from './commands/check.js';
 import { generateTypescriptDocs } from './commands/doc-typescript.js';
 import { generateTreemap } from './commands/treemap.js';
+import { generateBundleTreemap } from './commands/bundle-treemap.js';
 import { panic, setVerbose } from './lib/log.js';
 
 /**
@@ -199,6 +200,51 @@ program
 		}
 		await generateTreemap(process.cwd(), Buffer.concat(buffers).toString(), opts);
 	});
+
+/**
+ * Command: bundle-treemap
+ * Measures the composition of a bundle with its source map and renders it as treemap.
+ */
+program
+	.command('bundle-treemap')
+	.description("Measure a bundle's composition with its source map and render it as treemap.")
+	.argument('<bundle>', 'Path of the bundle, or of its source map.')
+	.option('--svg <file>', 'Path of the SVG file to write. Without it, the treemap is printed as JSON.')
+	.option('--map <file>', 'Path of the source map. Default: the one the bundle points to, or <bundle>.map.')
+	.option('--depth <levels>', 'How many directory levels become groups.', parsePositiveInteger, 1)
+	.option(
+		'--min-size <bytes>',
+		'Fold files smaller than this into an "other" entry. Default: 0.5 % of the bundle.',
+		parsePositiveInteger,
+	)
+	.option('--title <text>', 'Title of the image.', 'Bundle composition')
+	.option('--width <pixels>', 'Width of the treemap.', parsePositiveInteger, 880)
+	.option('--height <pixels>', 'Height of the treemap.', parsePositiveInteger, 480)
+	.addHelpText(
+		'after',
+		[
+			'',
+			'Every byte of the bundle is attributed to the source file it came from, so',
+			'the build only needs to emit a source map, e.g.:',
+			"  vrt bundle-treemap dist/bundle.js --svg assets/bundle.svg | vrt doc-insert README.md '## Bundle'",
+		].join('\n'),
+	)
+	.action(
+		async (
+			bundle: string,
+			opts: {
+				svg?: string;
+				map?: string;
+				depth: number;
+				minSize?: number;
+				title: string;
+				width: number;
+				height: number;
+			},
+		) => {
+			await generateBundleTreemap(process.cwd(), bundle, opts);
+		},
+	);
 
 /**
  * Command: doc-toc

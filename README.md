@@ -9,6 +9,7 @@
 Tools used for:
 
 - creating a graph of the source code as mermaid: [`vrt deps-graph`](#subcommand-vrt-deps-graph)
+- measuring what a bundle is made of: [`vrt bundle-treemap`](#subcommand-vrt-bundle-treemap)
 - rendering a treemap as SVG, e.g. of a bundle's composition: [`vrt treemap`](#subcommand-vrt-treemap)
 - upgrading all package dependencies: [`vrt deps-upgrade`](#subcommand-vrt-deps-upgrade)
 - creating Markdown documentation of executables: [`vrt doc-command`](#subcommand-vrt-doc-command)
@@ -147,6 +148,26 @@ The input contains the boxes as a tree. A node has a `size` or `children`; with 
 
 Every top-level node gets its own color, and groups show their name and total size. Labels that don't fit are shortened or omitted, but every box has a tooltip with its path, size and share, which is shown when the SVG is opened directly.
 
+# Bundle composition
+
+`vrt bundle-treemap` is `treemap` with the measuring included: it attributes every byte of a bundle to the source file it came from, groups the files by directory and renders the result. It needs nothing but the source map the build already emits — no bundler plugin, no extra dependency:
+
+```bash
+vrt bundle-treemap dist/bundle.js --svg assets/bundle-treemap.svg | vrt doc-insert README.md '## Bundle Composition'
+```
+
+The bundle or its source map can be given; the other one is found next to it, or through the `sourceMappingURL` comment at the end of the bundle — including a map inlined there as `data:` URI. `--map` points at it explicitly.
+
+The caption below the image states the raw and the gzipped size of the whole bundle and the number of modules in it. Bytes that no mapping covers — line breaks, and whatever the bundler added on its own — are shown as `(unmapped)`, so the boxes add up to the size of the file.
+
+Two options control how much detail a box holds. `--depth` sets how many directory levels become groups (default: 1, so `src/color/parser.ts` lands in a `color` box); `--min-size` folds everything below a number of bytes into one "other (N files)" entry per group, which by default is 0.5 % of the bundle. A README wants the shape of the bundle — which directory costs what, and which few files dominate it — not 85 unreadable rectangles.
+
+Without `--svg`, the treemap is printed as JSON instead of being rendered, which is the input format of `vrt treemap`. That is the way to adjust it before rendering:
+
+```bash
+vrt bundle-treemap dist/bundle.js | jq '.title = "What ships to the browser"' | vrt treemap --svg assets/bundle.svg
+```
+
 # Command `vrt`
 
 <!--- This chapter is generated automatically --->
@@ -163,6 +184,7 @@ Options:
   -v, --verbose                             Enable verbose output
 
 Commands:
+  bundle-treemap [options] <bundle>         Measure a bundle's composition with its source map and render it as treemap.
   check                                     Check repo for required scripts and other stuff.
   deps-graph [options]                      Analyze project files and output a dependency graph as Mermaid markup.
   deps-upgrade [options]                    Upgrade all dependencies in the current project to their latest versions.
@@ -173,6 +195,35 @@ Commands:
   help [command]                            display help for command
   release-npm [options] [path]              Publish an npm package from the specified path to the npm registry.
   treemap [options]                         Render a treemap from JSON on stdin as SVG file and output a Markdown image link to it.
+```
+
+## Subcommand: `vrt bundle-treemap`
+
+```console
+$ vrt bundle-treemap
+Usage: vrt bundle-treemap [options] <bundle>
+
+Measure a bundle's composition with its source map and render it as treemap.
+
+Arguments:
+  bundle              Path of the bundle, or of its source map.
+
+Options:
+  --depth <levels>    How many directory levels become groups. (default: 1)
+  -h, --help          display help for command
+  --height <pixels>   Height of the treemap. (default: 480)
+  --map <file>        Path of the source map. Default: the one the bundle points
+                      to, or <bundle>.map.
+  --min-size <bytes>  Fold files smaller than this into an "other" entry.
+                      Default: 0.5 % of the bundle.
+  --svg <file>        Path of the SVG file to write. Without it, the treemap is
+                      printed as JSON.
+  --title <text>      Title of the image. (default: "Bundle composition")
+  --width <pixels>    Width of the treemap. (default: 880)
+
+Every byte of the bundle is attributed to the source file it came from, so
+the build only needs to emit a source map, e.g.:
+  vrt bundle-treemap dist/bundle.js --svg assets/bundle.svg | vrt doc-insert README.md '## Bundle'
 ```
 
 ## Subcommand: `vrt check`
