@@ -191,6 +191,31 @@ describe('Shell', () => {
 			});
 			mockError.mockRestore();
 		});
+
+		describe('stdin', () => {
+			it('writes the input to the process and closes it', async () => {
+				// "cat" only terminates once it has seen end-of-file, so this also proves the close
+				const result = await shell.exec('cat', [], true, false, 'from stdin');
+				expect(result.stdout).toBe('from stdin');
+				expect(result.code).toBe(0);
+			});
+
+			it('passes bytes through unchanged, including NUL', async () => {
+				const result = await shell.exec('wc', ['-c'], true, false, 'a\0b\n');
+				expect(result.stdout.trim()).toBe('4');
+			});
+
+			it('keeps a process without input untouched', async () => {
+				const result = await shell.exec('echo', ['hello']);
+				expect(result.stdout).toBe('hello\n');
+			});
+
+			it('survives a process that exits without reading its input', async () => {
+				// more than a pipe buffer holds, so the write fails with EPIPE instead of vanishing
+				const result = await shell.exec('sh', ['-c', 'exit 3'], false, false, 'x'.repeat(1_000_000));
+				expect(result.code).toBe(3);
+			});
+		});
 	});
 
 	describe('runInteractive', () => {

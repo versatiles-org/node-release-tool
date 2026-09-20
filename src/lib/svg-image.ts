@@ -36,10 +36,18 @@ export async function writeSvgImage(directory: string, svgPath: string, svg: str
 /**
  * Whether git ignores the file, so it would never be committed. Returns false
  * outside of a git repository or if git is not available.
+ *
+ * The path is handed to git through stdin rather than as an argument: a path is
+ * data, and one that begins with a dash would be read as an option on the
+ * command line. `-z` makes git take the input as a single NUL-terminated
+ * record, so not even a newline in the name can split it into two paths. The
+ * exit code means the same as with `--quiet`: 0 if the path is ignored, 1 if it
+ * is not, 128 outside of a repository.
  */
 async function isIgnoredByGit(directory: string, path: string): Promise<boolean> {
 	try {
-		const result = await new Shell(directory).exec('git', ['check-ignore', '--quiet', path], false, true);
+		const shell = new Shell(directory);
+		const result = await shell.exec('git', ['check-ignore', '--stdin', '-z'], false, true, `${path}\0`);
 		return result.code === 0;
 	} catch {
 		return false;

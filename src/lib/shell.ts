@@ -103,6 +103,9 @@ export class Shell {
 	 * @param args - Array of arguments to pass to the command.
 	 * @param errorOnCodeNonZero - If true (default), rejects the promise on non-zero exit code.
 	 * @param skipLog - If true, suppresses debug logging of the command.
+	 * @param stdin - Input to write to the process, which then sees end-of-file. Commands that
+	 *   read their operands this way, e.g. `git check-ignore --stdin`, keep untrusted values off
+	 *   the command line, where a leading dash would turn one into an option.
 	 * @returns A promise resolving to the command result with exit code, signal, stdout, and stderr.
 	 * @throws Rejects with a {@link ShellError} if the process could not be spawned, or if
 	 *   errorOnCodeNonZero is true and the exit code is non-zero.
@@ -112,11 +115,12 @@ export class Shell {
 		args: string[],
 		errorOnCodeNonZero: boolean = true,
 		skipLog: boolean = false,
+		stdin?: string,
 	): Promise<ShellResult> {
 		if (!skipLog) {
 			debug(`$ ${command} ${args.join(' ')}`);
 		}
-		return this.spawnProcess(command, args, errorOnCodeNonZero);
+		return this.spawnProcess(command, args, errorOnCodeNonZero, undefined, stdin);
 	}
 
 	/**
@@ -145,6 +149,7 @@ export class Shell {
 	 * @param args - Array of arguments to pass to the command.
 	 * @param errorOnCodeNonZero - If true, rejects the promise on non-zero exit code.
 	 * @param label - Command description used in error messages. Defaults to command and args.
+	 * @param stdin - Input to write to the process, which then sees end-of-file.
 	 * @returns A promise resolving to the command result with exit code, signal, stdout, and stderr.
 	 */
 	private async spawnProcess(
@@ -152,6 +157,7 @@ export class Shell {
 		args: string[],
 		errorOnCodeNonZero: boolean,
 		label?: string,
+		stdin?: string,
 	): Promise<ShellResult> {
 		const commandLine = label ?? [command, ...args].join(' ');
 		this.assertCwdExists(commandLine);
@@ -202,6 +208,13 @@ export class Shell {
 
 			cp.stdout.on('data', (chunk) => stdout.push(chunk));
 			cp.stderr.on('data', (chunk) => stderr.push(chunk));
+			if (stdin !== undefined) {
+				// A process that exits without reading its input breaks the pipe. That is not an
+				// error of its own - the exit code and stderr already say what happened - so it
+				// must not become an unhandled 'error' event.
+				cp.stdin.on('error', () => undefined);
+				cp.stdin.end(stdin);
+			}
 		});
 	}
 
