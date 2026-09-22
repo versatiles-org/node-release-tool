@@ -25,6 +25,8 @@ const NODE_HEIGHT = 24;
 const NODE_PADDING = 8;
 const DIRECTORY_LABEL_HEIGHT = 22;
 const DIRECTORY_PADDING = 10;
+/** Opacity of a directory's fill, so nested directories get darker (or lighter in dark mode) with each level. */
+const DIRECTORY_OPACITY = 0.05;
 
 /**
  * ELK options that are applied to the root and to every directory, because ELK
@@ -55,10 +57,9 @@ const FILE_PORT_OPTIONS: Record<string, string> = {
 
 const STYLE = `
 	.background { fill: #ffffff; }
-	.directory { stroke: #c5ccc9; stroke-width: 1; }
-	.depth1 { fill: #f2f4f3; }
-	.depth2 { fill: #e8ecea; }
-	.depth3 { fill: #dfe4e2; }
+	.directory { stroke: #c5ccc9; stroke-width: 1; fill-opacity: ${DIRECTORY_OPACITY}; }
+	.directory, .shade { fill: #000000; }
+	.label-background { fill: #ffffff; }
 	.file { fill: #ffffff; stroke: #9aa6a1; stroke-width: 1; }
 	text { font-family: ${FONT_FAMILY}; font-size: ${FONT_SIZE}px; }
 	.label { fill: #1b2220; text-anchor: middle; }
@@ -77,9 +78,8 @@ const STYLE = `
 		.arrowhead-dim { fill: #8b949e; }
 		.background { fill: #0d1117; }
 		.directory { stroke: #39424d; }
-		.depth1 { fill: #161b22; }
-		.depth2 { fill: #1c232c; }
-		.depth3 { fill: #232b35; }
+		.directory, .shade { fill: #ffffff; }
+		.label-background { fill: #0d1117; }
 		.file { fill: #0d1117; stroke: #5c6773; }
 		.label { fill: #e6edf3; }
 		.directory-label { fill: #8b949e; }
@@ -93,7 +93,9 @@ const STYLE = `
  *
  * Files are drawn as boxes nested in boxes for their directories, edges are
  * routed orthogonally from top to bottom with evenly spaced ports. Directory
- * labels are drawn on top of edges, on a background in the directory's color. Colors follow the viewer's color
+ * labels are drawn on top of edges, on a background in the directory's color.
+ * Directories are filled with a translucent color, so they get darker (or
+ * lighter in dark mode) with each nesting level. Colors follow the viewer's color
  * scheme via `prefers-color-scheme`. The output is deterministic, so it only
  * changes when the graph changes.
  *
@@ -152,14 +154,18 @@ export async function renderSvgGraph(model: GraphModel): Promise<string> {
 	const drawNode = (node: ElkNode, depth: number): void => {
 		const { x = 0, y = 0, width = 0, height = 0 } = node;
 		if (node.children) {
-			const level = Math.min(depth, 3);
 			shapes.push(
-				`<rect class="directory depth${level} node ${idOf(node.id)}" x="${num(x)}" y="${num(y)}" width="${num(width)}" height="${num(height)}" rx="6"/>`,
+				`<rect class="directory node ${idOf(node.id)}" x="${num(x)}" y="${num(y)}" width="${num(width)}" height="${num(height)}" rx="6"/>`,
 			);
+			// Labels are drawn on top of edges, so their background is opaque, shaded like
+			// the stacked translucent fills of this and all enclosing directories.
 			const label = basename(node.id);
+			const box = `x="${num(x + DIRECTORY_PADDING - 3)}" y="${num(y + 4)}" width="${num(textWidth(label, true) + 6)}" height="16" rx="2"`;
+			const shade = Math.round((1 - (1 - DIRECTORY_OPACITY) ** depth) * 1e4) / 1e4;
 			directoryLabels.push(
 				`<g class="node ${idOf(node.id)}">`,
-				`<rect class="depth${level}" x="${num(x + DIRECTORY_PADDING - 3)}" y="${num(y + 4)}" width="${num(textWidth(label, true) + 6)}" height="16" rx="2"/>`,
+				`<rect class="label-background" ${box}/>`,
+				`<rect class="shade" ${box} fill-opacity="${shade}"/>`,
 				text('directory-label', x + DIRECTORY_PADDING, y + 16, label, true),
 				'</g>',
 			);

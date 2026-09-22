@@ -64,7 +64,7 @@ describe('renderSvgGraph', () => {
 		const svg = await renderSvgGraph(model);
 
 		const lastEdge = svg.lastIndexOf('<path class="edge ');
-		const labels = [...svg.matchAll(/<rect class="depth\d" [^>]*\/>\n<text class="directory-label"/g)].map(
+		const labels = [...svg.matchAll(/<rect class="shade" [^>]*\/>\n<text class="directory-label"/g)].map(
 			(m) => m.index,
 		);
 		expect(labels).toHaveLength(3);
@@ -100,9 +100,9 @@ describe('renderSvgGraph', () => {
 			expect(svg).toMatch(
 				/<g class="node n0">\n<rect class="file" [^>]*\/>\n<text class="label"[^>]*>index.ts<\/text>\n<\/g>/,
 			);
-			expect(svg).toContain('<rect class="directory depth2 node n5" ');
+			expect(svg).toContain('<rect class="directory node n5" ');
 			expect(svg).toMatch(
-				/<g class="node n5">\n<rect class="depth2" [^>]*\/>\n<text class="directory-label"[^>]*>lib<\/text>/,
+				/<g class="node n5">\n<rect class="label-background" [^>]*\/>\n<rect class="shade" [^>]*fill-opacity="0.0975"\/>\n<text class="directory-label"[^>]*>lib<\/text>/,
 			);
 			// file classes (from/to) and directory classes (in/out/inner)
 			expect(svg).toContain('<path class="edge from-n0 to-n1 inner-n4 in-n5" ');

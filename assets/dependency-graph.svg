@@ -2,10 +2,9 @@
 <title>Dependency graph</title>
 <style>
 	.background { fill: #ffffff; }
-	.directory { stroke: #c5ccc9; stroke-width: 1; }
-	.depth1 { fill: #f2f4f3; }
-	.depth2 { fill: #e8ecea; }
-	.depth3 { fill: #dfe4e2; }
+	.directory { stroke: #c5ccc9; stroke-width: 1; fill-opacity: 0.05; }
+	.directory, .shade { fill: #000000; }
+	.label-background { fill: #ffffff; }
 	.file { fill: #ffffff; stroke: #9aa6a1; stroke-width: 1; }
 	text { font-family: Helvetica, Arial, 'Liberation Sans', sans-serif; font-size: 12px; }
 	.label { fill: #1b2220; text-anchor: middle; }
@@ -24,9 +23,8 @@
 		.arrowhead-dim { fill: #8b949e; }
 		.background { fill: #0d1117; }
 		.directory { stroke: #39424d; }
-		.depth1 { fill: #161b22; }
-		.depth2 { fill: #1c232c; }
-		.depth3 { fill: #232b35; }
+		.directory, .shade { fill: #ffffff; }
+		.label-background { fill: #0d1117; }
 		.file { fill: #0d1117; stroke: #5c6773; }
 		.label { fill: #e6edf3; }
 		.directory-label { fill: #8b949e; }
@@ -48,8 +46,8 @@
 <marker id="arrow-incoming" viewBox="0 0 8 8" refX="8" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path class="arrowhead-incoming" d="M0,0 L8,4 L0,8 z"/></marker>
 </defs>
 <rect class="background" width="998" height="724"/>
-<rect class="directory depth1 node n25" x="12" y="12" width="973.71" height="700" rx="6"/>
-<rect class="directory depth2 node n26" x="33" y="158" width="942.71" height="114" rx="6"/>
+<rect class="directory node n25" x="12" y="12" width="973.71" height="700" rx="6"/>
+<rect class="directory node n26" x="33" y="158" width="942.71" height="114" rx="6"/>
 <g class="node n0">
 <rect class="file" x="280" y="186" width="112.71" height="24" rx="4"/>
 <text class="label" x="336.35" y="202" textLength="96.71" lengthAdjust="spacingAndGlyphs">bundle-treemap.ts</text>
@@ -90,7 +88,7 @@
 <rect class="file" x="751" y="186" width="95.36" height="24" rx="4"/>
 <text class="label" x="798.68" y="202" textLength="79.36" lengthAdjust="spacingAndGlyphs">release-npm.ts</text>
 </g>
-<rect class="directory depth2 node n27" x="142" y="364" width="793" height="338" rx="6"/>
+<rect class="directory node n27" x="142" y="364" width="793" height="338" rx="6"/>
 <g class="node n1">
 <rect class="file" x="300" y="616" width="44.68" height="24" rx="4"/>
 <text class="label" x="322.34" y="632" textLength="28.68" lengthAdjust="spacingAndGlyphs">log.ts</text>
@@ -143,7 +141,7 @@
 <rect class="file" x="786" y="420" width="88.02" height="24" rx="4"/>
 <text class="label" x="830.01" y="436" textLength="72.02" lengthAdjust="spacingAndGlyphs">benchmark.ts</text>
 </g>
-<rect class="directory depth2 node n28" x="150" y="40" width="144.7" height="62" rx="6"/>
+<rect class="directory node n28" x="150" y="40" width="144.7" height="62" rx="6"/>
 <g class="node n24">
 <rect class="file" x="160" y="68" width="124.7" height="24" rx="4"/>
 <text class="label" x="222.35" y="84" textLength="108.7" lengthAdjust="spacingAndGlyphs">sourcemap-fixture.ts</text>
@@ -201,19 +199,23 @@
 <path class="edge from-n22 to-n8 inner-n25 in-n26" d="M330,102 L330,136 L269,136 L269,238" marker-end="url(#arrow)"/>
 <path class="edge from-n22 to-n1 inner-n25 in-n27" d="M311,102 L311,112 L22,112 L22,310 L152,310 L152,598 L300,598 L300,616" marker-end="url(#arrow)"/>
 <g class="node n25">
-<rect class="depth1" x="19" y="16" width="24.01" height="16" rx="2"/>
+<rect class="label-background" x="19" y="16" width="24.01" height="16" rx="2"/>
+<rect class="shade" x="19" y="16" width="24.01" height="16" rx="2" fill-opacity="0.05"/>
 <text class="directory-label" x="22" y="28" textLength="18.01" lengthAdjust="spacingAndGlyphs">src</text>
 </g>
 <g class="node n26">
-<rect class="depth2" x="40" y="162" width="69.35" height="16" rx="2"/>
+<rect class="label-background" x="40" y="162" width="69.35" height="16" rx="2"/>
+<rect class="shade" x="40" y="162" width="69.35" height="16" rx="2" fill-opacity="0.0975"/>
 <text class="directory-label" x="43" y="174" textLength="63.35" lengthAdjust="spacingAndGlyphs">commands</text>
 </g>
 <g class="node n27">
-<rect class="depth2" x="149" y="368" width="20" height="16" rx="2"/>
+<rect class="label-background" x="149" y="368" width="20" height="16" rx="2"/>
+<rect class="shade" x="149" y="368" width="20" height="16" rx="2" fill-opacity="0.0975"/>
 <text class="directory-label" x="152" y="380" textLength="14" lengthAdjust="spacingAndGlyphs">lib</text>
 </g>
 <g class="node n28">
-<rect class="depth2" x="157" y="44" width="27.34" height="16" rx="2"/>
+<rect class="label-background" x="157" y="44" width="27.34" height="16" rx="2"/>
+<rect class="shade" x="157" y="44" width="27.34" height="16" rx="2" fill-opacity="0.0975"/>
 <text class="directory-label" x="160" y="56" textLength="21.34" lengthAdjust="spacingAndGlyphs">test</text>
 </g>
 </svg>
