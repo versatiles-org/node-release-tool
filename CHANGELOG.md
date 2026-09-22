@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.17.0] - 2026-09-22
+
+### Features
+
+- add --include option to analyze specific directories in dependency graph ([4a82430](https://github.com/versatiles-org/node-release-tool/commit/4a82430daa814fc0870bfa1462a1aad1e0e970b1))
+
+### Code Refactoring
+
+- update SVG styles and rendering for directory nodes ([0d3a548](https://github.com/versatiles-org/node-release-tool/commit/0d3a548d760ec1a46ed34310966cbbb18194bed4))
+
+### Chores
+
+- update dependencies to latest versions in package.json and package-lock.json ([6d31acb](https://github.com/versatiles-org/node-release-tool/commit/6d31acb6a133c4feff15996ef5f8065ddc067679))
+
 ## [2.16.0] - 2026-09-20
 
 ### Features
