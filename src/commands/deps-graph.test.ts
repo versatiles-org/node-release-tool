@@ -96,6 +96,47 @@ describe('generateDependencyGraph', () => {
 		expect(mockStdoutWrite).not.toHaveBeenCalled();
 	});
 
+	describe('--include', () => {
+		function cruiseOptions() {
+			return vi.mocked(cruise).mock.calls[0][1]!;
+		}
+
+		it('analyzes only src by default', async () => {
+			await generateDependencyGraph('src');
+			expect(cruiseOptions().includeOnly).toBe('^src');
+		});
+
+		it('always resolves through the exports field of package.json', async () => {
+			await generateDependencyGraph('src');
+			expect(cruiseOptions().enhancedResolveOptions).toEqual({
+				exportsFields: ['exports'],
+				conditionNames: ['import', 'default'],
+			});
+		});
+
+		it('replaces the default with the given globs', async () => {
+			await generateDependencyGraph('src', { include: ['packages/*/src/', './lib/*.ts', 'tools/**/?.ts'] });
+
+			const patterns = (cruiseOptions().includeOnly as string[]).map((p) => new RegExp(p));
+			const isIncluded = (path: string): boolean => patterns.some((p) => p.test(path));
+			expect(isIncluded('packages/core/src/map_renderer.ts')).toBe(true);
+			expect(isIncluded('packages/core/src/lib/utils.ts')).toBe(true);
+			expect(isIncluded('lib/a.ts')).toBe(true);
+			expect(isIncluded('lib/a.js')).toBe(false);
+			expect(isIncluded('tools/a.ts')).toBe(true);
+			expect(isIncluded('tools/x/y/a.ts')).toBe(true);
+			expect(isIncluded('tools/ab.ts')).toBe(false);
+			expect(isIncluded('src/index.ts')).toBe(false);
+			expect(isIncluded('packages/core/srcx/a.ts')).toBe(false);
+			expect(isIncluded('packages/core/package.json')).toBe(false);
+		});
+
+		it('panics on an empty glob', async () => {
+			await expect(generateDependencyGraph('src', { include: ['/'] })).rejects.toThrow('invalid include glob');
+			expect(cruise).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('--exclude', () => {
 		it('passes user-provided globs (as regex) to cruise alongside built-in excludes', async () => {
 			await generateDependencyGraph('src', { exclude: ['**/_planned.ts'] });
@@ -331,6 +372,7 @@ describe('generateDependencyGraph', () => {
 				'deps-graph': {
 					'collapse-dir': ['src/themes/*'],
 					exclude: ['**/_planned.ts'],
+					include: ['packages/*/src'],
 					'merge-outgoing': ['src/*'],
 					'subgraph-direction': ['src/lib=LR'],
 				},
@@ -339,6 +381,7 @@ describe('generateDependencyGraph', () => {
 			expect(readDepsGraphConfig(directory)).toEqual({
 				collapseDir: ['src/themes/*'],
 				exclude: ['**/_planned.ts'],
+				include: ['packages/*/src'],
 				mergeOutgoing: ['src/*'],
 				subgraphDirection: ['src/lib=LR'],
 			});

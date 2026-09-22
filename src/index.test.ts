@@ -104,6 +104,7 @@ describe('release-tool CLI', () => {
 			expect(generateDependencyGraph).toHaveBeenCalledWith(process.cwd(), {
 				collapseDir: [],
 				exclude: [],
+				include: [],
 				mergeOutgoing: [],
 				subgraphDirection: [],
 				svg: undefined,
@@ -116,6 +117,7 @@ describe('release-tool CLI', () => {
 			expect(generateDependencyGraph).toHaveBeenCalledWith(process.cwd(), {
 				collapseDir: [],
 				exclude: [],
+				include: [],
 				mergeOutgoing: [],
 				subgraphDirection: ['src/lib=LR', 'src/commands=RL'],
 				svg: undefined,
@@ -128,6 +130,7 @@ describe('release-tool CLI', () => {
 			expect(generateDependencyGraph).toHaveBeenCalledWith(process.cwd(), {
 				collapseDir: [],
 				exclude: [],
+				include: [],
 				mergeOutgoing: [],
 				subgraphDirection: [],
 				svg: 'docs/graph.svg',
@@ -140,6 +143,7 @@ describe('release-tool CLI', () => {
 			expect(generateDependencyGraph).toHaveBeenCalledWith(process.cwd(), {
 				collapseDir: [],
 				exclude: [],
+				include: [],
 				mergeOutgoing: ['src/lib', 'src/commands'],
 				subgraphDirection: [],
 				svg: undefined,

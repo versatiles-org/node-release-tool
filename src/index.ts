@@ -68,6 +68,12 @@ program
 		].join('\n'),
 	)
 	.option(
+		'--include <glob>',
+		'Analyze files in directories matching the glob instead of "src", e.g. "packages/*/src" in a workspace (repeatable).',
+		(value: string, prev: string[] = []) => prev.concat(value),
+		[] as string[],
+	)
+	.option(
 		'--collapse-dir <glob>',
 		'Collapse all files matching the glob into a single node (repeatable).',
 		(value: string, prev: string[] = []) => prev.concat(value),
@@ -99,6 +105,7 @@ program
 		(opts: {
 			collapseDir: string[];
 			exclude: string[];
+			include: string[];
 			mergeOutgoing: string[];
 			subgraphDirection: string[];
 			svg?: string;
@@ -106,6 +113,7 @@ program
 			void generateDependencyGraph(process.cwd(), {
 				collapseDir: opts.collapseDir,
 				exclude: opts.exclude,
+				include: opts.include,
 				mergeOutgoing: opts.mergeOutgoing,
 				subgraphDirection: opts.subgraphDirection,
 				svg: opts.svg,

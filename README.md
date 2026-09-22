@@ -105,6 +105,21 @@ Instead of passing long lists of flags, you can put the options into a `vrt.conf
 
 The `svg` option (see below) can be set there too, as a string: `"svg": "docs/dependency-graph.svg"`.
 
+# Dependency graph of a workspace
+
+By default, `deps-graph` analyzes the files in `src`. With `--include` (repeatable), you choose other directories or files instead. At the root of an npm workspace, this draws one graph over all packages, with a subgraph per package:
+
+```JSON
+{
+  "deps-graph": {
+    "include": ["packages/*/src"],
+    "merge-outgoing": ["packages/*/src"]
+  }
+}
+```
+
+Imports between the packages (e.g. `@scope/core/map_renderer`) are resolved through the `exports` field of their package.json, so they point to the source files if a package exports them, e.g. with `"exports": { "./*": "./src/*.ts" }`. All other options match against the full paths, e.g. `packages/core/src/lib`.
+
 # Dependency graph as SVG
 
 GitHub renders Mermaid without the ELK layout, and npmjs.com doesn't render Mermaid at all. With `--svg`, `deps-graph` lays out the graph with ELK, writes it as an SVG file and prints a Markdown image link instead of Mermaid markup:
@@ -252,6 +267,9 @@ Options:
   --exclude <glob>                 Drop files matching the glob from the graph
                                    entirely (repeatable). (default: [])
   -h, --help                       display help for command
+  --include <glob>                 Analyze files in directories matching the
+                                   glob instead of "src", e.g. "packages/*/src"
+                                   in a workspace (repeatable). (default: [])
   --merge-outgoing <glob>          Merge edges from files in directories
                                    matching the glob that point to the same
                                    target into one edge from the directory
