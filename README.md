@@ -129,6 +129,15 @@ By default, `deps-graph` analyzes the files in `src`. With `--include` (repeatab
 
 Imports between the packages (e.g. `@scope/core/map_renderer`) are resolved through the `exports` field of their package.json, so they point to the source files if a package exports them, e.g. with `"exports": { "./*": "./src/*.ts" }`. All other options match against the full paths, e.g. `packages/core/src/lib`.
 
+# Imports missing in the graph
+
+`deps-graph` warns about imports that can not become edges, so an incomplete graph doesn't go unnoticed:
+
+- local imports that could not be resolved, e.g. a broken relative path or an unknown alias, and
+- imports that resolve to source files outside of `include`, e.g. to `dist/` of another workspace package, or to a directory you forgot to include.
+
+The ten most frequent targets are listed; with `-v`, all of them are listed with the importing files. npm packages, assets outside of `include` and modules provided by SvelteKit and Vite (`$app/*`, `$env/*`, `./$types`, `virtual:*`) are ignored.
+
 # Dependency graph as SVG
 
 GitHub renders Mermaid without the ELK layout, and npmjs.com doesn't render Mermaid at all. With `--svg`, `deps-graph` lays out the graph with ELK, writes it as an SVG file and prints a Markdown image link instead of Mermaid markup:

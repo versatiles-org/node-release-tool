@@ -1,17 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, MockInstance, vi } from 'vitest';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
 import { generateDependencyGraph } from './deps-graph.js';
 
 /**
- * Runs the real dependency-cruiser on small projects, to check that imports
- * using path aliases end up as edges in the graph.
+ * Runs the real dependency-cruiser on small projects, to check which imports
+ * end up as edges in the graph.
  */
-describe('generateDependencyGraph resolves path aliases', () => {
+describe('generateDependencyGraph with dependency-cruiser', () => {
 	const originalCwd = process.cwd();
 	let directory: string;
 	let mockStdoutWrite: MockInstance<typeof process.stdout.write>;
+	let mockStderrWrite: MockInstance<typeof process.stderr.write>;
 
 	function writeFiles(files: Record<string, string>): void {
 		for (const [path, content] of Object.entries(files)) {
@@ -45,10 +46,12 @@ describe('generateDependencyGraph resolves path aliases', () => {
 		directory = realpathSync(mkdtempSync(join(tmpdir(), 'vrt-deps-graph-resolve-')));
 		process.chdir(directory);
 		mockStdoutWrite = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+		mockStderrWrite = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
 	});
 
 	afterEach(() => {
 		mockStdoutWrite.mockRestore();
+		mockStderrWrite.mockRestore();
 		process.chdir(originalCwd);
 		rmSync(directory, { recursive: true, force: true });
 	});
@@ -94,5 +97,24 @@ describe('generateDependencyGraph resolves path aliases', () => {
 			'src/lib/x.ts': 'export const x = 1;\n',
 		});
 		expect(await edges()).toStrictEqual(['src/routes/page.ts --> src/lib/x.ts']);
+	});
+
+	it('warns about imports that are missing in the graph', async () => {
+		writeFiles({
+			'package.json': JSON.stringify({ type: 'module', workspaces: ['packages/*'] }),
+			'packages/core/package.json': JSON.stringify({ name: '@x/core', exports: './dist/index.js' }),
+			'packages/core/dist/index.js': 'export const core = 1;\n',
+			'src/index.ts':
+				"import { core } from '@x/core';\nimport { gone } from './gone.js';\nexport const a = core + gone;\n",
+		});
+		mkdirSync(join(directory, 'node_modules/@x'), { recursive: true });
+		symlinkSync('../../packages/core', join(directory, 'node_modules/@x/core'));
+
+		expect(await edges()).toStrictEqual([]);
+		const stderr = mockStderrWrite.mock.calls.map((c) => c[0].toString()).join('');
+		expect(stderr).toContain(
+			'missing in graph: 1 import of "@x/core", which resolves to packages/core/dist/index.js, outside of "include"',
+		);
+		expect(stderr).toContain('missing in graph: 1 import of "./gone.js", which could not be resolved');
 	});
 });

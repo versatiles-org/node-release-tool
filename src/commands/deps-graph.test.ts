@@ -33,7 +33,7 @@ vi.mock('./deps-graph-svg.js', () => ({
 // 3. Import the mocked modules and the function under test
 const { cruise, format } = await import('dependency-cruiser');
 const { default: extractTSConfig } = await import('dependency-cruiser/config-utl/extract-ts-config');
-const { panic, warn } = await import('../lib/log.js');
+const { debug, isVerbose, panic, warn } = await import('../lib/log.js');
 const { renderSvgGraph } = await import('./deps-graph-svg.js');
 const { generateDependencyGraph, readDepsGraphConfig, readSvelteKitAliases } = await import('./deps-graph.js');
 
@@ -71,13 +71,13 @@ describe('generateDependencyGraph', () => {
 	});
 
 	it('generates a mermaid diagram, replacing flowchart LR with flowchart TB', async () => {
-		await expect(generateDependencyGraph('src')).resolves.toBeUndefined();
+		await expect(generateDependencyGraph('.')).resolves.toBeUndefined();
 
 		expect(cruise).toHaveBeenCalledWith(
 			['src'],
-			expect.objectContaining({ outputType: 'json' }),
+			expect.objectContaining({ baseDir: '.', outputType: 'json' }),
 			{ alias: {} },
-			undefined,
+			expect.anything(),
 		);
 
 		expect(mockStdoutWrite).toHaveBeenCalledTimes(1);
@@ -101,7 +101,7 @@ describe('generateDependencyGraph', () => {
 	it('panics if the formatted output is not a string', async () => {
 		vi.mocked(format).mockResolvedValueOnce({ output: null } as unknown as IReporterOutput);
 
-		await expect(generateDependencyGraph('src')).rejects.toThrow('no output');
+		await expect(generateDependencyGraph('.')).rejects.toThrow('no output');
 		expect(panic).toHaveBeenCalledWith('no output');
 		expect(mockStdoutWrite).not.toHaveBeenCalled();
 	});
@@ -111,13 +111,24 @@ describe('generateDependencyGraph', () => {
 			return vi.mocked(cruise).mock.calls[0][1]!;
 		}
 
+		/** Whether dependency-cruiser analyzes the file, instead of adding it as a leaf. */
+		function isFollowed(path: string): boolean {
+			const { doNotFollow } = cruiseOptions();
+			return !new RegExp((doNotFollow as { path: string }).path).test(path);
+		}
+
 		it('analyzes only src by default', async () => {
-			await generateDependencyGraph('src');
-			expect(cruiseOptions().includeOnly).toBe('^src');
+			await generateDependencyGraph('.');
+			expect(vi.mocked(cruise).mock.calls[0][0]).toStrictEqual(['src']);
+			expect(cruiseOptions().includeOnly).toBeUndefined();
+			expect(isFollowed('src/a.ts')).toBe(true);
+			expect(isFollowed('src')).toBe(true);
+			expect(isFollowed('srcx/a.ts')).toBe(false);
+			expect(isFollowed('packages/core/dist/index.js')).toBe(false);
 		});
 
 		it('always resolves through the exports field of package.json', async () => {
-			await generateDependencyGraph('src');
+			await generateDependencyGraph('.');
 			expect(cruiseOptions().enhancedResolveOptions).toEqual({
 				exportsFields: ['exports'],
 				conditionNames: ['import', 'default'],
@@ -125,31 +136,136 @@ describe('generateDependencyGraph', () => {
 		});
 
 		it('replaces the default with the given globs', async () => {
-			await generateDependencyGraph('src', { include: ['packages/*/src/', './lib/*.ts', 'tools/**/?.ts'] });
+			await generateDependencyGraph('.', { include: ['packages/*/src/', './lib/*.ts', 'tools/**/?.ts'] });
 
-			const patterns = (cruiseOptions().includeOnly as string[]).map((p) => new RegExp(p));
-			const isIncluded = (path: string): boolean => patterns.some((p) => p.test(path));
-			expect(isIncluded('packages/core/src/map_renderer.ts')).toBe(true);
-			expect(isIncluded('packages/core/src/lib/utils.ts')).toBe(true);
-			expect(isIncluded('lib/a.ts')).toBe(true);
-			expect(isIncluded('lib/a.js')).toBe(false);
-			expect(isIncluded('tools/a.ts')).toBe(true);
-			expect(isIncluded('tools/x/y/a.ts')).toBe(true);
-			expect(isIncluded('tools/ab.ts')).toBe(false);
-			expect(isIncluded('src/index.ts')).toBe(false);
-			expect(isIncluded('packages/core/srcx/a.ts')).toBe(false);
-			expect(isIncluded('packages/core/package.json')).toBe(false);
+			expect(vi.mocked(cruise).mock.calls[0][0]).toStrictEqual(['packages/*/src', 'lib/*.ts', 'tools/**/?.ts']);
+			expect(isFollowed('packages/core/src/map_renderer.ts')).toBe(true);
+			expect(isFollowed('packages/core/src/lib/utils.ts')).toBe(true);
+			expect(isFollowed('lib/a.ts')).toBe(true);
+			expect(isFollowed('lib/a.js')).toBe(false);
+			expect(isFollowed('tools/a.ts')).toBe(true);
+			expect(isFollowed('tools/x/y/a.ts')).toBe(true);
+			expect(isFollowed('tools/ab.ts')).toBe(false);
+			expect(isFollowed('src/index.ts')).toBe(false);
+			expect(isFollowed('packages/core/srcx/a.ts')).toBe(false);
+			expect(isFollowed('packages/core/package.json')).toBe(false);
+		});
+
+		it('skips include paths that do not exist', async () => {
+			await generateDependencyGraph('.', { include: ['src', 'missing', 'missing/*'] });
+			expect(vi.mocked(cruise).mock.calls[0][0]).toStrictEqual(['src', 'missing/*']);
+			expect(warn).toHaveBeenCalledWith('include path "missing" does not exist');
 		});
 
 		it('panics on an empty glob', async () => {
-			await expect(generateDependencyGraph('src', { include: ['/'] })).rejects.toThrow('invalid include glob');
+			await expect(generateDependencyGraph('.', { include: ['/'] })).rejects.toThrow('invalid include glob');
 			expect(cruise).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('imports outside of include', () => {
+		function dependency(module: string, resolved: string, extra: object = {}): IModule['dependencies'][number] {
+			return {
+				module,
+				resolved,
+				coreModule: false,
+				couldNotResolve: false,
+				...extra,
+			} as IModule['dependencies'][number];
+		}
+
+		function mockModules(modules: Pick<IModule, 'source' | 'dependencies'>[]): void {
+			vi.mocked(cruise).mockResolvedValue({ output: fakeCruiseResult(modules) } as IReporterOutput);
+		}
+
+		const warnings = (): string[] => vi.mocked(warn).mock.calls.map(([text]) => text);
+
+		it('removes files outside of include and imports of them from the graph', async () => {
+			mockModules([
+				{
+					source: 'src/a.ts',
+					dependencies: [dependency('./b.js', 'src/b.ts'), dependency('@x/y', 'packages/y/dist/index.js')],
+				},
+				{ source: 'src/b.ts', dependencies: [] },
+				{ source: 'packages/y/dist/index.js', dependencies: [] },
+			]);
+			await generateDependencyGraph('.');
+
+			const result = vi.mocked(format).mock.calls[0][0] as ICruiseResult;
+			expect(result.modules.map((m) => [m.source, m.dependencies.map((d) => d.resolved)])).toStrictEqual([
+				['src/a.ts', ['src/b.ts']],
+				['src/b.ts', []],
+			]);
+		});
+
+		it('warns about unresolved local imports and imports resolving outside of include', async () => {
+			mockModules([
+				{
+					source: 'src/a.ts',
+					dependencies: [
+						dependency('@x/y', 'packages/y/dist/index.js'),
+						dependency('./gone.js', './gone.js', { couldNotResolve: true }),
+						dependency('$lib/gone', '$lib/gone', { couldNotResolve: true }),
+					],
+				},
+				{ source: 'src/b.ts', dependencies: [dependency('@x/y', 'packages/y/dist/index.js')] },
+			]);
+			await generateDependencyGraph('.');
+
+			expect(warnings()).toStrictEqual([
+				'missing in graph: 2 imports of "@x/y", which resolves to packages/y/dist/index.js, outside of "include"',
+				'missing in graph: 1 import of "./gone.js", which could not be resolved',
+				'missing in graph: 1 import of "$lib/gone", which could not be resolved',
+			]);
+			expect(debug).toHaveBeenCalledWith('imported by src/a.ts');
+			expect(debug).toHaveBeenCalledWith('imported by src/b.ts');
+		});
+
+		it('ignores npm packages, core modules, assets and modules provided by frameworks', async () => {
+			mockModules([
+				{
+					source: 'src/a.ts',
+					dependencies: [
+						dependency('fs', 'fs', { coreModule: true }),
+						dependency('../icons/logo.png', 'icons/logo.png'),
+						dependency('not-installed', 'not-installed', { couldNotResolve: true }),
+						dependency('@scope/not-installed/sub', '@scope/not-installed/sub', { couldNotResolve: true }),
+						dependency('$app/navigation', '$app/navigation', { couldNotResolve: true }),
+						dependency('$app/types', '.svelte-kit/types/index.d.ts'),
+						dependency('$env/static/public', '$env/static/public', { couldNotResolve: true }),
+						dependency('./$types', './$types', { couldNotResolve: true }),
+						dependency('virtual:worker-url', 'virtual:worker-url', { couldNotResolve: true }),
+					],
+				},
+			]);
+			await generateDependencyGraph('.');
+			expect(warn).not.toHaveBeenCalled();
+		});
+
+		it('lists only the most frequent targets without verbose mode', async () => {
+			const dependencies = Array.from({ length: 12 }, (_, i) =>
+				dependency(`./gone${i}.js`, `./gone${i}.js`, { couldNotResolve: true }),
+			);
+			mockModules([
+				{ source: 'src/a.ts', dependencies },
+				{ source: 'src/b.ts', dependencies: [dependencies[11]] },
+			]);
+			await generateDependencyGraph('.');
+
+			expect(warnings()).toHaveLength(11);
+			expect(warnings()[0]).toBe('missing in graph: 2 imports of "./gone11.js", which could not be resolved');
+			expect(warnings()[10]).toBe('missing in graph: imports of 2 more targets, run with -v to see all');
+
+			vi.mocked(warn).mockClear();
+			vi.mocked(isVerbose).mockReturnValueOnce(true);
+			await generateDependencyGraph('.');
+			expect(warnings()).toHaveLength(12);
 		});
 	});
 
 	describe('--exclude', () => {
 		it('passes user-provided globs (as regex) to cruise alongside built-in excludes', async () => {
-			await generateDependencyGraph('src', { exclude: ['**/_planned.ts'] });
+			await generateDependencyGraph('.', { exclude: ['**/_planned.ts'] });
 
 			const opts = vi.mocked(cruise).mock.calls[0][1];
 			expect(opts).toBeDefined();
@@ -190,7 +306,7 @@ describe('generateDependencyGraph', () => {
 				]),
 			} as IReporterOutput);
 
-			await generateDependencyGraph('src', { collapseDir: ['src/regions/{de,fr,it}.ts'] });
+			await generateDependencyGraph('.', { collapseDir: ['src/regions/{de,fr,it}.ts'] });
 
 			// The collapsed result is what `format` receives.
 			const formatArg = vi.mocked(format).mock.calls[0][0] as ICruiseResult;
@@ -218,7 +334,7 @@ describe('generateDependencyGraph', () => {
 				]),
 			} as IReporterOutput);
 
-			await generateDependencyGraph('src', { collapseDir: ['src/no-match/*.ts'] });
+			await generateDependencyGraph('.', { collapseDir: ['src/no-match/*.ts'] });
 
 			const formatArg = vi.mocked(format).mock.calls[0][0] as ICruiseResult;
 			expect(formatArg.modules.map((m) => m.source).sort()).toEqual(['src/a.ts', 'src/b.ts']);
@@ -252,7 +368,7 @@ describe('generateDependencyGraph', () => {
 		});
 
 		it('inserts a direction statement into subgraphs matching the glob', async () => {
-			await generateDependencyGraph('src', { subgraphDirection: ['src/lib=LR'] });
+			await generateDependencyGraph('.', { subgraphDirection: ['src/lib=LR'] });
 
 			const output = written();
 			expect(output).toContain('subgraph 3["lib"]\ndirection LR\nsubgraph 4["utils"]');
@@ -261,7 +377,7 @@ describe('generateDependencyGraph', () => {
 		});
 
 		it('matches nested paths with globs, accepts lowercase and lets the last rule win', async () => {
-			await generateDependencyGraph('src', {
+			await generateDependencyGraph('.', {
 				subgraphDirection: ['src/*=bt', 'src/lib/utils/=RL'],
 			});
 
@@ -274,14 +390,14 @@ describe('generateDependencyGraph', () => {
 		});
 
 		it('warns about globs that match no subgraph', async () => {
-			await generateDependencyGraph('src', { subgraphDirection: ['src/nope=LR'] });
+			await generateDependencyGraph('.', { subgraphDirection: ['src/nope=LR'] });
 
 			expect(warn).toHaveBeenCalledWith('subgraph direction glob "src/nope" did not match any directory');
 			expect(written()).not.toContain('direction');
 		});
 
 		it.each(['src/lib', 'src/lib=XX', '=LR'])('panics on invalid value "%s"', async (value) => {
-			await expect(generateDependencyGraph('src', { subgraphDirection: [value] })).rejects.toThrow(
+			await expect(generateDependencyGraph('.', { subgraphDirection: [value] })).rejects.toThrow(
 				'invalid subgraph direction',
 			);
 			expect(cruise).not.toHaveBeenCalled();
@@ -326,7 +442,7 @@ describe('generateDependencyGraph', () => {
 		});
 
 		it('merges edges from a directory that point to the same target', async () => {
-			await generateDependencyGraph('src', { mergeOutgoing: ['src/a/sub', 'src/a/'] });
+			await generateDependencyGraph('.', { mergeOutgoing: ['src/a/sub', 'src/a/'] });
 
 			// x.ts: b, c and sub/d merged; y.ts: b and c merged; z.ts only from b; c->b is internal
 			expect(edges()).toEqual(['1-->6', '1-->7', '2-->8', '3-->2']);
@@ -334,28 +450,26 @@ describe('generateDependencyGraph', () => {
 		});
 
 		it('only merges direct and nested children of the matching directory', async () => {
-			await generateDependencyGraph('src', { mergeOutgoing: ['src/a/sub'] });
+			await generateDependencyGraph('.', { mergeOutgoing: ['src/a/sub'] });
 
 			// sub has a single outgoing edge, so nothing changes
 			expect(edges()).toEqual(['2-->6', '2-->7', '2-->8', '3-->6', '3-->7', '3-->2', '5-->6']);
 		});
 
 		it('keeps non-edge lines in place', async () => {
-			await generateDependencyGraph('src', { mergeOutgoing: ['src/a'] });
+			await generateDependencyGraph('.', { mergeOutgoing: ['src/a'] });
 
 			const output = (mockStdoutWrite.mock.calls[0][0] as Buffer).toString();
 			expect(output).toContain('end\n1-->6\n1-->7\n2-->8\n3-->2\n\nstyle 6 fill:lime');
 		});
 
 		it('panics on an empty glob', async () => {
-			await expect(generateDependencyGraph('src', { mergeOutgoing: ['/'] })).rejects.toThrow(
-				'invalid directory glob',
-			);
+			await expect(generateDependencyGraph('.', { mergeOutgoing: ['/'] })).rejects.toThrow('invalid directory glob');
 			expect(cruise).not.toHaveBeenCalled();
 		});
 
 		it('warns about globs that match no subgraph', async () => {
-			await generateDependencyGraph('src', { mergeOutgoing: ['src/nope'] });
+			await generateDependencyGraph('.', { mergeOutgoing: ['src/nope'] });
 
 			expect(warn).toHaveBeenCalledWith('merge outgoing glob "src/nope" did not match any directory');
 			expect(edges()).toHaveLength(7);
@@ -545,6 +659,7 @@ describe('generateDependencyGraph', () => {
 		beforeEach(() => {
 			directory = mkdtempSync(join(tmpdir(), 'vrt-deps-graph-svg-'));
 			mkdirSync(join(directory, '.git'));
+			mkdirSync(join(directory, 'src'));
 			delete process.env.VRT_RELEASE_VERSION;
 			vi.mocked(cruise).mockResolvedValue({
 				output: fakeCruiseResult([
