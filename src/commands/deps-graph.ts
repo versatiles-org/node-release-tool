@@ -1,4 +1,5 @@
 import type { ICruiseResult, IModule } from 'dependency-cruiser';
+import type ExtractTSConfigFunction from 'dependency-cruiser/config-utl/extract-ts-config';
 import { existsSync, readFileSync } from 'node:fs';
 import Module from 'node:module';
 import { delimiter, resolve } from 'node:path';
@@ -96,6 +97,8 @@ interface MermaidStructure {
 	parents: Map<string, string>;
 }
 
+type ExtractTSConfig = typeof ExtractTSConfigFunction;
+
 const INTERNAL_EXCLUDES = ['\\.(test|d|mock)\\.ts$', 'node_modules', '__mocks__/'];
 
 /** Scope of the graph if no `include` globs are given. */
@@ -111,6 +114,29 @@ const ENHANCED_RESOLVE_OPTIONS = {
 	exportsFields: ['exports'],
 	conditionNames: ['import', 'default'],
 };
+
+/**
+ * Reads the `tsconfig.json` in `directory`, so that dependency-cruiser resolves
+ * the aliases in its `paths`. Returns `undefined` if there is no such file or
+ * it can not be read.
+ *
+ * `paths` inherited via `extends` from a config in another directory are not
+ * resolved by dependency-cruiser, which is why SvelteKit aliases are handled
+ * by {@link readSvelteKitAliases} instead.
+ */
+function readTsConfig(
+	directory: string,
+	extractTSConfig: ExtractTSConfig,
+): { fileName: string; parsed: ReturnType<ExtractTSConfig> } | undefined {
+	const fileName = resolve(directory, 'tsconfig.json');
+	if (!existsSync(fileName)) return undefined;
+	try {
+		return { fileName, parsed: extractTSConfig(fileName) };
+	} catch (error) {
+		warn(`could not read ${fileName}, path aliases are not resolved: ${String(error)}`);
+		return undefined;
+	}
+}
 
 /**
  * Returns the import aliases of a SvelteKit project, like `$lib`, mapped to
@@ -185,7 +211,8 @@ export async function generateDependencyGraph(directory: string, cliOptions: Dep
 	const includes = (options.include ?? []).map(includeToCruiseRegex);
 	const includeOnly = includes.length > 0 ? includes : DEFAULT_INCLUDE_ONLY;
 
-	const { cruise, format } = await loadDependencyCruiser(directory);
+	const { cruise, format, extractTSConfig } = await loadDependencyCruiser(directory);
+	const tsConfig = readTsConfig(directory, extractTSConfig);
 
 	let cruiseResult: ICruiseResult;
 	try {
@@ -196,9 +223,11 @@ export async function generateDependencyGraph(directory: string, cliOptions: Dep
 				outputType: 'json',
 				exclude: [...INTERNAL_EXCLUDES, ...userExcludes],
 				enhancedResolveOptions: ENHANCED_RESOLVE_OPTIONS,
+				...(tsConfig && { tsConfig: { fileName: tsConfig.fileName } }),
 			},
 			// Passed as resolver options, because `enhancedResolveOptions` does not accept aliases
 			{ alias: readSvelteKitAliases(directory) },
+			tsConfig && { tsConfig: tsConfig.parsed },
 		);
 		cruiseResult =
 			typeof result.output === 'string'
@@ -273,7 +302,9 @@ export async function resolve(specifier, context, next) {
  * `node_modules` are added as fallback for both: to the global module paths
  * (`NODE_PATH`) for `require` and via a resolve hook for `import`.
  */
-async function loadDependencyCruiser(directory: string): Promise<typeof import('dependency-cruiser')> {
+async function loadDependencyCruiser(
+	directory: string,
+): Promise<typeof import('dependency-cruiser') & { extractTSConfig: ExtractTSConfig }> {
 	const nodeModules = resolve(directory, 'node_modules');
 	const paths = (process.env.NODE_PATH ?? '').split(delimiter).filter(Boolean);
 	if (!paths.includes(nodeModules)) {
@@ -284,7 +315,8 @@ async function loadDependencyCruiser(directory: string): Promise<typeof import('
 			data: { parentURL: pathToFileURL(resolve(directory, 'package.json')).href },
 		});
 	}
-	return import('dependency-cruiser');
+	const { default: extractTSConfig } = await import('dependency-cruiser/config-utl/extract-ts-config');
+	return { ...(await import('dependency-cruiser')), extractTSConfig };
 }
 
 /**

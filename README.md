@@ -105,6 +105,15 @@ Instead of passing long lists of flags, you can put the options into a `vrt.conf
 
 The `svg` option (see below) can be set there too, as a string: `"svg": "docs/dependency-graph.svg"`.
 
+# Path aliases
+
+Imports using path aliases are resolved without configuration:
+
+- aliases in the `paths` of the project's `tsconfig.json`, e.g. `@/utils/x.js`, and
+- in SvelteKit projects, `$lib` and the aliases from `svelte.config.js`, read from the generated `.svelte-kit/tsconfig.json` (run `svelte-kit sync` first). Without that file, `$lib` points to `src/lib`.
+
+The project's `tsconfig.json` is also used when parsing TypeScript. With `isolatedModules` or `verbatimModuleSyntax`, imports that are only used as types appear in the graph too, unless they are written as `import type`.
+
 # Dependency graph of a workspace
 
 By default, `deps-graph` analyzes the files in `src`. With `--include` (repeatable), you choose other directories or files instead. At the root of an npm workspace, this draws one graph over all packages, with a subgraph per package:

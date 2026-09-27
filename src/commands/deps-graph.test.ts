@@ -11,6 +11,10 @@ vi.mock('dependency-cruiser', () => ({
 	format: vi.fn(),
 }));
 
+vi.mock('dependency-cruiser/config-utl/extract-ts-config', () => ({
+	default: vi.fn((fileName: string) => ({ parsedFrom: fileName })),
+}));
+
 // 2. Mock the log/panic module
 vi.mock('../lib/log.js', () => ({
 	panic: vi.fn((message: string) => {
@@ -28,6 +32,7 @@ vi.mock('./deps-graph-svg.js', () => ({
 
 // 3. Import the mocked modules and the function under test
 const { cruise, format } = await import('dependency-cruiser');
+const { default: extractTSConfig } = await import('dependency-cruiser/config-utl/extract-ts-config');
 const { panic, warn } = await import('../lib/log.js');
 const { renderSvgGraph } = await import('./deps-graph-svg.js');
 const { generateDependencyGraph, readDepsGraphConfig, readSvelteKitAliases } = await import('./deps-graph.js');
@@ -68,7 +73,12 @@ describe('generateDependencyGraph', () => {
 	it('generates a mermaid diagram, replacing flowchart LR with flowchart TB', async () => {
 		await expect(generateDependencyGraph('src')).resolves.toBeUndefined();
 
-		expect(cruise).toHaveBeenCalledWith(['src'], expect.objectContaining({ outputType: 'json' }), { alias: {} });
+		expect(cruise).toHaveBeenCalledWith(
+			['src'],
+			expect.objectContaining({ outputType: 'json' }),
+			{ alias: {} },
+			undefined,
+		);
 
 		expect(mockStdoutWrite).toHaveBeenCalledTimes(1);
 		const writtenString = (mockStdoutWrite.mock.calls[0][0] as Buffer).toString();
@@ -410,6 +420,49 @@ describe('generateDependencyGraph', () => {
 			writeJson('package.json', { devDependencies: { '@sveltejs/kit': '^2.0.0' } });
 			await generateDependencyGraph(directory);
 			expect(vi.mocked(cruise).mock.calls[0][2]).toEqual({ alias: { $lib: join(directory, 'src/lib') } });
+		});
+	});
+
+	describe('tsconfig.json', () => {
+		let directory: string;
+
+		beforeEach(() => {
+			directory = mkdtempSync(join(tmpdir(), 'vrt-deps-graph-tsconfig-'));
+		});
+
+		afterEach(() => {
+			rmSync(directory, { recursive: true, force: true });
+		});
+
+		it('passes the tsconfig to cruise, so that path aliases are resolved', async () => {
+			const fileName = join(directory, 'tsconfig.json');
+			writeFileSync(fileName, '{}');
+			await generateDependencyGraph(directory);
+
+			expect(extractTSConfig).toHaveBeenCalledWith(fileName);
+			const [, options, , transpileOptions] = vi.mocked(cruise).mock.calls[0];
+			expect(options!.tsConfig).toStrictEqual({ fileName });
+			expect(transpileOptions).toStrictEqual({ tsConfig: { parsedFrom: fileName } });
+		});
+
+		it('does without tsconfig if there is none', async () => {
+			await generateDependencyGraph(directory);
+
+			expect(extractTSConfig).not.toHaveBeenCalled();
+			const [, options, , transpileOptions] = vi.mocked(cruise).mock.calls[0];
+			expect(options!.tsConfig).toBeUndefined();
+			expect(transpileOptions).toBeUndefined();
+		});
+
+		it('warns about an invalid tsconfig and does without it', async () => {
+			writeFileSync(join(directory, 'tsconfig.json'), '{}');
+			vi.mocked(extractTSConfig).mockImplementationOnce(() => {
+				throw new TypeError('broken');
+			});
+			await generateDependencyGraph(directory);
+
+			expect(warn).toHaveBeenCalledWith(expect.stringMatching(/could not read .*tsconfig\.json.*broken/));
+			expect(vi.mocked(cruise).mock.calls[0][1]!.tsConfig).toBeUndefined();
 		});
 	});
 
