@@ -114,6 +114,10 @@ Imports using path aliases are resolved without configuration:
 
 The project's `tsconfig.json` is also used when parsing TypeScript. With `isolatedModules` or `verbatimModuleSyntax`, imports that are only used as types appear in the graph too, unless they are written as `import type`.
 
+# Svelte components
+
+`.svelte` files are compiled with the `compilerOptions` from the project's `svelte.config.js`, e.g. `experimental.async`. If a file still can not be analyzed, `deps-graph` warns and shows it without its imports, instead of aborting.
+
 # Dependency graph of a workspace
 
 By default, `deps-graph` analyzes the files in `src`. With `--include` (repeatable), you choose other directories or files instead. At the root of an npm workspace, this draws one graph over all packages, with a subgraph per package:

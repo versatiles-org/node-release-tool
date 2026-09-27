@@ -98,6 +98,47 @@ describe('generateDependencyGraph', () => {
 		expect(mockStdoutWrite).not.toHaveBeenCalled();
 	});
 
+	describe('files that can not be analyzed', () => {
+		const cruiseError = (file: string): Error =>
+			new Error(
+				`Extracting dependencies ran afoul of...\n\n  Unexpected token (3:4)\n  more details\n... in ${file}\n\n`,
+			);
+
+		it('adds them as nodes without imports and warns', async () => {
+			vi.mocked(cruise)
+				.mockRejectedValueOnce(cruiseError('src/a.svelte'))
+				.mockRejectedValueOnce(cruiseError('src/b (1).svelte'));
+			await generateDependencyGraph('.');
+
+			expect(warn).toHaveBeenCalledWith(
+				'could not analyze src/a.svelte, its imports are missing in the graph: Unexpected token (3:4)',
+			);
+			expect(cruise).toHaveBeenCalledTimes(3);
+			const doNotFollow = new RegExp((vi.mocked(cruise).mock.calls[2][1]!.doNotFollow as { path: string }).path);
+			expect(doNotFollow.test('src/a.svelte')).toBe(true);
+			expect(doNotFollow.test('src/b (1).svelte')).toBe(true);
+			expect(doNotFollow.test('src/b.svelte')).toBe(false);
+
+			const result = vi.mocked(format).mock.calls[0][0] as ICruiseResult;
+			expect(result.modules.map((m) => m.source)).toStrictEqual(['src/a.ts', 'src/a.svelte', 'src/b (1).svelte']);
+		});
+
+		it('panics if the same file fails again', async () => {
+			vi.mocked(cruise).mockRejectedValue(cruiseError('src/a.svelte'));
+			await expect(generateDependencyGraph('.')).rejects.toThrow('ran afoul of');
+			expect(cruise).toHaveBeenCalledTimes(2);
+		});
+
+		it('gives up after 10 files', async () => {
+			let count = 0;
+			vi.mocked(cruise).mockImplementation(async () => {
+				throw cruiseError(`src/${count++}.svelte`);
+			});
+			await expect(generateDependencyGraph('.')).rejects.toThrow('src/10.svelte');
+			expect(cruise).toHaveBeenCalledTimes(11);
+		});
+	});
+
 	it('panics if the formatted output is not a string', async () => {
 		vi.mocked(format).mockResolvedValueOnce({ output: null } as unknown as IReporterOutput);
 

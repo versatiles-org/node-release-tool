@@ -117,6 +117,12 @@ const BARE_MODULE = /^(@[\w.-]+\/)?[\w][\w.-]*(\/|$)/;
 /** Source files, as opposed to assets like images or stylesheets. */
 const SOURCE_FILE = /\.([cm]?[jt]sx?|svelte|vue)$/;
 
+/** Maximum number of files that dependency-cruiser fails to analyze, before giving up. */
+const MAX_UNPARSABLE_FILES = 10;
+
+/** Key of the global holding the Svelte compiler options, see {@link SVELTE_COMPILER_WRAPPER}. */
+const SVELTE_OPTIONS_KEY = 'vrt.deps-graph.svelteCompilerOptions';
+
 /** Maximum number of dropped import targets listed without verbose mode. */
 const MAX_DROPPED_WARNINGS = 10;
 
@@ -240,14 +246,20 @@ export async function generateDependencyGraph(directory: string, cliOptions: Dep
 	const { cruise, format, extractTSConfig } = await loadDependencyCruiser(directory);
 	const tsConfig = readTsConfig(directory, extractTSConfig);
 
-	let cruiseResult: ICruiseResult;
-	try {
+	setSvelteCompilerOptions(await readSvelteCompilerOptions(directory));
+
+	let cruiseResult = await cruiseWithRetries(async (unparsable) => {
 		const result = await cruise(
 			startPaths(directory, includeGlobs),
 			{
 				baseDir: directory,
 				// Files outside of `include` become leaves, so imports of them can be reported
-				doNotFollow: { path: `^(?!${includes.map((include) => include.slice(1)).join('|')})` },
+				doNotFollow: {
+					path: [
+						`^(?!${includes.map((include) => include.slice(1)).join('|')})`,
+						...unparsable.map((file) => `^${escapeRegex(file)}$`),
+					].join('|'),
+				},
 				outputType: 'json',
 				exclude: [...INTERNAL_EXCLUDES, ...userExcludes],
 				enhancedResolveOptions: ENHANCED_RESOLVE_OPTIONS,
@@ -257,14 +269,10 @@ export async function generateDependencyGraph(directory: string, cliOptions: Dep
 			{ alias: readSvelteKitAliases(directory) },
 			tsConfig && { tsConfig: tsConfig.parsed },
 		);
-		cruiseResult =
-			typeof result.output === 'string'
-				? (JSON.parse(result.output) as ICruiseResult)
-				: (result.output as ICruiseResult);
-	} catch (pError) {
-		panic(String(pError));
-		return;
-	}
+		return typeof result.output === 'string'
+			? (JSON.parse(result.output) as ICruiseResult)
+			: (result.output as ICruiseResult);
+	});
 
 	cruiseResult = mapBuildOutputToSource(cruiseResult, readWorkspacePackages(directory, extractTSConfig), directory);
 	const split = splitIncluded(cruiseResult, includes);
@@ -307,21 +315,118 @@ export async function generateDependencyGraph(directory: string, cliOptions: Dep
 }
 
 /**
+ * Module that replaces `svelte/compiler` for dependency-cruiser, which calls
+ * `compile` without the project's compiler options. `REAL_URL` is replaced
+ * with the quoted URL of the real module. The options are read at call time from a
+ * global, see {@link setSvelteCompilerOptions}.
+ */
+const SVELTE_COMPILER_WRAPPER = `
+import * as svelte from REAL_URL;
+export * from REAL_URL;
+export function compile(source, options) {
+	return svelte.compile(source, { ...globalThis[Symbol.for('${SVELTE_OPTIONS_KEY}')], ...options });
+}`;
+
+/**
  * ESM resolve hook for {@link loadDependencyCruiser}: if a bare specifier can
  * not be resolved from the importing module, it is resolved from the project
- * directory instead.
+ * directory instead. When dependency-cruiser imports `svelte/compiler`, it
+ * gets {@link SVELTE_COMPILER_WRAPPER} instead.
  */
 const FALLBACK_RESOLVE_HOOK = `
 let parentURL;
+const wrapper = ${JSON.stringify(SVELTE_COMPILER_WRAPPER)};
 export function initialize(data) { parentURL = data.parentURL; }
 export async function resolve(specifier, context, next) {
+	// Node may change the context in the calls of next(), so it is read first
+	const wrapCompiler = specifier === 'svelte/compiler' && context.parentURL?.includes('/dependency-cruiser/');
+	let result;
 	try {
-		return await next(specifier, context);
+		result = await next(specifier, context);
 	} catch (error) {
 		if (error?.code !== 'ERR_MODULE_NOT_FOUND' || /^[./]|^[a-z]+:/i.test(specifier)) throw error;
-		return next(specifier, { ...context, parentURL });
+		result = await next(specifier, { ...context, parentURL });
 	}
+	if (wrapCompiler) {
+		const code = wrapper.replaceAll('REAL_URL', JSON.stringify(result.url));
+		return { url: 'data:text/javascript,' + encodeURIComponent(code), shortCircuit: true };
+	}
+	return result;
 }`;
+
+/**
+ * Reads the `compilerOptions` from `svelte.config.js` (or `.mjs`) in
+ * `directory`, e.g. `{ experimental: { async: true } }`, without which some
+ * components can not be compiled. Returns an empty object if there is no such
+ * file or it can not be loaded.
+ */
+export async function readSvelteCompilerOptions(directory: string): Promise<Record<string, unknown>> {
+	const file = ['svelte.config.js', 'svelte.config.mjs']
+		.map((name) => resolve(directory, name))
+		.find((path) => existsSync(path));
+	if (!file) return {};
+	try {
+		const module = (await import(pathToFileURL(file).href)) as { default?: { compilerOptions?: unknown } };
+		const options = module.default?.compilerOptions;
+		return typeof options === 'object' && options !== null ? (options as Record<string, unknown>) : {};
+	} catch (error) {
+		warn(`could not load ${file}, Svelte compiler options are not used: ${String(error)}`);
+		return {};
+	}
+}
+
+/**
+ * Sets the options that {@link SVELTE_COMPILER_WRAPPER} passes to the Svelte compiler.
+ */
+function setSvelteCompilerOptions(options: Record<string, unknown>): void {
+	(globalThis as Record<symbol, unknown>)[Symbol.for(SVELTE_OPTIONS_KEY)] = options;
+}
+
+/**
+ * Calls `runCruise` until dependency-cruiser analyzes all files. If it fails
+ * to analyze a file, e.g. because the file can not be compiled, it warns and
+ * calls `runCruise` again with all files that failed so far, which are to be
+ * added as leaves. Files that failed and are not imported by others are added
+ * to the result as modules without dependencies.
+ *
+ * @throws {VrtError} If the same file fails again, after {@link MAX_UNPARSABLE_FILES} files, or on other errors
+ */
+async function cruiseWithRetries(runCruise: (unparsable: string[]) => Promise<ICruiseResult>): Promise<ICruiseResult> {
+	const unparsable: string[] = [];
+	for (;;) {
+		let result: ICruiseResult;
+		try {
+			result = await runCruise(unparsable);
+		} catch (error) {
+			const failed = parseCruiseError(error);
+			if (!failed || unparsable.includes(failed.file) || unparsable.length >= MAX_UNPARSABLE_FILES) {
+				panic(String(error));
+			}
+			warn(`could not analyze ${failed.file}, its imports are missing in the graph: ${failed.reason}`);
+			unparsable.push(failed.file);
+			continue;
+		}
+		for (const source of unparsable) {
+			if (result.modules.some((module) => module.source === source)) continue;
+			result.modules.push({ source, dependencies: [], dependents: [], valid: true });
+		}
+		return result;
+	}
+}
+
+/**
+ * Extracts the file and the reason from an error that dependency-cruiser
+ * throws when it fails to analyze a file, like
+ * `Extracting dependencies ran afoul of...\n\n  reason\n... in file`.
+ */
+function parseCruiseError(error: unknown): { file: string; reason: string } | undefined {
+	const match = /ran afoul of\.\.\.\s+(.*)[\s\S]*\n\.\.\. in (.+)/.exec(String(error));
+	return match ? { reason: match[1].trim(), file: match[2].trim() } : undefined;
+}
+
+function escapeRegex(text: string): string {
+	return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 /**
  * Imports dependency-cruiser so that it can use the compilers installed in the
