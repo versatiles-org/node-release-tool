@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.18.0] - 2026-09-27
+
+### Features
+
+- add support for SvelteKit aliases in dependency graph generation ([1c070d8](https://github.com/versatiles-org/node-release-tool/commit/1c070d8faa884fa5f193da06668ad3008e7e2efa))
+- resolve path aliases from tsconfig.json in deps-graph, fixes #58 ([27905f3](https://github.com/versatiles-org/node-release-tool/commit/27905f3fb3306861e047ca6bc9b03de50959ff24))
+- warn about imports missing in the deps-graph ([6e8807f](https://github.com/versatiles-org/node-release-tool/commit/6e8807fde7761364856f46974821a1fbb443361e))
+- map imports of workspace build output to source files in deps-graph ([0547aec](https://github.com/versatiles-org/node-release-tool/commit/0547aec1d44b568f6f2a01d4ea66be89e7f2d975))
+- compile Svelte components with the project's compiler options in deps-graph ([b35d951](https://github.com/versatiles-org/node-release-tool/commit/b35d951461466a472e26d18c58956a379b1421c7))
+- exclude spec files, **tests** and all test file extensions from deps-graph ([68f60f7](https://github.com/versatiles-org/node-release-tool/commit/68f60f760e2cc826c30669c44785000d766afd73))
+
+### Chores
+
+- update dependencies to latest versions ([6eeb22b](https://github.com/versatiles-org/node-release-tool/commit/6eeb22bd1e308a5f033694332a4a0d27df8faddb))
+
 ## [2.17.0] - 2026-09-22
 
 ### Features
