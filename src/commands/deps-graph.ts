@@ -24,7 +24,7 @@ export interface DepsGraphOptions {
 	include?: string[];
 	/**
 	 * Globs of files to exclude from the graph entirely (in addition to the
-	 * built-in exclusions for tests, declarations, mocks and `node_modules`).
+	 * built-in exclusions for tests, specs, mocks, declarations and `node_modules`).
 	 * Edges touching excluded files are dropped.
 	 */
 	exclude?: string[];
@@ -100,7 +100,13 @@ interface MermaidStructure {
 
 type ExtractTSConfig = typeof ExtractTSConfigFunction;
 
-const INTERNAL_EXCLUDES = ['\\.(test|d|mock)\\.ts$', 'node_modules', '__mocks__/'];
+/** Files that are never part of the graph: tests, mocks, type declarations and dependencies. */
+const INTERNAL_EXCLUDES = [
+	'\\.(test|spec|mock)\\.[cm]?[jt]sx?$',
+	'\\.d\\.[cm]?ts$',
+	'(^|/)__(tests|mocks)__/',
+	'node_modules',
+];
 
 /** Scope of the graph if no `include` globs are given. */
 const DEFAULT_INCLUDE = 'src';

@@ -305,16 +305,51 @@ describe('generateDependencyGraph', () => {
 	});
 
 	describe('--exclude', () => {
-		it('passes user-provided globs (as regex) to cruise alongside built-in excludes', async () => {
+		it('passes user-provided globs (as regex) to cruise', async () => {
 			await generateDependencyGraph('.', { exclude: ['**/_planned.ts'] });
 
 			const opts = vi.mocked(cruise).mock.calls[0][1];
 			expect(opts).toBeDefined();
 			const excludePatterns = (opts!.exclude ?? []) as string[];
-			// built-in excludes are still present
-			expect(excludePatterns).toContain('\\.(test|d|mock)\\.ts$');
 			// user glob translated to a regex
 			expect(excludePatterns.some((p) => /_planned/.test(p))).toBe(true);
+		});
+
+		it('always excludes tests, mocks, type declarations and dependencies', async () => {
+			await generateDependencyGraph('.');
+			const patterns = (vi.mocked(cruise).mock.calls[0][1]!.exclude as string[]).map((p) => new RegExp(p));
+			const isExcluded = (path: string): boolean => patterns.some((p) => p.test(path));
+
+			for (const path of [
+				'src/a.test.ts',
+				'src/a.spec.ts',
+				'src/a.mock.ts',
+				'src/a.svelte.test.ts',
+				'src/a.test.tsx',
+				'src/a.spec.js',
+				'src/a.test.mjs',
+				'src/a.d.ts',
+				'src/a.d.mts',
+				'src/__tests__/a.ts',
+				'src/lib/__mocks__/map.ts',
+				'__tests__/a.ts',
+				'node_modules/x/index.js',
+			]) {
+				expect(isExcluded(path), path).toBe(true);
+			}
+			for (const path of [
+				'src/a.ts',
+				'src/a.svelte',
+				'src/a.svelte.ts',
+				'src/test.ts',
+				'src/latest.ts',
+				'src/contest.spec_helper.ts',
+				'src/a.data.ts',
+				'src/tests/a.ts',
+				'src/my__tests__/a.ts',
+			]) {
+				expect(isExcluded(path), path).toBe(false);
+			}
 		});
 	});
 

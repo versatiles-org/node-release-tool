@@ -90,6 +90,8 @@ vrt deps-graph --subgraph-direction 'src/lib=LR' --subgraph-direction 'src/comma
 vrt deps-graph --merge-outgoing 'src/commands'
 ```
 
+Tests and mocks (`*.test.*`, `*.spec.*`, `*.mock.*`, `__tests__/`, `__mocks__/`), type declarations (`*.d.ts`) and `node_modules` are always left out.
+
 Instead of passing long lists of flags, you can put the options into a `vrt.config.json` in your project directory. The keys are the flag names; CLI flags are added to these values:
 
 ```JSON
