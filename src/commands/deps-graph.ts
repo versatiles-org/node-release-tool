@@ -1,4 +1,5 @@
 import type { ICruiseResult, IModule } from 'dependency-cruiser';
+import { existsSync, readFileSync } from 'node:fs';
 import Module from 'node:module';
 import { delimiter, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -112,6 +113,55 @@ const ENHANCED_RESOLVE_OPTIONS = {
 };
 
 /**
+ * Returns the import aliases of a SvelteKit project, like `$lib`, mapped to
+ * absolute paths. dependency-cruiser can not resolve them on its own, so
+ * imports using them would be dropped from the graph.
+ *
+ * The aliases are read from the `paths` of `.svelte-kit/tsconfig.json`, which
+ * SvelteKit generates and which includes custom aliases from `svelte.config.js`.
+ * If that file is missing in a project depending on `@sveltejs/kit`, only
+ * `$lib` is mapped to `src/lib`. Returns an empty object for other projects.
+ */
+export function readSvelteKitAliases(directory: string): Record<string, string> {
+	const tsconfigDirectory = resolve(directory, '.svelte-kit');
+	const tsconfig = resolve(tsconfigDirectory, 'tsconfig.json');
+	if (existsSync(tsconfig)) {
+		try {
+			const { compilerOptions } = JSON.parse(readFileSync(tsconfig, 'utf8')) as {
+				compilerOptions?: { paths?: Record<string, string[]> };
+			};
+			const alias: Record<string, string> = {};
+			for (const [key, targets] of Object.entries(compilerOptions?.paths ?? {})) {
+				// `$lib` and `$lib/*` both become the prefix alias `$lib`
+				const name = key.replace(/\/\*$/, '');
+				const target = targets[0]?.replace(/\/\*$/, '');
+				if (name.includes('*') || !target || target.includes('*')) continue;
+				alias[name] = resolve(tsconfigDirectory, target);
+			}
+			return alias;
+		} catch (error) {
+			warn(`could not read aliases from ${tsconfig}: ${String(error)}`);
+		}
+	}
+
+	return dependsOnSvelteKit(directory) ? { $lib: resolve(directory, 'src/lib') } : {};
+}
+
+/**
+ * Whether the `package.json` in `directory` lists `@sveltejs/kit` as dependency.
+ */
+function dependsOnSvelteKit(directory: string): boolean {
+	try {
+		const pkg = JSON.parse(readFileSync(resolve(directory, 'package.json'), 'utf8')) as Record<string, unknown>;
+		return ['dependencies', 'devDependencies', 'peerDependencies'].some((field) =>
+			Object.hasOwn((pkg[field] as object | undefined) ?? {}, '@sveltejs/kit'),
+		);
+	} catch {
+		return false;
+	}
+}
+
+/**
  * Generates a dependency graph for the project's source files.
  *
  * Uses dependency-cruiser to analyze imports and outputs a Mermaid flowchart
@@ -139,12 +189,17 @@ export async function generateDependencyGraph(directory: string, cliOptions: Dep
 
 	let cruiseResult: ICruiseResult;
 	try {
-		const result = await cruise([directory], {
-			includeOnly,
-			outputType: 'json',
-			exclude: [...INTERNAL_EXCLUDES, ...userExcludes],
-			enhancedResolveOptions: ENHANCED_RESOLVE_OPTIONS,
-		});
+		const result = await cruise(
+			[directory],
+			{
+				includeOnly,
+				outputType: 'json',
+				exclude: [...INTERNAL_EXCLUDES, ...userExcludes],
+				enhancedResolveOptions: ENHANCED_RESOLVE_OPTIONS,
+			},
+			// Passed as resolver options, because `enhancedResolveOptions` does not accept aliases
+			{ alias: readSvelteKitAliases(directory) },
+		);
 		cruiseResult =
 			typeof result.output === 'string'
 				? (JSON.parse(result.output) as ICruiseResult)

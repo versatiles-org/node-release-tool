@@ -30,7 +30,7 @@ vi.mock('./deps-graph-svg.js', () => ({
 const { cruise, format } = await import('dependency-cruiser');
 const { panic, warn } = await import('../lib/log.js');
 const { renderSvgGraph } = await import('./deps-graph-svg.js');
-const { generateDependencyGraph, readDepsGraphConfig } = await import('./deps-graph.js');
+const { generateDependencyGraph, readDepsGraphConfig, readSvelteKitAliases } = await import('./deps-graph.js');
 
 /** Build a minimal ICruiseResult with the given modules; all other fields stubbed. */
 function fakeCruiseResult(modules: Pick<IModule, 'source' | 'dependencies'>[]): ICruiseResult {
@@ -68,7 +68,7 @@ describe('generateDependencyGraph', () => {
 	it('generates a mermaid diagram, replacing flowchart LR with flowchart TB', async () => {
 		await expect(generateDependencyGraph('src')).resolves.toBeUndefined();
 
-		expect(cruise).toHaveBeenCalledWith(['src'], expect.objectContaining({ outputType: 'json' }));
+		expect(cruise).toHaveBeenCalledWith(['src'], expect.objectContaining({ outputType: 'json' }), { alias: {} });
 
 		expect(mockStdoutWrite).toHaveBeenCalledTimes(1);
 		const writtenString = (mockStdoutWrite.mock.calls[0][0] as Buffer).toString();
@@ -349,6 +349,67 @@ describe('generateDependencyGraph', () => {
 
 			expect(warn).toHaveBeenCalledWith('merge outgoing glob "src/nope" did not match any directory');
 			expect(edges()).toHaveLength(7);
+		});
+	});
+
+	describe('SvelteKit aliases', () => {
+		let directory: string;
+
+		function writeJson(path: string, content: unknown): void {
+			mkdirSync(join(directory, path, '..'), { recursive: true });
+			writeFileSync(join(directory, path), JSON.stringify(content));
+		}
+
+		beforeEach(() => {
+			directory = mkdtempSync(join(tmpdir(), 'vrt-deps-graph-kit-'));
+		});
+
+		afterEach(() => {
+			rmSync(directory, { recursive: true, force: true });
+		});
+
+		it('reads the aliases from .svelte-kit/tsconfig.json', () => {
+			writeJson('.svelte-kit/tsconfig.json', {
+				compilerOptions: {
+					paths: {
+						$lib: ['../src/lib'],
+						'$lib/*': ['../src/lib/*'],
+						$utils: ['../src/utils'],
+						'$app/types': ['./types/index.d.ts'],
+						'weird/*/glob': ['../x/*/y'],
+					},
+				},
+			});
+			expect(readSvelteKitAliases(directory)).toStrictEqual({
+				$lib: join(directory, 'src/lib'),
+				$utils: join(directory, 'src/utils'),
+				'$app/types': join(directory, '.svelte-kit/types/index.d.ts'),
+			});
+		});
+
+		it('falls back to $lib for SvelteKit projects without generated tsconfig', () => {
+			writeJson('package.json', { devDependencies: { '@sveltejs/kit': '^2.0.0' } });
+			expect(readSvelteKitAliases(directory)).toStrictEqual({ $lib: join(directory, 'src/lib') });
+		});
+
+		it('returns no aliases for other projects', () => {
+			expect(readSvelteKitAliases(directory)).toStrictEqual({});
+			writeJson('package.json', { dependencies: { svelte: '^5.0.0' } });
+			expect(readSvelteKitAliases(directory)).toStrictEqual({});
+		});
+
+		it('warns about an unreadable tsconfig and falls back', () => {
+			mkdirSync(join(directory, '.svelte-kit'));
+			writeFileSync(join(directory, '.svelte-kit/tsconfig.json'), '{ invalid');
+			writeJson('package.json', { dependencies: { '@sveltejs/kit': '^2.0.0' } });
+			expect(readSvelteKitAliases(directory)).toStrictEqual({ $lib: join(directory, 'src/lib') });
+			expect(warn).toHaveBeenCalledWith(expect.stringContaining('could not read aliases'));
+		});
+
+		it('passes the aliases to the resolver', async () => {
+			writeJson('package.json', { devDependencies: { '@sveltejs/kit': '^2.0.0' } });
+			await generateDependencyGraph(directory);
+			expect(vi.mocked(cruise).mock.calls[0][2]).toEqual({ alias: { $lib: join(directory, 'src/lib') } });
 		});
 	});
 
