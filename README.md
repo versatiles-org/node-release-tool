@@ -127,7 +127,13 @@ By default, `deps-graph` analyzes the files in `src`. With `--include` (repeatab
 }
 ```
 
-Imports between the packages (e.g. `@scope/core/map_renderer`) are resolved through the `exports` field of their package.json, so they point to the source files if a package exports them, e.g. with `"exports": { "./*": "./src/*.ts" }`. All other options match against the full paths, e.g. `packages/core/src/lib`.
+Imports between the packages (e.g. `@scope/core/map_renderer`) are resolved through the `exports` field of their package.json. If they point to the build output of a package, they are mapped to its source files:
+
+- `dist/utils/x.js` (or `.d.ts`, `.mjs`, …) is mapped to `src/utils/x.ts` (or `.tsx`, `.js`, `.svelte`, …). For packages built with `svelte-package`, `src/lib` is tried too. `outDir` and `rootDir` in the package's `tsconfig.build.json` or `tsconfig.json` override `dist` and `src`.
+- If the package is bundled into a single file, an import of the package itself is mapped to `src/index.ts`.
+- If a package is not built yet, its imports are mapped the same way.
+
+All other options match against the full paths, e.g. `packages/core/src/lib`.
 
 # Imports missing in the graph
 

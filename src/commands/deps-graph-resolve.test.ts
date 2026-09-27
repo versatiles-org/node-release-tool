@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, MockInstance, vi } from 'v
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
-import { generateDependencyGraph } from './deps-graph.js';
+import { type DepsGraphOptions, generateDependencyGraph } from './deps-graph.js';
 
 /**
  * Runs the real dependency-cruiser on small projects, to check which imports
@@ -22,8 +22,8 @@ describe('generateDependencyGraph with dependency-cruiser', () => {
 	}
 
 	/** Runs `deps-graph` and returns its edges as `from --> to` file paths. */
-	async function edges(): Promise<string[]> {
-		await generateDependencyGraph(directory);
+	async function edges(options?: DepsGraphOptions): Promise<string[]> {
+		await generateDependencyGraph(directory, options);
 		const output = mockStdoutWrite.mock.calls.map((c) => c[0].toString()).join('');
 
 		// Reconstruct the file paths from the nesting of subgraphs
@@ -116,5 +116,29 @@ describe('generateDependencyGraph with dependency-cruiser', () => {
 			'missing in graph: 1 import of "@x/core", which resolves to packages/core/dist/index.js, outside of "include"',
 		);
 		expect(stderr).toContain('missing in graph: 1 import of "./gone.js", which could not be resolved');
+	});
+
+	it('maps imports of workspace packages from their build output to their source files', async () => {
+		writeFiles({
+			'package.json': JSON.stringify({ type: 'module', workspaces: ['packages/*'] }),
+			// bundled into a single file
+			'packages/core/package.json': JSON.stringify({ name: '@x/core', exports: './dist/bundle.js' }),
+			'packages/core/dist/bundle.js': 'export const core = 1;\n',
+			'packages/core/src/index.ts': 'export const core = 1;\n',
+			// not built yet
+			'packages/util/package.json': JSON.stringify({ name: '@x/util', exports: './dist/index.js' }),
+			'packages/util/src/index.ts': 'export const util = 1;\n',
+			'src/index.ts':
+				"import { core } from '@x/core';\nimport { util } from '@x/util';\nexport const a = core + util;\n",
+		});
+		mkdirSync(join(directory, 'node_modules/@x'), { recursive: true });
+		symlinkSync('../../packages/core', join(directory, 'node_modules/@x/core'));
+		symlinkSync('../../packages/util', join(directory, 'node_modules/@x/util'));
+
+		expect((await edges({ include: ['src', 'packages/*/src'] })).sort()).toStrictEqual([
+			'src/index.ts --> packages/core/src/index.ts',
+			'src/index.ts --> packages/util/src/index.ts',
+		]);
+		expect(mockStderrWrite.mock.calls.join('')).not.toContain('missing in graph');
 	});
 });

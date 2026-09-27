@@ -9,6 +9,7 @@ import { CONFIG_FILENAME, readConfigSection } from '../lib/config.js';
 import { debug, isVerbose, panic, warn } from '../lib/log.js';
 import { writeSvgImage } from '../lib/svg-image.js';
 import { type GraphEdge, type GraphModel, renderSvgGraph } from './deps-graph-svg.js';
+import { mapBuildOutputToSource, readWorkspacePackages } from './deps-graph-workspace.js';
 
 /**
  * Options for {@link generateDependencyGraph}.
@@ -265,6 +266,7 @@ export async function generateDependencyGraph(directory: string, cliOptions: Dep
 		return;
 	}
 
+	cruiseResult = mapBuildOutputToSource(cruiseResult, readWorkspacePackages(directory, extractTSConfig), directory);
 	const split = splitIncluded(cruiseResult, includes);
 	cruiseResult = split.result;
 	warnDroppedImports(split.dropped);
