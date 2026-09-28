@@ -51,6 +51,13 @@ export interface DepsGraphOptions {
 	 */
 	mergeOutgoing?: string[];
 	/**
+	 * Globs matched against directory paths. Imports of the barrel file of a
+	 * matching directory, i.e. its `index.ts` (or `.js`, `.tsx`, …), from outside
+	 * of the directory point to the directory instead. Imports of other files in
+	 * the directory are not changed.
+	 */
+	barrel?: string[];
+	/**
 	 * Path of an SVG file. If set, the graph is laid out with ELK and written to
 	 * this file, and a Markdown image link to it is printed instead of Mermaid
 	 * markup. The link is relative, except while `release-npm` publishes a
@@ -64,6 +71,7 @@ export interface DepsGraphOptions {
  * mirror the CLI flags, to the corresponding {@link DepsGraphOptions} properties.
  */
 const LIST_CONFIG_KEYS = {
+	barrel: 'barrel',
 	'collapse-dir': 'collapseDir',
 	exclude: 'exclude',
 	include: 'include',
@@ -96,6 +104,8 @@ interface MermaidStructure {
 	subgraphs: MermaidSubgraph[];
 	/** Maps each node and subgraph id to the id of its enclosing subgraph. */
 	parents: Map<string, string>;
+	/** Maps each node id to its file path. */
+	nodes: Map<string, string>;
 }
 
 type ExtractTSConfig = typeof ExtractTSConfigFunction;
@@ -122,6 +132,9 @@ const BARE_MODULE = /^(@[\w.-]+\/)?[\w][\w.-]*(\/|$)/;
 
 /** Source files, as opposed to assets like images or stylesheets. */
 const SOURCE_FILE = /\.([cm]?[jt]sx?|svelte|vue)$/;
+
+/** Barrel files, which re-export the contents of their directory. */
+const BARREL_FILE = /^index\.[cm]?[jt]sx?$/;
 
 /** Maximum number of files that dependency-cruiser fails to analyze, before giving up. */
 const MAX_UNPARSABLE_FILES = 10;
@@ -245,6 +258,7 @@ export async function generateDependencyGraph(directory: string, cliOptions: Dep
 	const options = mergeOptions(readDepsGraphConfig(directory), cliOptions);
 	const directionRules = (options.subgraphDirection ?? []).map(parseDirectionRule);
 	const mergeRules = (options.mergeOutgoing ?? []).map(parseGlobRule);
+	const barrelRules = (options.barrel ?? []).map(parseGlobRule);
 	const userExcludes = (options.exclude ?? []).map(globToCruiseRegex);
 	const includeGlobs = (options.include?.length ? options.include : [DEFAULT_INCLUDE]).map(normalizeInclude);
 	const includes = includeGlobs.map(includeToCruiseRegex);
@@ -293,7 +307,7 @@ export async function generateDependencyGraph(directory: string, cliOptions: Dep
 
 	if (options.svg !== undefined) {
 		if (directionRules.length > 0) warn('subgraph direction is not supported for SVG output and is ignored');
-		const svg = await renderSvgGraph(buildGraphModel(cruiseResult, mergeRules));
+		const svg = await renderSvgGraph(buildGraphModel(cruiseResult, mergeRules, barrelRules));
 		process.stdout.write((await writeSvgImage(directory, options.svg, svg, 'Dependency graph')) + '\n');
 		return;
 	}
@@ -308,6 +322,9 @@ export async function generateDependencyGraph(directory: string, cliOptions: Dep
 	output = output.replace('flowchart LR', '---\nconfig:\n  layout: elk\n---\nflowchart TB');
 	if (directionRules.length > 0) {
 		output = applySubgraphDirections(output, directionRules);
+	}
+	if (barrelRules.length > 0) {
+		output = redirectBarrelEdges(output, barrelRules);
 	}
 	if (mergeRules.length > 0) {
 		output = mergeOutgoingEdges(output, mergeRules);
@@ -685,10 +702,11 @@ function parseMermaidStructure(lines: string[]): MermaidStructure {
 	const stack: MermaidSubgraph[] = [];
 	const subgraphs: MermaidSubgraph[] = [];
 	const parents = new Map<string, string>();
+	const nodes = new Map<string, string>();
 
 	lines.forEach((line, index) => {
 		const subgraph = /^\s*subgraph\s+(\S+?)\["(.*)"\]\s*$/.exec(line);
-		const node = /^\s*(\S+?)\[".*"\]\s*$/.exec(line);
+		const node = /^\s*(\S+?)\["(.*)"\]\s*$/.exec(line);
 		const parent = stack.at(-1);
 		if (subgraph) {
 			const [, id, label] = subgraph;
@@ -697,12 +715,14 @@ function parseMermaidStructure(lines: string[]): MermaidStructure {
 		} else if (/^\s*end\s*$/.test(line)) {
 			const closed = stack.pop();
 			if (closed) subgraphs.push(closed);
-		} else if (node && parent) {
-			parents.set(node[1], parent.id);
+		} else if (node) {
+			const [, id, label] = node;
+			if (parent) parents.set(id, parent.id);
+			nodes.set(id, parent ? `${parent.path}/${label}` : label);
 		}
 	});
 
-	return { subgraphs, parents };
+	return { subgraphs, parents, nodes };
 }
 
 /**
@@ -752,13 +772,7 @@ function applySubgraphDirections(output: string, rules: DirectionRule[]): string
 function mergeOutgoingEdges(output: string, rules: GlobRule[]): string {
 	const lines = output.split('\n');
 	const { subgraphs, parents } = parseMermaidStructure(lines);
-
-	const isInside = (id: string, ancestor: string): boolean => {
-		for (let parent = parents.get(id); parent; parent = parents.get(parent)) {
-			if (parent === ancestor) return true;
-		}
-		return false;
-	};
+	const isInside = isInsideSubgraph(parents);
 
 	const edgeLines = new Set<number>();
 	let edges: GraphEdge[] = [];
@@ -788,6 +802,91 @@ function mergeOutgoingEdges(output: string, rules: GlobRule[]): string {
 			return edgeLines.has(index) ? [] : [line];
 		})
 		.join('\n');
+}
+
+/**
+ * Returns whether a node or subgraph id lies (indirectly) inside another subgraph.
+ */
+function isInsideSubgraph(parents: Map<string, string>): (id: string, ancestor: string) => boolean {
+	return (id, ancestor) => {
+		for (let parent = parents.get(id); parent; parent = parents.get(parent)) {
+			if (parent === ancestor) return true;
+		}
+		return false;
+	};
+}
+
+/**
+ * Points edges to the barrel file of a subgraph whose directory path matches
+ * one of the rules to the subgraph instead, see {@link findBarrels}.
+ */
+function redirectBarrelEdges(output: string, rules: GlobRule[]): string {
+	const lines = output.split('\n');
+	const { subgraphs, parents, nodes } = parseMermaidStructure(lines);
+	const nodeIds = new Map([...nodes].map(([id, path]) => [path, id]));
+	const subgraphIds = new Map(subgraphs.map((subgraph) => [subgraph.path, subgraph.id]));
+
+	const edges = lines.flatMap((line) => {
+		const edge = /^\s*(\w+)-->(\w+)\s*$/.exec(line);
+		return edge ? [{ from: edge[1], to: edge[2] }] : [];
+	});
+	const barrels = new Map(
+		[...findBarrels([...nodes.values()], rules)].map(([file, directory]) => [
+			nodeIds.get(file) ?? '',
+			subgraphIds.get(directory) ?? '',
+		]),
+	);
+	const redirected = redirectEdgesToBarrels(edges, barrels, isInsideSubgraph(parents));
+
+	let edgeIndex = 0;
+	return lines
+		.map((line) => {
+			if (!/^\s*(\w+)-->(\w+)\s*$/.test(line)) return line;
+			const { from, to } = redirected[edgeIndex++];
+			return `${from}-->${to}`;
+		})
+		.join('\n');
+}
+
+/**
+ * Returns the barrel files (see {@link BARREL_FILE}) of all directories that
+ * match one of the rules, mapped to their directory. Warns about rules that do
+ * not match a directory with a barrel file.
+ */
+function findBarrels(files: string[], rules: GlobRule[]): Map<string, string> {
+	const barrels = new Map<string, string>();
+	const used = new Set<GlobRule>();
+	for (const file of files) {
+		const slash = file.lastIndexOf('/');
+		if (slash < 0 || !BARREL_FILE.test(file.slice(slash + 1))) continue;
+		const directory = file.slice(0, slash);
+		const matching = rules.filter((r) => r.isMatch(directory));
+		if (matching.length === 0) continue;
+		matching.forEach((r) => used.add(r));
+		barrels.set(file, directory);
+	}
+	for (const rule of rules) {
+		if (!used.has(rule)) warn(`barrel glob "${rule.glob}" did not match any directory with an index file`);
+	}
+	return barrels;
+}
+
+/**
+ * Points edges to a barrel file to its directory instead, unless they start
+ * inside that directory.
+ *
+ * @param barrels - Maps barrel files to their directories
+ * @param isInside - Whether a node or directory lies (indirectly) inside another directory
+ */
+function redirectEdgesToBarrels(
+	edges: GraphEdge[],
+	barrels: Map<string, string>,
+	isInside: (id: string, ancestor: string) => boolean,
+): GraphEdge[] {
+	return edges.map((edge) => {
+		const directory = barrels.get(edge.to);
+		return directory && !isInside(edge.from, directory) ? { ...edge, to: directory } : edge;
+	});
 }
 
 /**
@@ -826,15 +925,20 @@ function mergeEdgesFrom(
 }
 
 /**
- * Converts the cruise result into files and edges for SVG rendering, merging
- * outgoing edges of directories that match `mergeRules` (inner before outer
- * directories, like {@link mergeOutgoingEdges}).
+ * Converts the cruise result into files and edges for SVG rendering, pointing
+ * edges to barrel files of directories that match `barrelRules` to the
+ * directories, and merging outgoing edges of directories that match
+ * `mergeRules` (inner before outer directories, like {@link mergeOutgoingEdges}).
  */
-function buildGraphModel(result: ICruiseResult, mergeRules: GlobRule[]): GraphModel {
+function buildGraphModel(result: ICruiseResult, mergeRules: GlobRule[], barrelRules: GlobRule[]): GraphModel {
+	const isInside = (path: string, ancestor: string): boolean => path.startsWith(ancestor + '/');
 	const files = result.modules.map((m) => m.source);
 	let edges: GraphEdge[] = result.modules.flatMap((m) =>
 		m.dependencies.map((d) => ({ from: m.source, to: d.resolved })),
 	);
+	if (barrelRules.length > 0) {
+		edges = redirectEdgesToBarrels(edges, findBarrels(files, barrelRules), isInside);
+	}
 
 	const directories = new Set<string>();
 	for (const file of files) {
@@ -843,7 +947,6 @@ function buildGraphModel(result: ICruiseResult, mergeRules: GlobRule[]): GraphMo
 	}
 	const depth = (path: string): number => path.split('/').length;
 	const innerFirst = [...directories].sort((a, b) => depth(b) - depth(a));
-	const isInside = (path: string, ancestor: string): boolean => path.startsWith(ancestor + '/');
 
 	const used = new Set<GlobRule>();
 	for (const directory of innerFirst) {

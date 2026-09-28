@@ -88,6 +88,9 @@ vrt deps-graph --subgraph-direction 'src/lib=LR' --subgraph-direction 'src/comma
 
 # Replace edges from several files in src/commands/ to the same target with one edge from the directory.
 vrt deps-graph --merge-outgoing 'src/commands'
+
+# Draw imports of barrel files (src/lib/*/index.ts) as edges to their directory.
+vrt deps-graph --barrel 'src/lib/*'
 ```
 
 Tests and mocks (`*.test.*`, `*.spec.*`, `*.mock.*`, `__tests__/`, `__mocks__/`), type declarations (`*.d.ts`) and `node_modules` are always left out.
@@ -97,6 +100,7 @@ Instead of passing long lists of flags, you can put the options into a `vrt.conf
 ```JSON
 {
   "deps-graph": {
+    "barrel": ["src/lib/*"],
     "collapse-dir": ["src/themes/*", "src/omt/layers/*"],
     "exclude": ["**/_planned.ts"],
     "merge-outgoing": ["src/*"],
@@ -292,6 +296,10 @@ Usage: vrt deps-graph [options]
 Analyze project files and output a dependency graph as Mermaid markup.
 
 Options:
+  --barrel <glob>                  Point imports of the index file (e.g.
+                                   index.ts) in directories matching the glob to
+                                   the directory itself (repeatable). (default:
+                                   [])
   --collapse-dir <glob>            Collapse all files matching the glob into a
                                    single node (repeatable). (default: [])
   --exclude <glob>                 Drop files matching the glob from the graph

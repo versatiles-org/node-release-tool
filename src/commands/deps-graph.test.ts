@@ -552,6 +552,48 @@ describe('generateDependencyGraph', () => {
 		});
 	});
 
+	describe('--barrel', () => {
+		// b.ts and a/c.ts import the barrel a/index.ts, b.ts also a/c.ts; the barrel re-exports a/c.ts
+		const mermaid = [
+			'flowchart LR',
+			'',
+			'subgraph 0["src"]',
+			'subgraph 1["a"]',
+			'2["index.ts"]',
+			'3["c.ts"]',
+			'end',
+			'4["b.ts"]',
+			'end',
+			'4-->2',
+			'4-->3',
+			'2-->3',
+			'3-->2',
+		].join('\n');
+
+		function edges(): string[] {
+			const output = (mockStdoutWrite.mock.calls[0][0] as Buffer).toString();
+			return output.split('\n').filter((line) => line.includes('-->'));
+		}
+
+		beforeEach(() => {
+			vi.mocked(format).mockResolvedValue({ output: mermaid } as IReporterOutput);
+		});
+
+		it('points imports of the barrel file from outside to the directory', async () => {
+			await generateDependencyGraph('.', { barrel: ['src/a/'] });
+
+			expect(edges()).toEqual(['4-->1', '4-->3', '2-->3', '3-->2']);
+			expect(warn).not.toHaveBeenCalled();
+		});
+
+		it('warns about globs that match no directory with a barrel file', async () => {
+			await generateDependencyGraph('.', { barrel: ['src'] });
+
+			expect(warn).toHaveBeenCalledWith('barrel glob "src" did not match any directory with an index file');
+			expect(edges()).toEqual(['4-->2', '4-->3', '2-->3', '3-->2']);
+		});
+	});
+
 	describe('SvelteKit aliases', () => {
 		let directory: string;
 
@@ -779,6 +821,33 @@ describe('generateDependencyGraph', () => {
 					{ from: 'src/a', to: 'src/x.ts', via: ['src/a/b.ts', 'src/a/c.ts'] },
 					{ from: 'src/a', to: 'src/y.ts', via: ['src/a/b.ts', 'src/a/c.ts'] },
 					{ from: 'src/a/c.ts', to: 'src/a/b.ts' },
+				],
+			});
+			expect(warn).not.toHaveBeenCalled();
+		});
+
+		it('points edges to barrel files of matching directories to the directory in the graph model', async () => {
+			vi.mocked(cruise).mockResolvedValue({
+				output: fakeCruiseResult([
+					{
+						source: 'src/a/index.ts',
+						dependencies: [{ resolved: 'src/a/b.ts' }] as IModule['dependencies'],
+					},
+					{ source: 'src/a/b.ts', dependencies: [] },
+					{
+						source: 'src/x.ts',
+						dependencies: [{ resolved: 'src/a/index.ts' }, { resolved: 'src/a/b.ts' }] as IModule['dependencies'],
+					},
+				]),
+			} as IReporterOutput);
+			await generateDependencyGraph(directory, { svg: 'graph.svg', barrel: ['src/a'] });
+
+			expect(vi.mocked(renderSvgGraph).mock.calls[0][0]).toStrictEqual({
+				files: ['src/a/index.ts', 'src/a/b.ts', 'src/x.ts'],
+				edges: [
+					{ from: 'src/a/index.ts', to: 'src/a/b.ts' },
+					{ from: 'src/x.ts', to: 'src/a' },
+					{ from: 'src/x.ts', to: 'src/a/b.ts' },
 				],
 			});
 			expect(warn).not.toHaveBeenCalled();

@@ -98,11 +98,18 @@ program
 		[] as string[],
 	)
 	.option(
+		'--barrel <glob>',
+		'Point imports of the index file (e.g. index.ts) in directories matching the glob to the directory itself (repeatable).',
+		(value: string, prev: string[] = []) => prev.concat(value),
+		[] as string[],
+	)
+	.option(
 		'--svg <file>',
 		'Write the graph as SVG to the file and output a Markdown image link to it instead of Mermaid markup.',
 	)
 	.action(
 		(opts: {
+			barrel: string[];
 			collapseDir: string[];
 			exclude: string[];
 			include: string[];
@@ -111,6 +118,7 @@ program
 			svg?: string;
 		}) => {
 			void generateDependencyGraph(process.cwd(), {
+				barrel: opts.barrel,
 				collapseDir: opts.collapseDir,
 				exclude: opts.exclude,
 				include: opts.include,

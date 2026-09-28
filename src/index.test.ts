@@ -102,6 +102,7 @@ describe('release-tool CLI', () => {
 			await run('deps-graph');
 
 			expect(generateDependencyGraph).toHaveBeenCalledWith(process.cwd(), {
+				barrel: [],
 				collapseDir: [],
 				exclude: [],
 				include: [],
@@ -115,6 +116,7 @@ describe('release-tool CLI', () => {
 			await run('deps-graph', '--subgraph-direction', 'src/lib=LR', '--subgraph-direction', 'src/commands=RL');
 
 			expect(generateDependencyGraph).toHaveBeenCalledWith(process.cwd(), {
+				barrel: [],
 				collapseDir: [],
 				exclude: [],
 				include: [],
@@ -128,6 +130,7 @@ describe('release-tool CLI', () => {
 			await run('deps-graph', '--svg', 'docs/graph.svg');
 
 			expect(generateDependencyGraph).toHaveBeenCalledWith(process.cwd(), {
+				barrel: [],
 				collapseDir: [],
 				exclude: [],
 				include: [],
@@ -141,10 +144,25 @@ describe('release-tool CLI', () => {
 			await run('deps-graph', '--merge-outgoing', 'src/lib', '--merge-outgoing', 'src/commands');
 
 			expect(generateDependencyGraph).toHaveBeenCalledWith(process.cwd(), {
+				barrel: [],
 				collapseDir: [],
 				exclude: [],
 				include: [],
 				mergeOutgoing: ['src/lib', 'src/commands'],
+				subgraphDirection: [],
+				svg: undefined,
+			});
+		});
+
+		it('should collect repeated --barrel options', async () => {
+			await run('deps-graph', '--barrel', 'src/lib', '--barrel', 'packages/*/src');
+
+			expect(generateDependencyGraph).toHaveBeenCalledWith(process.cwd(), {
+				barrel: ['src/lib', 'packages/*/src'],
+				collapseDir: [],
+				exclude: [],
+				include: [],
+				mergeOutgoing: [],
 				subgraphDirection: [],
 				svg: undefined,
 			});
