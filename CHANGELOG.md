@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.18.1] - 2026-09-28
+
+### Bug Fixes
+
+- add mergeDuplicateModules function to handle duplicate module entries in dependency graph ([6cd9083](https://github.com/versatiles-org/node-release-tool/commit/6cd90833d527b059376081a3e69e820b4557f93e))
+
 ## [2.18.0] - 2026-09-27
 
 ### Features
