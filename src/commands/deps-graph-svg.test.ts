@@ -60,6 +60,28 @@ describe('renderSvgGraph', () => {
 		expect(new Set(gaps).size).toBe(1);
 	});
 
+	it('orders the edges arriving at a directory by their sources', async () => {
+		const sources = ['src/a.ts', 'src/b.ts', 'src/c.ts', 'src/d.ts'];
+		const svg = await renderSvgGraph({
+			files: [...sources, 'src/lib/index.ts', 'src/lib/x.ts'],
+			edges: [
+				...sources.toReversed().map((from) => ({ from, to: 'src/lib' })),
+				{ from: 'src/lib/index.ts', to: 'src/lib/x.ts' },
+			],
+		});
+
+		const box = /<rect class="directory node n(\d+)" x="[\d.]+" y="([\d.]+)"/g;
+		const top = [...svg.matchAll(box)].map((m) => Number(m[2])).sort((a, b) => b - a)[0];
+		const paths = [...svg.matchAll(/<path class="edge [^"]*" d="M([\d.]+),[\d.]+ [^"]*L([\d.]+),([\d.]+)"/g)];
+		const toDirectory = paths.filter((m) => Number(m[3]) === top);
+		expect(toDirectory).toHaveLength(4);
+
+		// the edges arrive in the order of their sources, so they do not cross
+		const bySource = [...toDirectory].sort((a, b) => Number(a[1]) - Number(b[1]));
+		const byEnd = [...toDirectory].sort((a, b) => Number(a[2]) - Number(b[2]));
+		expect(byEnd).toEqual(bySource);
+	});
+
 	it('draws directory labels with a background on top of the edges', async () => {
 		const svg = await renderSvgGraph(model);
 

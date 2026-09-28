@@ -42,6 +42,9 @@ const LAYOUT_OPTIONS: Record<string, string> = {
 	// the same spacing for horizontal and vertical edge segments
 	'elk.spacing.edgeEdge': '8',
 	'elk.layered.spacing.edgeEdgeBetweenLayers': '8',
+	// Also order the ports of directories to avoid crossings, e.g. of edges to barrel files
+	// redirected to their directory. With the default of 0.1 they often cross.
+	'elk.layered.crossingMinimization.hierarchicalSweepiness': '0.5',
 };
 
 /**
