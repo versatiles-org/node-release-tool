@@ -280,6 +280,7 @@ export async function generateDependencyGraph(directory: string, cliOptions: Dep
 			: (result.output as ICruiseResult);
 	});
 
+	cruiseResult = mergeDuplicateModules(cruiseResult);
 	cruiseResult = mapBuildOutputToSource(cruiseResult, readWorkspacePackages(directory, extractTSConfig), directory);
 	const split = splitIncluded(cruiseResult, includes);
 	cruiseResult = split.result;
@@ -418,6 +419,30 @@ async function cruiseWithRetries(runCruise: (unparsable: string[]) => Promise<IC
 		}
 		return result;
 	}
+}
+
+/**
+ * Merges modules that dependency-cruiser lists twice. It caches which file
+ * extensions it follows on the first resolved import, so if that is an import
+ * like `./x.js` that resolves to `./x.ts`, only `.ts`, `.tsx` and `.d.ts` are
+ * followed. Imports of other files, e.g. `.svelte`, are added as leaves, and if
+ * such a file is analyzed later, because it is one of the start paths, it is
+ * listed again. The analyzed module is kept, with the dependents of both.
+ */
+export function mergeDuplicateModules(result: ICruiseResult): ICruiseResult {
+	const bySource = new Map<string, IModule>();
+	for (const module of result.modules) {
+		const existing = bySource.get(module.source);
+		if (!existing) {
+			bySource.set(module.source, module);
+			continue;
+		}
+		// leaves have `followable: false`, analyzed modules have no `followable`
+		const kept = existing.followable === false ? module : existing;
+		const dependents = [...new Set([...(existing.dependents ?? []), ...(module.dependents ?? [])])];
+		bySource.set(module.source, { ...kept, dependents });
+	}
+	return { ...result, modules: Array.from(bySource.values()) };
 }
 
 /**

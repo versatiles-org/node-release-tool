@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, MockInstance, vi } from 'vitest';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'fs';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
 import { generateDependencyGraph, readSvelteCompilerOptions } from './deps-graph.js';
@@ -80,6 +80,18 @@ describe('generateDependencyGraph with Svelte', () => {
 		expect(output(mockStderrWrite)).toContain(
 			'could not analyze src/App.svelte, its imports are missing in the graph: Cannot use `await`',
 		);
+	});
+
+	it('lists components only once, if the first resolved import is a .js import of a .ts file', async () => {
+		writeFiles({
+			'svelte.config.js': 'export default { compilerOptions: { experimental: { async: true } } };\n',
+			'src/App.svelte': "<script>\nimport { x } from './x.js';\nimport Child from './Child.svelte';\n</script>\n",
+			'src/Child.svelte': "<script>\nimport { x } from './x.js';\n</script>\n",
+		});
+		await generateDependencyGraph(directory, { svg: 'graph.svg' });
+
+		const svg = readFileSync(join(directory, 'graph.svg'), 'utf8');
+		expect(svg.match(/>Child\.svelte</g)).toHaveLength(1);
 	});
 
 	describe('readSvelteCompilerOptions', () => {
