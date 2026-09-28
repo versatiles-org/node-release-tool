@@ -45,6 +45,8 @@ const LAYOUT_OPTIONS: Record<string, string> = {
 	// Also order the ports of directories to avoid crossings, e.g. of edges to barrel files
 	// redirected to their directory. With the default of 0.1 they often cross.
 	'elk.layered.crossingMinimization.hierarchicalSweepiness': '0.5',
+	// More effort in crossing minimization than the default of 7, which is still fast
+	'elk.layered.thoroughness': '20',
 };
 
 /**
