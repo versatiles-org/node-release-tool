@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.19.0] - 2026-09-29
+
+### Features
+
+- add --barrel option to CLI and update deps-graph functionality to handle barrel imports ([7101f54](https://github.com/versatiles-org/node-release-tool/commit/7101f54025803ae9bd728d3765e20abdca3c9ec6))
+
+### Bug Fixes
+
+- enhance edge ordering in SVG graph rendering to prevent crossings ([3264316](https://github.com/versatiles-org/node-release-tool/commit/3264316c65b79c274eff6529fd32b582a1d95fd6))
+- improve crossing minimization in SVG graph layout for better edge clarity ([a083ef4](https://github.com/versatiles-org/node-release-tool/commit/a083ef43599c25e829f56f999d1eb25e1e1ceb67))
+
+### Documentation
+
+- update dep chart ([c83c5fa](https://github.com/versatiles-org/node-release-tool/commit/c83c5fa68e5d080d452fd7a2295a2b59259c73fd))
+
 ## [2.18.1] - 2026-09-28
 
 ### Bug Fixes
