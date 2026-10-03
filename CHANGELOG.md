@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.19.1] - 2026-10-03
+
+### Bug Fixes
+
+- add ignore rule for typescript dependency in dependabot configuration ([09bdef0](https://github.com/versatiles-org/node-release-tool/commit/09bdef00337b4399116cf59f49174adf25224088))
+- update brace-expansion and markdown-it dependencies to latest versions ([c91ba7b](https://github.com/versatiles-org/node-release-tool/commit/c91ba7be13d53af288afc86c3818fc8bdfb20dae))
+
+### Chores
+
+- update dependencies to latest versions ([0a616c6](https://github.com/versatiles-org/node-release-tool/commit/0a616c660a2a68f1ddf465a2a09758140d58d76e))
+
 ## [2.19.0] - 2026-09-29
 
 ### Features
