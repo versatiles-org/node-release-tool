@@ -172,12 +172,7 @@ export async function release(
 	);
 
 	// check package.json
-	const pkgRaw: unknown = JSON.parse(readFileSync(resolve(directory, 'package.json'), 'utf8'));
-	if (!isValidPackageJson(pkgRaw)) panic('package.json is not valid');
-	if (!('check' in pkgRaw.scripts)) panic('missing npm script "check" in package.json');
-	if (!('prepack' in pkgRaw.scripts)) panic('missing npm script "prepack" in package.json');
-
-	const pkg = pkgRaw;
+	const pkg = readPackageJson();
 	// a private package is never published; a public one not here if e.g. a CI workflow publishes the tag
 	const publishToNpm = publish && pkg.private !== true;
 	const repoUrl = extractGitHubRepoUrl(pkg.repository);
@@ -212,24 +207,7 @@ export async function release(
 	info('prepared release notes');
 
 	if (dryRun) {
-		info('Dry-run mode - the following actions would be performed:');
-		info(`  Version: ${versionLastPackage} -> ${nextVersion}`);
-		info('  Release notes:');
-		releaseNotes.split('\n').forEach((line) => info(`    ${line}`));
-		info('  Commands that would be executed:');
-		info('    npm run check');
-		info('    npm i --package-lock-only');
-		info('    Update CHANGELOG.md');
-		if (publishToNpm) {
-			info(`    ${RELEASE_VERSION_ENV}=${nextVersion} npm publish --access public`);
-			if (repoUrl) info('    Restore relative links in changed Markdown files');
-		}
-		info('    git add .');
-		info(`    git commit -m "v${nextVersion}"`);
-		info(`    git tag -a "v${nextVersion}" -m "new release: v${nextVersion}"`);
-		info('    git push --atomic --no-verify --follow-tags');
-		info(`    gh release create/edit "v${nextVersion}"`);
-		info('Dry-run complete - no changes were made');
+		printDryRunPlan();
 		return;
 	}
 
@@ -273,29 +251,71 @@ export async function release(
 		}),
 	);
 
-	// github release (with retry for transient network failures)
-	const releaseTag = `v${nextVersion}`;
-	if (await check('check github release', shell.ok(`gh release view ${releaseTag}`))) {
-		await check(
-			'edit release',
-			withRetry(() => shell.exec('gh', ['release', 'edit', releaseTag, '--notes', releaseNotes]), {
-				onRetry: (attempt, error) =>
-					warn(`gh release edit failed (attempt ${attempt}): ${error.message}, retrying...`),
-			}),
-		);
-	} else {
-		await check(
-			'create release',
-			withRetry(() => shell.exec('gh', ['release', 'create', releaseTag, '--notes', releaseNotes]), {
-				onRetry: (attempt, error) =>
-					warn(`gh release create failed (attempt ${attempt}): ${error.message}, retrying...`),
-			}),
-		);
-	}
+	await publishGitHubRelease();
 
 	info('Finished');
 
 	return;
+
+	/**
+	 * Reads package.json and ensures it has a version and the npm scripts a release needs.
+	 */
+	function readPackageJson(): PackageJson {
+		const pkgRaw: unknown = JSON.parse(readFileSync(resolve(directory, 'package.json'), 'utf8'));
+		if (!isValidPackageJson(pkgRaw)) panic('package.json is not valid');
+		if (!('check' in pkgRaw.scripts)) panic('missing npm script "check" in package.json');
+		if (!('prepack' in pkgRaw.scripts)) panic('missing npm script "prepack" in package.json');
+		return pkgRaw;
+	}
+
+	/**
+	 * Lists what the release would do, without doing it.
+	 */
+	function printDryRunPlan(): void {
+		info('Dry-run mode - the following actions would be performed:');
+		info(`  Version: ${versionLastPackage} -> ${nextVersion}`);
+		info('  Release notes:');
+		releaseNotes.split('\n').forEach((line) => info(`    ${line}`));
+		info('  Commands that would be executed:');
+		info('    npm run check');
+		info('    npm i --package-lock-only');
+		info('    Update CHANGELOG.md');
+		if (publishToNpm) {
+			info(`    ${RELEASE_VERSION_ENV}=${nextVersion} npm publish --access public`);
+			if (repoUrl) info('    Restore relative links in changed Markdown files');
+		}
+		info('    git add .');
+		info(`    git commit -m "v${nextVersion}"`);
+		info(`    git tag -a "v${nextVersion}" -m "new release: v${nextVersion}"`);
+		info('    git push --atomic --no-verify --follow-tags');
+		info(`    gh release create/edit "v${nextVersion}"`);
+		info('Dry-run complete - no changes were made');
+	}
+
+	/**
+	 * Creates the GitHub release for the new tag, or updates its notes if it already exists
+	 * (with retry for transient network failures).
+	 */
+	async function publishGitHubRelease(): Promise<void> {
+		const releaseTag = `v${nextVersion}`;
+		if (await check('check github release', shell.ok(`gh release view ${releaseTag}`))) {
+			await check(
+				'edit release',
+				withRetry(() => shell.exec('gh', ['release', 'edit', releaseTag, '--notes', releaseNotes]), {
+					onRetry: (attempt, error) =>
+						warn(`gh release edit failed (attempt ${attempt}): ${error.message}, retrying...`),
+				}),
+			);
+		} else {
+			await check(
+				'create release',
+				withRetry(() => shell.exec('gh', ['release', 'create', releaseTag, '--notes', releaseNotes]), {
+					onRetry: (attempt, error) =>
+						warn(`gh release create failed (attempt ${attempt}): ${error.message}, retrying...`),
+				}),
+			);
+		}
+	}
 
 	/**
 	 * Turns links to files at the release tag, written while `npm publish` ran, back into
