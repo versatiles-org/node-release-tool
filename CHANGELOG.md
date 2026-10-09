@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.20.0] - 2026-10-09
+
+### Features
+
+- add --no-publish option to release command and update related tests ([cc3bb01](https://github.com/versatiles-org/node-release-tool/commit/cc3bb01e16e1560564f6a329af29ba875e8ae616))
+- add --no-audit option to disable fixing known vulnerabilities during dependency upgrades ([96d6a82](https://github.com/versatiles-org/node-release-tool/commit/96d6a826c2a5c8d23836de26ee9d8f5b061d8929))
+- enhance dependency upgrade process and shell command management ([a830fa8](https://github.com/versatiles-org/node-release-tool/commit/a830fa87e54ffd999d7a0c6a2683806e04faeb1a))
+
+### Bug Fixes
+
+- update typescript-eslint and @inquirer/select dependencies to latest versions ([3fa1033](https://github.com/versatiles-org/node-release-tool/commit/3fa1033d838860cebffc2cc4814f7ea3a2e8101b))
+
+### Code Refactoring
+
+- streamline release function by extracting package.json reading and dry-run logic into separate functions ([27cd85f](https://github.com/versatiles-org/node-release-tool/commit/27cd85f62d33b0de2b43ce2beba28e2de7047531))
+
+### Documentation
+
+- upgrade graph ([e6a317c](https://github.com/versatiles-org/node-release-tool/commit/e6a317c6edb845f444ccc0033066cca5a6623dc3))
+
+### Chores
+
+- upgrade package-lock.json ([9754140](https://github.com/versatiles-org/node-release-tool/commit/97541402448d608f53ef64e47089a3409af013dd))
+
 ## [2.19.1] - 2026-10-03
 
 ### Bug Fixes
