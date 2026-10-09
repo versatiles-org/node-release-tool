@@ -308,14 +308,18 @@ program
 		'-b, --bump <version>',
 		'Version to release: "major", "minor", "patch" or an explicit "x.y.z". Skips the prompt, e.g. for CI.',
 	)
+	.option(
+		'--no-publish',
+		'Do not publish to npm: only raise the version, update the changelog, tag, push and create the GitHub release, e.g. when a CI workflow publishes the pushed tag.',
+	)
 	.argument('[path]', 'Root path of the Node.js project. Defaults to the current directory.')
-	.action((path: string | null, options: { dryRun?: boolean; bump?: string }) => {
+	.action((path: string | null, options: { dryRun?: boolean; bump?: string; publish: boolean }) => {
 		// "release-npm minor" reads like a version, but the argument is the project path, so the
 		// release would look for a directory named "minor" instead of raising the version.
 		if (path !== null && /^(major|minor|patch|\d+\.\d+\.\d+)$/.test(path)) {
 			panic(`"${path}" is a version, not a path. Did you mean "--bump ${path}"?`);
 		}
-		void release(resolve(process.cwd(), path ?? '.'), 'main', options.dryRun ?? false, options.bump);
+		void release(resolve(process.cwd(), path ?? '.'), 'main', options.dryRun ?? false, options.bump, options.publish);
 	});
 
 if (process.env.NODE_ENV !== 'test') {

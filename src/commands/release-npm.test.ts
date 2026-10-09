@@ -402,6 +402,29 @@ describe('release function', () => {
 		expect(infoMessages).toContain('Dry-run complete - no changes were made');
 	});
 
+	it('should not publish to npm when publishing is turned off', async () => {
+		await release('/test/directory', 'main', false, undefined, false);
+
+		// no npm login needed, no npm publish
+		expect(vi.mocked(mockedShellInstance.stdout).mock.calls).not.toContainEqual(['npm whoami']);
+		expect(vi.mocked(mockedShellInstance.runInteractive).mock.calls).toStrictEqual([]);
+
+		// the version commit, the tag and the GitHub release are still made
+		const checkCalls = vi.mocked(check).mock.calls.map((v) => v[0]);
+		expect(checkCalls).not.toContain('npm publish');
+		expect(checkCalls).not.toContain('restore relative links');
+		expect(checkCalls).toContain('git tag');
+		expect(checkCalls).toContain('git push');
+	});
+
+	it('should omit npm publish in dry-run when publishing is turned off', async () => {
+		await release('/test/directory', 'main', true, undefined, false);
+
+		const infoMessages = vi.mocked(info).mock.calls.map((c) => c[0]);
+		expect(infoMessages).not.toContain('    VRT_RELEASE_VERSION=1.1.0 npm publish --access public');
+		expect(infoMessages).toContain('    git tag -a "v1.1.0" -m "new release: v1.1.0"');
+	});
+
 	it('should create a new gh release when none exists', async () => {
 		vi.mocked(mockedShellInstance.ok).mockResolvedValueOnce(false);
 

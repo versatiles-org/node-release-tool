@@ -120,14 +120,16 @@ function isValidPackageJson(pkg: unknown): pkg is PackageJson {
  * 5. Runs project checks
  * 6. Updates package.json version
  * 7. Updates CHANGELOG.md
- * 8. Publishes to npm (if not private), with links in generated docs pinned to the release tag,
- *    then restores those links to relative ones
+ * 8. Publishes to npm (if not private, and unless `publish` is false), with links in generated docs
+ *    pinned to the release tag, then restores those links to relative ones
  * 9. Creates git commit and tag (fails if the tag already exists, so tagged files never change)
  * 10. Pushes to remote and creates GitHub release
  *
  * @param directory - The project directory containing package.json
  * @param branch - The git branch to release from (default: 'main')
  * @param dryRun - If true, simulate the release without making changes
+ * @param requestedVersion - A bump level or an explicit version, which skips the prompt
+ * @param publish - If false, do not publish to npm, e.g. when a CI workflow publishes the pushed tag
  * @throws {VrtError} If any step in the release process fails
  *
  * @example
@@ -147,6 +149,7 @@ export async function release(
 	branch = 'main',
 	dryRun = false,
 	requestedVersion?: string,
+	publish = true,
 ): Promise<void> {
 	const shell = new Shell(directory);
 	const { getCommitsBetween, getCurrentGitHubCommit, getLastGitHubTag } = getGit(directory);
@@ -175,12 +178,13 @@ export async function release(
 	if (!('prepack' in pkgRaw.scripts)) panic('missing npm script "prepack" in package.json');
 
 	const pkg = pkgRaw;
-	const isPrivatePackage = pkg.private === true;
+	// a private package is never published; a public one not here if e.g. a CI workflow publishes the tag
+	const publishToNpm = publish && pkg.private !== true;
 	const repoUrl = extractGitHubRepoUrl(pkg.repository);
 	if (!repoUrl) info('no GitHub repository URL detected in package.json — commit links will be omitted');
 
-	// npm: verify authentication (skip for private packages)
-	if (!isPrivatePackage) {
+	// npm: verify authentication (only needed to publish)
+	if (publishToNpm) {
 		await check('verify npm authentication', verifyNpmAuth());
 	}
 
@@ -216,7 +220,7 @@ export async function release(
 		info('    npm run check');
 		info('    npm i --package-lock-only');
 		info('    Update CHANGELOG.md');
-		if (!isPrivatePackage) {
+		if (publishToNpm) {
 			info(`    ${RELEASE_VERSION_ENV}=${nextVersion} npm publish --access public`);
 			if (repoUrl) info('    Restore relative links in changed Markdown files');
 		}
@@ -243,7 +247,7 @@ export async function release(
 		info('updated CHANGELOG.md');
 	}
 
-	if (!isPrivatePackage) {
+	if (publishToNpm) {
 		// npm publish (with retry for transient network failures). The version in the environment lets
 		// generated docs, e.g. `vrt deps-graph --svg`, link to files at the release tag while packing.
 		const publishShell = new Shell(directory, { [RELEASE_VERSION_ENV]: nextVersion });

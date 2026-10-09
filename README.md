@@ -171,6 +171,8 @@ On npmjs.com, a README must show the graph of its own version, even after the fi
 1. It runs `npm publish` with the environment variable `VRT_RELEASE_VERSION` set to the new version. When `prepack` regenerates the docs, `deps-graph` prints a link to the file at the release tag instead, e.g. `https://raw.githubusercontent.com/<owner>/<repo>/v1.2.3/docs/dependency-graph.svg`. The published package contains this link.
 2. After publishing, it turns these links in all changed Markdown files back into relative links, then commits and creates the tag. Existing tags are never overwritten, so a linked file can't change later.
 
+With `vrt release-npm --no-publish` the package is not published locally: the command only raises the version, updates the changelog, tags, pushes and creates the GitHub release, and needs no npm login. A CI workflow started by the tag then runs `npm publish`. For pinned links it has to set `VRT_RELEASE_VERSION` itself, e.g. `VRT_RELEASE_VERSION="${GITHUB_REF_NAME#v}" npm publish`.
+
 This requires a public GitHub repository in the `repository` field of package.json, and a `prepack` script that regenerates the README (e.g. `npm run build`, which runs `npm run doc`). `--subgraph-direction` is not supported for SVG output.
 
 # Treemap as SVG
@@ -427,6 +429,9 @@ Options:
                         explicit "x.y.z". Skips the prompt, e.g. for CI.
   -h, --help            display help for command
   -n, --dry-run         Show what would be done without making any changes
+  --no-publish          Do not publish to npm: only raise the version, update
+                        the changelog, tag, push and create the GitHub release,
+                        e.g. when a CI workflow publishes the pushed tag.
 ```
 
 ## Subcommand: `vrt treemap`

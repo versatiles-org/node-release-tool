@@ -328,43 +328,49 @@ describe('release-tool CLI', () => {
 		it('should call release with default path and options', async () => {
 			await run('release-npm');
 
-			expect(release).toHaveBeenCalledWith(process.cwd(), 'main', false, undefined);
+			expect(release).toHaveBeenCalledWith(process.cwd(), 'main', false, undefined, true);
 		});
 
 		it('should call release with specified path', async () => {
 			await run('release-npm', './packages/core');
 
-			expect(release).toHaveBeenCalledWith(expect.stringContaining('packages/core'), 'main', false, undefined);
+			expect(release).toHaveBeenCalledWith(expect.stringContaining('packages/core'), 'main', false, undefined, true);
 		});
 
 		it('should call release with dry-run flag', async () => {
 			await run('release-npm', '-n');
 
-			expect(release).toHaveBeenCalledWith(process.cwd(), 'main', true, undefined);
+			expect(release).toHaveBeenCalledWith(process.cwd(), 'main', true, undefined, true);
 		});
 
 		it('should call release with --dry-run flag', async () => {
 			await run('release-npm', '--dry-run');
 
-			expect(release).toHaveBeenCalledWith(process.cwd(), 'main', true, undefined);
+			expect(release).toHaveBeenCalledWith(process.cwd(), 'main', true, undefined, true);
 		});
 
 		it('should call release with path and dry-run flag', async () => {
 			await run('release-npm', '-n', './packages/cli');
 
-			expect(release).toHaveBeenCalledWith(expect.stringContaining('packages/cli'), 'main', true, undefined);
+			expect(release).toHaveBeenCalledWith(expect.stringContaining('packages/cli'), 'main', true, undefined, true);
 		});
 
 		it('should pass a bump level on to release', async () => {
 			await run('release-npm', '--bump', 'minor');
 
-			expect(release).toHaveBeenCalledWith(process.cwd(), 'main', false, 'minor');
+			expect(release).toHaveBeenCalledWith(process.cwd(), 'main', false, 'minor', true);
 		});
 
 		it('should pass an explicit version on to release', async () => {
 			await run('release-npm', '-b', '2.10.0');
 
-			expect(release).toHaveBeenCalledWith(process.cwd(), 'main', false, '2.10.0');
+			expect(release).toHaveBeenCalledWith(process.cwd(), 'main', false, '2.10.0', true);
+		});
+
+		it('should pass --no-publish on to release', async () => {
+			await run('release-npm', '--no-publish');
+
+			expect(release).toHaveBeenCalledWith(process.cwd(), 'main', false, undefined, false);
 		});
 
 		it.each(['major', 'minor', 'patch', '2.10.0'])('should reject "%s" as a path', async (value) => {
