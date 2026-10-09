@@ -1,4 +1,4 @@
-import { spawn } from 'child_process';
+import { type ChildProcess, spawn } from 'child_process';
 import { existsSync } from 'fs';
 import { ShellError } from './errors.js';
 import { debug, isVerbose } from './log.js';
@@ -46,6 +46,9 @@ export class Shell {
 	/** Environment overrides for all commands, or undefined to pass the current one through. */
 	private env: NodeJS.ProcessEnv | undefined;
 
+	/** The processes that are currently running. */
+	private children = new Set<ChildProcess>();
+
 	/**
 	 * Creates a new Shell instance.
 	 *
@@ -57,6 +60,27 @@ export class Shell {
 	constructor(cwd: string, env?: NodeJS.ProcessEnv) {
 		this.cwd = cwd;
 		this.env = env;
+	}
+
+	/**
+	 * Sends a signal to every command that is currently running, e.g. to stop them when the
+	 * process itself is asked to stop. Their promises settle as usual once they have exited.
+	 *
+	 * @param signal - The signal to send (default: `SIGTERM`).
+	 * @returns The number of commands the signal was sent to.
+	 */
+	kill(signal: NodeJS.Signals = 'SIGTERM'): number {
+		for (const child of this.children) child.kill(signal);
+		return this.children.size;
+	}
+
+	/**
+	 * Keeps track of a process for as long as it runs, see {@link Shell.kill}.
+	 */
+	private track(child: ChildProcess): void {
+		this.children.add(child);
+		const forget = (): boolean => this.children.delete(child);
+		child.on('error', forget).on('close', forget);
 	}
 
 	/**
@@ -206,6 +230,7 @@ export class Shell {
 					}
 				});
 
+			this.track(cp);
 			cp.stdout.on('data', (chunk) => stdout.push(chunk));
 			cp.stderr.on('data', (chunk) => stderr.push(chunk));
 			if (stdin !== undefined) {
@@ -241,6 +266,7 @@ export class Shell {
 				cwd: this.cwd,
 				stdio: 'inherit', // give full TTY passthrough
 			});
+			this.track(cp);
 
 			cp.on('error', (error) => reject(new ShellError({ command, exitCode: null, signal: null, cause: error })));
 

@@ -6,6 +6,7 @@ import { satisfies, validRange } from 'semver';
 import { formatError, validationError } from '../lib/errors.js';
 import { check, info, panic, warn } from '../lib/log.js';
 import { Shell } from '../lib/shell.js';
+import { readWorkspaceDirectories } from './deps-graph-workspace.js';
 
 /**
  * Rules describing which dependencies must not be upgraded.
@@ -43,10 +44,10 @@ export interface UpgradeOptions {
 	/**
 	 * Whether known vulnerabilities are fixed as part of the upgrade (default: `true`).
 	 *
-	 * The new lock file is resolved while the installed modules are still in place, so npm keeps
-	 * the installed versions of indirect dependencies wherever they still fit. Vulnerable ones
-	 * therefore survive an upgrade. With this, `npm audit fix` raises them within the declared
-	 * ranges, and the vulnerabilities that cannot be fixed that way are reported at the end.
+	 * The new lock file already holds the latest versions the declared ranges allow, so there is
+	 * rarely anything left to fix. Where there is, `npm audit fix` raises the affected packages
+	 * within those ranges, and the vulnerabilities that cannot be fixed that way are reported at
+	 * the end.
 	 *
 	 * The `vrt deps-upgrade` command exposes `--no-audit` to switch it off.
 	 */
@@ -79,8 +80,14 @@ const SEVERITIES = ['critical', 'high', 'moderate', 'low', 'info'] as const;
 const REMOVE_TREE = { recursive: true, force: true, maxRetries: 10, retryDelay: 100 } as const;
 
 /**
- * Upgrades the dependencies in a package.json file to their latest versions, removes existing
- * installed modules, and reinstalls them in the specified directory.
+ * Name of the directory the installed modules are moved to, next to their `node_modules`, if
+ * they cannot be moved into the temporary directory.
+ */
+const SIBLING_BACKUP = 'node_modules.vrt-backup';
+
+/**
+ * Upgrades the dependencies in a package.json file to their latest versions and installs them
+ * in the specified directory.
  *
  * This function performs the following steps:
  * 1. Backs up `package.json` and `package-lock.json` so a failed upgrade can be rolled back.
@@ -88,18 +95,20 @@ const REMOVE_TREE = { recursive: true, force: true, maxRetries: 10, retryDelay: 
  *    versions, skipping the dependencies that are ignored (see {@link parseIgnoreRules}) and,
  *    if {@link UpgradeOptions.peer} is set, capping the rest at the versions the declared peer
  *    dependencies still accept.
- * 3. Rebuilds the lock file from scratch, fixes known vulnerabilities in it unless
- *    {@link UpgradeOptions.audit} is disabled, and verifies it with `npm ci --dry-run`, while
- *    the installed modules are still in place. An upgrade that cannot be installed therefore
- *    fails here, before anything has been given up.
- * 4. Moves the installed modules into a temporary directory and installs the new ones.
- * 5. Discards the moved modules and logs that all dependencies are up to date, or which
+ * 3. Moves the installed modules, including those of workspace packages, into a temporary
+ *    directory.
+ * 4. Rebuilds the lock file from scratch. With the installed modules out of the way npm cannot
+ *    reuse them, so indirect dependencies are brought up to date as well, every package is
+ *    recorded with its `resolved` and `integrity` fields, and a conflict fails right here.
+ * 5. Fixes known vulnerabilities in the lock file unless {@link UpgradeOptions.audit} is disabled.
+ * 6. Installs the new modules.
+ * 7. Discards the moved modules and logs that all dependencies are up to date, or which
  *    vulnerabilities remain.
  *
- * If any step fails, `package.json` and `package-lock.json` are restored to their previous state
- * and the previously installed modules are moved back, so that a failed upgrade does not leave
- * the project half-upgraded. Up to step 4 that costs nothing, because the modules have not been
- * touched yet; afterwards they are moved back instead of being downloaded again.
+ * If any step fails, or the process is interrupted, `package.json` and `package-lock.json` are
+ * restored to their previous state and the previously installed modules are moved back, so that
+ * a failed upgrade does not leave the project half-upgraded and nothing has to be downloaded
+ * again.
  *
  * @param directory - The path to the directory containing the Node.js project.
  * @param options - Additional options, e.g. dependencies to ignore.
@@ -109,15 +118,12 @@ export async function upgradeDependencies(directory: string, options: UpgradeOpt
 	const shell = new Shell(directory);
 	const packageFilename = join(directory, 'package.json');
 	const lockFilename = join(directory, 'package-lock.json');
-	const modulesPath = join(directory, 'node_modules');
 
 	// Snapshot the current state before anything is modified, so a failed upgrade can be undone.
 	// Both files are small enough to keep in memory; the installed modules are not, so they are
 	// parked in a temporary directory (see below) instead.
 	const packageBackup = readFileSync(packageFilename, 'utf8');
 	const lockBackup = existsSync(lockFilename) ? readFileSync(lockFilename, 'utf8') : null;
-	let modulesRescued = false;
-	let modulesDeleted = false;
 
 	let rules: IgnoreRules;
 	try {
@@ -146,61 +152,153 @@ export async function upgradeDependencies(directory: string, options: UpgradeOpt
 		Array.from(rules).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
 	);
 
-	// The installed modules are moved here instead of being deleted, so that a failed install is
+	// The installed modules are moved here instead of being deleted, so that a failed upgrade is
 	// undone by moving them back rather than by downloading everything again.
 	const rescueDirectory = mkdtempSync(join(tmpdir(), 'vrt-deps-upgrade-'));
-	const rescuedModules = join(rescueDirectory, 'node_modules');
+
+	/** The module directories that were moved away, and where each of them is now. */
+	const parked: { from: string; to: string }[] = [];
+
+	/** The signal that asked the process to stop, if any. */
+	let interrupted: NodeJS.Signals | null = null;
 
 	/**
-	 * Restores the backed up files and, if they were already given up, the installed modules.
+	 * Moves the installed modules of the project and of its workspace packages out of the way.
+	 *
+	 * Workspace packages are included because npm keeps the modules it could not hoist in their
+	 * own `node_modules`, and would reuse those just like the ones of the project itself.
 	 */
-	async function rollback(): Promise<void> {
-		writeFileSync(packageFilename, packageBackup);
-		if (lockBackup === null) {
-			rmSync(lockFilename, { force: true });
-			info('Restored package.json');
-		} else {
-			writeFileSync(lockFilename, lockBackup);
-			info('Restored package.json and package-lock.json');
-		}
+	function parkModules(): void {
+		const directories = [directory, ...readWorkspaceDirectories(directory).map((path) => join(directory, path))];
+		directories.forEach((path, index) => {
+			const from = join(path, 'node_modules');
+			if (!existsSync(from)) return;
 
-		if (modulesRescued) {
-			// A failed install leaves a partial tree behind, so drop it before moving the old one back.
-			rmSync(modulesPath, REMOVE_TREE);
-			renameSync(rescuedModules, modulesPath);
-			modulesRescued = false;
-			info('Restored the previously installed dependencies');
-		} else if (modulesDeleted) {
-			// The modules could not be parked, so the previous state has to be installed again.
-			const reinstalled = await shell.ok(lockBackup === null ? 'npm install' : 'npm ci');
-			if (reinstalled) {
-				info('Reinstalled the previous dependencies');
-			} else {
-				warn('Could not reinstall the previous dependencies, please run "npm install" manually');
+			let to = join(rescueDirectory, String(index));
+			try {
+				renameSync(from, to);
+			} catch (error) {
+				// EXDEV: the temporary directory is on another filesystem, so the modules cannot be
+				// renamed into it. Copying a whole node_modules tree is too slow and deleting it would
+				// give up the rollback, so the modules are renamed in place instead.
+				if ((error as NodeJS.ErrnoException).code !== 'EXDEV') throw error;
+				to = join(path, SIBLING_BACKUP);
+				if (existsSync(to)) {
+					throw validationError(
+						`"${to}" is left over from an interrupted upgrade, rename it to "node_modules" or delete it`,
+					);
+				}
+				renameSync(from, to);
 			}
-		}
-
-		discardRescueDirectory();
+			parked.push({ from, to });
+		});
 	}
 
 	/**
-	 * Removes the temporary directory, including any modules still parked in it.
+	 * Restores the backed up files and the installed modules.
+	 *
+	 * Never throws, and does not stop at the first problem: every part is restored on its own, so
+	 * that one failure does not keep the others from being undone, and whatever could not be
+	 * restored is reported together with the place the previous modules are kept in.
+	 */
+	function rollback(): void {
+		const attempt = (description: string, action: () => void): boolean => {
+			try {
+				action();
+				return true;
+			} catch (error) {
+				warn(`Could not ${description}: ${formatError(error)}`);
+				return false;
+			}
+		};
+
+		const restoredPackage = attempt('restore package.json', () => writeFileSync(packageFilename, packageBackup));
+		const restoredLock = attempt('restore package-lock.json', () => {
+			if (lockBackup === null) {
+				rmSync(lockFilename, { force: true });
+			} else {
+				writeFileSync(lockFilename, lockBackup);
+			}
+		});
+		if (restoredPackage && restoredLock) {
+			info(lockBackup === null ? 'Restored package.json' : 'Restored package.json and package-lock.json');
+		}
+
+		const restoredModules = parked.length > 0;
+		const stranded = parked.splice(0).filter(
+			({ from, to }) =>
+				!attempt(`restore ${from}`, () => {
+					// A failed install leaves a partial tree behind, so drop it before moving the old one back.
+					rmSync(from, REMOVE_TREE);
+					renameSync(to, from);
+				}),
+		);
+
+		if (stranded.length > 0) {
+			// the parked modules are the only copy left, so they must survive for a manual recovery
+			for (const { from, to } of stranded) warn(`The previous content of ${from} is kept in ${to}`);
+			warn('Move it back, or restore package.json and package-lock.json and run "npm ci"');
+			return;
+		}
+		if (restoredModules) info('Restored the previously installed dependencies');
+		discard(rescueDirectory);
+	}
+
+	/**
+	 * Removes a directory the modules were parked in.
 	 *
 	 * Never throws: this runs when the upgrade is already done, or after a rollback has restored
-	 * everything, so a directory that the operating system cleans up anyway must not fail the
-	 * command or mask the error that caused the rollback.
+	 * everything, so a directory that is no longer needed must not fail the command or mask the
+	 * error that caused the rollback.
 	 */
-	function discardRescueDirectory(): void {
+	function discard(path: string): void {
 		try {
-			rmSync(rescueDirectory, REMOVE_TREE);
+			rmSync(path, REMOVE_TREE);
 		} catch (error) {
-			warn(`Could not remove the temporary directory ${rescueDirectory}: ${formatError(error)}`);
+			warn(`Could not remove the temporary directory ${path}: ${formatError(error)}`);
 		}
 	}
 
-	await check(
-		'Upgrade all dependencies',
-		async () => {
+	/**
+	 * Runs one step of the upgrade, which is rolled back if the step fails.
+	 *
+	 * A step also fails if the process was asked to stop while it ran, even if the step itself
+	 * came to an end, because a stopped command does not always report that as a failure.
+	 */
+	async function step<T>(message: string, action: () => Promise<T> | T): Promise<T> {
+		return check(
+			message,
+			async () => {
+				const result = await action();
+				if (interrupted !== null) throw new Error(`interrupted by ${interrupted}`);
+				return result;
+			},
+			rollback,
+		);
+	}
+
+	/**
+	 * Undoes the upgrade when the process is asked to stop, e.g. with Ctrl+C, instead of leaving
+	 * the project without its modules.
+	 */
+	function onSignal(signal: NodeJS.Signals): void {
+		interrupted = signal;
+		// A running command has to be gone before its files can be restored. It is stopped here,
+		// which fails the current step and thereby rolls back as soon as the command has exited.
+		if (shell.kill(signal) > 0) return;
+		process.stderr.write('\n');
+		rollback();
+		process.exit(signal === 'SIGINT' ? 130 : 143);
+	}
+
+	process.on('SIGINT', onSignal);
+	process.on('SIGTERM', onSignal);
+
+	try {
+		// This has to be the first step: the tool usually runs from the very modules that are moved
+		// away next, and ncu still loads parts of itself while it runs. Everything after it only
+		// uses code that is already loaded.
+		await step('Upgrade all dependencies', async () => {
 			await ncu({
 				cwd: directory,
 				// must be absolute: ncu resolves a relative packageFile against process.cwd(), not `cwd`
@@ -220,62 +318,47 @@ export async function upgradeDependencies(directory: string, options: UpgradeOpt
 						}
 					: {}),
 			});
-		},
-		rollback,
-	);
+		});
 
-	// The lock file is rebuilt from scratch, because resolving the new versions on top of the
-	// previous resolution hides conflicts that a fresh install would run into.
-	rmSync(lockFilename, { force: true });
+		// As long as the installed modules are in place, npm builds the new lock file on top of
+		// them: indirect dependencies keep their installed versions, their "resolved" and
+		// "integrity" fields are dropped, and conflicts that a clean install runs into stay hidden.
+		await step('Set the installed dependencies aside', parkModules);
 
-	await check(
-		'Resolve the new dependencies',
-		shell.stdout('npm install --package-lock-only --ignore-scripts'),
-		rollback,
-	);
+		// The lock file is rebuilt from scratch, because resolving the new versions on top of the
+		// previous resolution hides conflicts that a fresh install would run into.
+		await step('Resolve the new dependencies', () => {
+			rmSync(lockFilename, { force: true });
+			return shell.stdout('npm install --package-lock-only --ignore-scripts');
+		});
 
-	// Vulnerabilities are fixed in the lock file only, before it is verified and installed, so the
-	// fixed versions go through the same checks and the same rollback as the rest of the upgrade.
-	const audit = options.audit ?? true;
-	const vulnerabilities = audit
-		? await check('Fix known vulnerabilities', fixVulnerabilities(shell), rollback)
-		: undefined;
+		// Vulnerabilities are fixed in the lock file only, before it is installed, so the fixed
+		// versions are covered by the same rollback as the rest of the upgrade.
+		const audit = options.audit ?? true;
+		const vulnerabilities = audit
+			? await step('Fix known vulnerabilities', () => fixVulnerabilities(shell))
+			: undefined;
 
-	// Resolving alone is not conclusive while node_modules is still in place: npm then reuses the
-	// installed tree and accepts versions that a clean install rejects. "npm ci --dry-run" checks
-	// the new lock file strictly, and does so without touching the installed modules. Scripts are
-	// skipped because verifying must not run the project's install hooks a second time.
-	await check('Verify the new dependencies', shell.stdout('npm ci --dry-run --ignore-scripts'), rollback);
+		await step('Install all dependencies', () => shell.stdout('npm ci'));
 
-	// Only now, with the new tree known to be installable, are the modules given up.
-	if (existsSync(modulesPath)) {
-		try {
-			renameSync(modulesPath, rescuedModules);
-			modulesRescued = true;
-		} catch (error) {
-			// EXDEV: the temporary directory is on another filesystem, so the modules cannot be
-			// renamed. Copying a whole node_modules tree costs more than the reinstall it saves,
-			// so they are deleted and a rollback falls back to reinstalling them.
-			if ((error as NodeJS.ErrnoException).code !== 'EXDEV') throw error;
-			rmSync(modulesPath, REMOVE_TREE);
+		// The upgrade is complete, so the previous modules are no longer needed.
+		for (const { to } of parked) if (!to.startsWith(rescueDirectory)) discard(to);
+		discard(rescueDirectory);
+
+		// Final log message
+		info('All dependencies are up to date');
+
+		if (vulnerabilities === null) {
+			warn('Could not check for known vulnerabilities, please run "npm audit" manually');
+		} else if (vulnerabilities && vulnerabilities.total > 0) {
+			const severities = SEVERITIES.filter((severity) => vulnerabilities[severity] > 0)
+				.map((severity) => `${vulnerabilities[severity]} ${severity}`)
+				.join(', ');
+			warn(`Known vulnerabilities remaining: ${severities} - run "npm audit" for details`);
 		}
-		modulesDeleted = true;
-	}
-
-	await check('Install all dependencies', shell.stdout('npm ci'), rollback);
-
-	discardRescueDirectory();
-
-	// Final log message
-	info('All dependencies are up to date');
-
-	if (vulnerabilities === null) {
-		warn('Could not check for known vulnerabilities, please run "npm audit" manually');
-	} else if (vulnerabilities && vulnerabilities.total > 0) {
-		const severities = SEVERITIES.filter((severity) => vulnerabilities[severity] > 0)
-			.map((severity) => `${vulnerabilities[severity]} ${severity}`)
-			.join(', ');
-		warn(`Known vulnerabilities remaining: ${severities} - run "npm audit" for details`);
+	} finally {
+		process.off('SIGINT', onSignal);
+		process.off('SIGTERM', onSignal);
 	}
 }
 

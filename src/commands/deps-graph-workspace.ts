@@ -34,31 +34,37 @@ const OUTPUT_EXTENSION = /(\.d)?\.([cm]?[jt]sx?|svelte)$/;
  * from `src/lib` like `svelte-package` does.
  */
 export function readWorkspacePackages(directory: string, readTsConfig: typeof extractTSConfig): WorkspacePackage[] {
-	const patterns = readWorkspacePatterns(directory);
-	return patterns
-		.flatMap((pattern) => expandDirectoryGlob(directory, pattern))
-		.flatMap((packageDirectory) => {
-			const name = readPackageJson(resolve(directory, packageDirectory, 'package.json'))?.name;
-			if (typeof name !== 'string') return [];
+	return readWorkspaceDirectories(directory).flatMap((packageDirectory) => {
+		const name = readPackageJson(resolve(directory, packageDirectory, 'package.json'))?.name;
+		if (typeof name !== 'string') return [];
 
-			const toPath = (absolute: string): string => relative(directory, absolute).split('\\').join('/');
-			let outDir = posix.join(packageDirectory, 'dist');
-			let rootDirs = [posix.join(packageDirectory, 'src'), posix.join(packageDirectory, 'src/lib')];
+		const toPath = (absolute: string): string => relative(directory, absolute).split('\\').join('/');
+		let outDir = posix.join(packageDirectory, 'dist');
+		let rootDirs = [posix.join(packageDirectory, 'src'), posix.join(packageDirectory, 'src/lib')];
 
-			const tsconfig = ['tsconfig.build.json', 'tsconfig.json']
-				.map((file) => resolve(directory, packageDirectory, file))
-				.find((file) => existsSync(file));
-			if (tsconfig) {
-				try {
-					const { options } = readTsConfig(tsconfig);
-					if (options.outDir) outDir = toPath(options.outDir);
-					if (options.rootDir) rootDirs = [toPath(options.rootDir)];
-				} catch (error) {
-					warn(`could not read ${tsconfig}: ${String(error)}`);
-				}
+		const tsconfig = ['tsconfig.build.json', 'tsconfig.json']
+			.map((file) => resolve(directory, packageDirectory, file))
+			.find((file) => existsSync(file));
+		if (tsconfig) {
+			try {
+				const { options } = readTsConfig(tsconfig);
+				if (options.outDir) outDir = toPath(options.outDir);
+				if (options.rootDir) rootDirs = [toPath(options.rootDir)];
+			} catch (error) {
+				warn(`could not read ${tsconfig}: ${String(error)}`);
 			}
-			return [{ name, directory: packageDirectory, outDir, rootDirs }];
-		});
+		}
+		return [{ name, directory: packageDirectory, outDir, rootDirs }];
+	});
+}
+
+/**
+ * Returns the directories matched by the `workspaces` field of the `package.json` in
+ * `directory`, relative to it and with forward slashes. Returns an empty array if it is
+ * no workspace.
+ */
+export function readWorkspaceDirectories(directory: string): string[] {
+	return readWorkspacePatterns(directory).flatMap((pattern) => expandDirectoryGlob(directory, pattern));
 }
 
 /**

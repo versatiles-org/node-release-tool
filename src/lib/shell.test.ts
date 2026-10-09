@@ -16,6 +16,16 @@ describe('Shell', () => {
 	const cwd = new URL('../../', import.meta.url).pathname;
 	const shell = new Shell(cwd);
 
+	describe('kill', () => {
+		it('stops the running commands and reports how many there were', async () => {
+			const sleeping = shell.run('sleep 30', false);
+			expect(shell.kill('SIGTERM')).toBe(1);
+			await expect(sleeping).resolves.toMatchObject({ code: null, signal: 'SIGTERM' });
+			// a command that has ended is no longer tracked
+			expect(shell.kill()).toBe(0);
+		});
+	});
+
 	describe('run', () => {
 		it('runs ls successfully', async () => {
 			const ls = await shell.run('ls -1');
