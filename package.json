@@ -54,11 +54,11 @@
     "prettier": "^3.9.9",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.71.0",
+    "typescript-eslint": "^8.71.1",
     "vitest": "^5.0.3"
   },
   "dependencies": {
-    "@inquirer/select": "^5.2.5",
+    "@inquirer/select": "^5.2.6",
     "commander": "^15.0.0",
     "dependency-cruiser": "^18.5.0",
     "elkjs": "^0.12.0",
