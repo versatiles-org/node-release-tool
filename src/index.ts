@@ -142,12 +142,13 @@ program
 		(value: string, prev: string[] = []) => prev.concat(value),
 		[] as string[],
 	)
+	.option('--no-audit', 'Do not fix known vulnerabilities with "npm audit fix".')
 	.option(
 		'--no-peer',
 		'Upgrade to the latest version even when a peer dependency of another package does not allow it.',
 	)
-	.action((opts: { ignore: string[]; peer: boolean }) => {
-		void upgradeDependencies(process.cwd(), { ignore: opts.ignore, peer: opts.peer });
+	.action((opts: { ignore: string[]; peer: boolean; audit: boolean }) => {
+		void upgradeDependencies(process.cwd(), { ignore: opts.ignore, peer: opts.peer, audit: opts.audit });
 	});
 
 /**

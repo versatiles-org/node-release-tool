@@ -173,7 +173,7 @@ describe('release-tool CLI', () => {
 		it('should call upgradeDependencies with current working directory', async () => {
 			await run('deps-upgrade');
 
-			expect(upgradeDependencies).toHaveBeenCalledWith(process.cwd(), { ignore: [], peer: true });
+			expect(upgradeDependencies).toHaveBeenCalledWith(process.cwd(), { ignore: [], peer: true, audit: true });
 		});
 
 		it('should collect repeated --ignore options', async () => {
@@ -182,13 +182,20 @@ describe('release-tool CLI', () => {
 			expect(upgradeDependencies).toHaveBeenCalledWith(process.cwd(), {
 				ignore: ['path-to-regexp@<7.0.0', 'typescript'],
 				peer: true,
+				audit: true,
 			});
 		});
 
 		it('should disable the peer check with --no-peer', async () => {
 			await run('deps-upgrade', '--no-peer');
 
-			expect(upgradeDependencies).toHaveBeenCalledWith(process.cwd(), { ignore: [], peer: false });
+			expect(upgradeDependencies).toHaveBeenCalledWith(process.cwd(), { ignore: [], peer: false, audit: true });
+		});
+
+		it('should disable the vulnerability fix with --no-audit', async () => {
+			await run('deps-upgrade', '--no-audit');
+
+			expect(upgradeDependencies).toHaveBeenCalledWith(process.cwd(), { ignore: [], peer: true, audit: false });
 		});
 	});
 

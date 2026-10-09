@@ -25,7 +25,12 @@ vi.mock('fs', () => ({
 vi.mock('os', () => ({ tmpdir: vi.fn(() => '/tmp') }));
 
 const mockedShellInstance = {
-	run: vi.fn(async () => ({ code: 0, signal: null, stdout: '', stderr: '' })),
+	run: vi.fn(async (_command: string, _errorOnCodeNonZero?: boolean) => ({
+		code: 0 as number | null,
+		signal: null,
+		stdout: '',
+		stderr: '',
+	})),
 	stdout: vi.fn(async (_command: string) => ''),
 	ok: vi.fn(async () => true),
 };
@@ -53,6 +58,25 @@ const REMOVE_TREE = { recursive: true, force: true, maxRetries: 10, retryDelay: 
 const RESOLVE = 'npm install --package-lock-only --ignore-scripts';
 const VERIFY = 'npm ci --dry-run --ignore-scripts';
 const INSTALL = 'npm ci';
+const AUDIT_FIX = 'npm audit fix --package-lock-only';
+const AUDIT = 'npm audit --json';
+
+/** Lets `npm audit --json` print the given output, with the exit code npm uses for it. */
+function mockAudit(stdout: string, code = 0): void {
+	vi.mocked(mockedShellInstance.run).mockImplementation(async (command: string) => ({
+		code: command === AUDIT ? code : 0,
+		signal: null,
+		stdout: command === AUDIT ? stdout : '',
+		stderr: '',
+	}));
+}
+
+/** Builds the output of `npm audit --json` for the given number of vulnerabilities. */
+function auditReport(counts: Partial<Record<'info' | 'low' | 'moderate' | 'high' | 'critical', number>> = {}): string {
+	const vulnerabilities = { info: 0, low: 0, moderate: 0, high: 0, critical: 0, ...counts };
+	const total = Object.values(vulnerabilities).reduce((sum, count) => sum + count, 0);
+	return JSON.stringify({ metadata: { vulnerabilities: { ...vulnerabilities, total } } });
+}
 
 /** Lets every step succeed except the given command. */
 function failCommand(command: string): void {
@@ -85,6 +109,7 @@ describe('upgradeDependencies', () => {
 		vi.mocked(mockedShellInstance.ok).mockResolvedValue(true);
 		// clearAllMocks keeps implementations, so the ones set per test have to be reset here
 		vi.mocked(mockedShellInstance.stdout).mockImplementation(async () => '');
+		mockAudit(auditReport());
 		vi.mocked(renameSync).mockImplementation(() => undefined);
 		vi.mocked(rmSync).mockImplementation(() => undefined);
 
@@ -124,12 +149,16 @@ describe('upgradeDependencies', () => {
 		expect(vi.mocked(check).mock.calls.map((c) => c[0])).toStrictEqual([
 			'Upgrade all dependencies',
 			'Resolve the new dependencies',
+			'Fix known vulnerabilities',
 			'Verify the new dependencies',
 			'Install all dependencies',
 		]);
 
 		// Verify shell commands were executed
-		expect(vi.mocked(mockedShellInstance.run)).not.toHaveBeenCalled();
+		expect(vi.mocked(mockedShellInstance.run).mock.calls).toStrictEqual([
+			[AUDIT_FIX, false],
+			[AUDIT, false],
+		]);
 		expect(vi.mocked(mockedShellInstance.stdout).mock.calls).toStrictEqual([[RESOLVE], [VERIFY], [INSTALL]]);
 
 		// The modules are parked outside the project, so they never appear in the project directory
@@ -299,6 +328,69 @@ describe('upgradeDependencies', () => {
 			failRenameWith('EACCES');
 
 			await expect(upgradeDependencies('/test/directory')).rejects.toThrow('rename failed');
+		});
+	});
+
+	describe('known vulnerabilities', () => {
+		it('should fix them in the lock file before it is verified', async () => {
+			const commands: string[] = [];
+			vi.mocked(mockedShellInstance.stdout).mockImplementation(async (command: string) => {
+				commands.push(command);
+				return '';
+			});
+			vi.mocked(mockedShellInstance.run).mockImplementation(async (command: string) => {
+				commands.push(command);
+				return { code: 0, signal: null, stdout: auditReport(), stderr: '' };
+			});
+
+			await upgradeDependencies('/test/directory', { peer: true });
+
+			expect(commands).toStrictEqual([RESOLVE, AUDIT_FIX, AUDIT, VERIFY, INSTALL]);
+			expect(vi.mocked(warn)).not.toHaveBeenCalled();
+		});
+
+		it('should report the vulnerabilities that remain without failing', async () => {
+			// npm exits with a non-zero code as long as a vulnerability is left
+			mockAudit(auditReport({ moderate: 1, critical: 2 }), 1);
+
+			await upgradeDependencies('/test/directory', { peer: true });
+
+			expect(vi.mocked(warn).mock.calls).toStrictEqual([
+				['Known vulnerabilities remaining: 2 critical, 1 moderate - run "npm audit" for details'],
+			]);
+			expect(vi.mocked(writeFileSync)).not.toHaveBeenCalled();
+			expect(vi.mocked(mockedShellInstance.stdout)).toHaveBeenCalledWith(INSTALL);
+		});
+
+		it.each([
+			['is not JSON', 'npm error audit endpoint returned an error'],
+			['has no counts', '{"error":{"code":"ENOAUDIT"}}'],
+		])('should only warn if the audit output %s', async (_case, stdout) => {
+			mockAudit(stdout, 1);
+
+			await upgradeDependencies('/test/directory', { peer: true });
+
+			expect(vi.mocked(warn).mock.calls).toStrictEqual([
+				['Could not check for known vulnerabilities, please run "npm audit" manually'],
+			]);
+			expect(vi.mocked(writeFileSync)).not.toHaveBeenCalled();
+		});
+
+		it('should roll back if the fixed lock file cannot be installed', async () => {
+			failCommand(VERIFY);
+
+			await expect(upgradeDependencies('/test/directory')).rejects.toThrow(`${VERIFY} failed`);
+
+			expect(vi.mocked(mockedShellInstance.run)).toHaveBeenCalledWith(AUDIT_FIX, false);
+			expect(vi.mocked(writeFileSync)).toHaveBeenCalledWith(LOCK_FILE, 'old package-lock.json');
+		});
+
+		it('should leave them alone when the option is disabled', async () => {
+			await upgradeDependencies('/test/directory', { peer: true, audit: false });
+
+			expect(vi.mocked(mockedShellInstance.run)).not.toHaveBeenCalled();
+			expect(vi.mocked(check).mock.calls.map((c) => c[0])).not.toContain('Fix known vulnerabilities');
+			expect(vi.mocked(warn)).not.toHaveBeenCalled();
 		});
 	});
 

@@ -39,7 +39,34 @@ export interface UpgradeOptions {
 	 * switch it off, so the safe behaviour is the one users get.
 	 */
 	peer?: boolean;
+
+	/**
+	 * Whether known vulnerabilities are fixed as part of the upgrade (default: `true`).
+	 *
+	 * The new lock file is resolved while the installed modules are still in place, so npm keeps
+	 * the installed versions of indirect dependencies wherever they still fit. Vulnerable ones
+	 * therefore survive an upgrade. With this, `npm audit fix` raises them within the declared
+	 * ranges, and the vulnerabilities that cannot be fixed that way are reported at the end.
+	 *
+	 * The `vrt deps-upgrade` command exposes `--no-audit` to switch it off.
+	 */
+	audit?: boolean;
 }
+
+/**
+ * Number of known vulnerabilities per severity, as reported by `npm audit`.
+ */
+interface VulnerabilityCounts {
+	info: number;
+	low: number;
+	moderate: number;
+	high: number;
+	critical: number;
+	total: number;
+}
+
+/** Severities of vulnerabilities, from the most to the least severe. */
+const SEVERITIES = ['critical', 'high', 'moderate', 'low', 'info'] as const;
 
 /**
  * Options for deleting a whole directory tree.
@@ -61,11 +88,13 @@ const REMOVE_TREE = { recursive: true, force: true, maxRetries: 10, retryDelay: 
  *    versions, skipping the dependencies that are ignored (see {@link parseIgnoreRules}) and,
  *    if {@link UpgradeOptions.peer} is set, capping the rest at the versions the declared peer
  *    dependencies still accept.
- * 3. Rebuilds the lock file from scratch and verifies it with `npm ci --dry-run`, while the
- *    installed modules are still in place. An upgrade that cannot be installed therefore fails
- *    here, before anything has been given up.
+ * 3. Rebuilds the lock file from scratch, fixes known vulnerabilities in it unless
+ *    {@link UpgradeOptions.audit} is disabled, and verifies it with `npm ci --dry-run`, while
+ *    the installed modules are still in place. An upgrade that cannot be installed therefore
+ *    fails here, before anything has been given up.
  * 4. Moves the installed modules into a temporary directory and installs the new ones.
- * 5. Discards the moved modules and logs that all dependencies are up to date.
+ * 5. Discards the moved modules and logs that all dependencies are up to date, or which
+ *    vulnerabilities remain.
  *
  * If any step fails, `package.json` and `package-lock.json` are restored to their previous state
  * and the previously installed modules are moved back, so that a failed upgrade does not leave
@@ -205,6 +234,13 @@ export async function upgradeDependencies(directory: string, options: UpgradeOpt
 		rollback,
 	);
 
+	// Vulnerabilities are fixed in the lock file only, before it is verified and installed, so the
+	// fixed versions go through the same checks and the same rollback as the rest of the upgrade.
+	const audit = options.audit ?? true;
+	const vulnerabilities = audit
+		? await check('Fix known vulnerabilities', fixVulnerabilities(shell), rollback)
+		: undefined;
+
 	// Resolving alone is not conclusive while node_modules is still in place: npm then reuses the
 	// installed tree and accepts versions that a clean install rejects. "npm ci --dry-run" checks
 	// the new lock file strictly, and does so without touching the installed modules. Scripts are
@@ -232,6 +268,41 @@ export async function upgradeDependencies(directory: string, options: UpgradeOpt
 
 	// Final log message
 	info('All dependencies are up to date');
+
+	if (vulnerabilities === null) {
+		warn('Could not check for known vulnerabilities, please run "npm audit" manually');
+	} else if (vulnerabilities && vulnerabilities.total > 0) {
+		const severities = SEVERITIES.filter((severity) => vulnerabilities[severity] > 0)
+			.map((severity) => `${vulnerabilities[severity]} ${severity}`)
+			.join(', ');
+		warn(`Known vulnerabilities remaining: ${severities} - run "npm audit" for details`);
+	}
+}
+
+/**
+ * Fixes known vulnerabilities in the lock file, as far as the declared version ranges allow.
+ *
+ * Never uses `--force`, which would install breaking versions and thereby override both the
+ * upgrade that just happened and the dependencies that are held back.
+ *
+ * Does not fail if vulnerabilities remain or cannot be looked up, e.g. because the registry has
+ * no audit endpoint: neither is a reason to roll back an upgrade that is fine otherwise.
+ *
+ * @param shell - A shell in the project directory.
+ * @returns The vulnerabilities that remain, or `null` if they could not be determined.
+ */
+async function fixVulnerabilities(shell: Shell): Promise<VulnerabilityCounts | null> {
+	// exits with a non-zero code whenever a vulnerability is left, so the code says nothing here
+	await shell.run('npm audit fix --package-lock-only', false);
+
+	const { stdout } = await shell.run('npm audit --json', false);
+	try {
+		const report = JSON.parse(stdout) as { metadata?: { vulnerabilities?: VulnerabilityCounts } };
+		const counts = report.metadata?.vulnerabilities;
+		return typeof counts?.total === 'number' ? counts : null;
+	} catch {
+		return null;
+	}
 }
 
 /**
