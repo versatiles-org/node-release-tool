@@ -3,6 +3,31 @@ import { formatError } from './errors.js';
 /** Internal flag to track verbose mode state. */
 let verboseMode = false;
 
+/** Message of the running {@link check}, whose line is still open, or undefined if none runs. */
+let pendingCheck: string | undefined;
+
+/** Clears the current terminal line and moves the cursor to its start. */
+const CLEAR_LINE = '\r\x1b[K';
+
+/**
+ * Formats the open line of a running {@link check}, without a line break.
+ */
+function pendingLine(message: string): string {
+	return `\x1b[0;90m\u2B95 ${message}\x1b[0m`;
+}
+
+/**
+ * Writes a complete line to stderr. While a {@link check} runs, its open line is cleared first and
+ * printed again below the text, so that messages logged during a check do not end up in its line.
+ */
+function writeLine(text: string): void {
+	if (pendingCheck === undefined) {
+		process.stderr.write(text);
+	} else {
+		process.stderr.write(CLEAR_LINE + text + pendingLine(pendingCheck));
+	}
+}
+
 /**
  * Enables or disables verbose logging mode.
  * When enabled, debug messages will be printed to stderr.
@@ -41,7 +66,7 @@ export function panic(text: string): never {
  * @param text - The error message to display.
  */
 export function printError(text: string): void {
-	process.stderr.write(`\x1b[1;31m! ERROR: ${text}\x1b[0m\n`);
+	writeLine(`\x1b[1;31m! ERROR: ${text}\x1b[0m\n`);
 }
 
 /**
@@ -51,7 +76,7 @@ export function printError(text: string): void {
  * @param text - The warning message to display.
  */
 export function warn(text: string): void {
-	process.stderr.write(`\x1b[1;33m! warning: ${text}\x1b[0m\n`);
+	writeLine(`\x1b[1;33m! warning: ${text}\x1b[0m\n`);
 }
 
 /**
@@ -60,7 +85,7 @@ export function warn(text: string): void {
  * @param text - The informational message to display.
  */
 export function info(text: string): void {
-	process.stderr.write(`\x1b[0mi ${text}\n`);
+	writeLine(`\x1b[0mi ${text}\n`);
 }
 
 /**
@@ -71,7 +96,7 @@ export function info(text: string): void {
  */
 export function debug(text: string): void {
 	if (verboseMode) {
-		process.stderr.write(`\x1b[0;90m  ${text}\x1b[0m\n`);
+		writeLine(`\x1b[0;90m  ${text}\x1b[0m\n`);
 	}
 }
 
@@ -110,13 +135,22 @@ export async function check<T>(
 	promise: Promise<T> | (() => Promise<T>),
 	onError?: (error: unknown) => Promise<void> | void,
 ): Promise<T> {
-	process.stderr.write(`\x1b[0;90m\u2B95 ${message}\x1b[0m`);
+	// a check started within another one replaces the open line until it is done
+	const outerCheck = pendingCheck;
+	process.stderr.write((outerCheck === undefined ? '' : CLEAR_LINE) + pendingLine(message));
+	pendingCheck = message;
+
+	const finish = (line: string): void => {
+		pendingCheck = outerCheck;
+		process.stderr.write(CLEAR_LINE + line + '\n' + (outerCheck === undefined ? '' : pendingLine(outerCheck)));
+	};
+
 	try {
 		const result: T = await (typeof promise === 'function' ? promise() : promise);
-		process.stderr.write(`\r\x1b[0;92m\u2714 ${message}\x1b[0m\n`);
+		finish(`\x1b[0;92m\u2714 ${message}\x1b[0m`);
 		return result;
 	} catch (error) {
-		process.stderr.write(`\r\x1b[0;91m\u2718 ${message}\x1b[0m\n`);
+		finish(`\x1b[0;91m\u2718 ${message}\x1b[0m`);
 		printError(formatError(error));
 		if (onError) await onError(error);
 		abort();

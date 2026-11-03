@@ -78,6 +78,32 @@ describe('Your Module Tests', () => {
 		expect(onError).not.toHaveBeenCalled();
 	});
 
+	it('check should keep messages logged while it runs out of its line', async () => {
+		await check('test check', async () => {
+			await Promise.resolve();
+			info('inside');
+		});
+		info('after');
+
+		expect(processSpy.mock.calls.map((c) => c[0])).toStrictEqual([
+			'\x1b[0;90m⮕ test check\x1b[0m',
+			'\r\x1b[K\x1b[0mi inside\n\x1b[0;90m⮕ test check\x1b[0m',
+			'\r\x1b[K\x1b[0;92m✔ test check\x1b[0m\n',
+			'\x1b[0mi after\n',
+		]);
+	});
+
+	it('check should restore the line of an outer check when a nested one is done', async () => {
+		await check('outer', () => check('inner', Promise.resolve()));
+
+		expect(processSpy.mock.calls.map((c) => c[0])).toStrictEqual([
+			'\x1b[0;90m⮕ outer\x1b[0m',
+			'\r\x1b[K\x1b[0;90m⮕ inner\x1b[0m',
+			'\r\x1b[K\x1b[0;92m✔ inner\x1b[0m\n\x1b[0;90m⮕ outer\x1b[0m',
+			'\r\x1b[K\x1b[0;92m✔ outer\x1b[0m\n',
+		]);
+	});
+
 	it('check should not report "[object Object]" for non-Error rejections', async () => {
 		// see issue #55
 		const promise = Promise.reject({ code: 1, stdout: '', stderr: 'npm install failed' });
