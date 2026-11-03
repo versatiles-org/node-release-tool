@@ -15,7 +15,8 @@ import {
 	parseConventionalCommit,
 	type ParsedCommit,
 } from '../lib/git.js';
-import { check, info, panic, warn } from '../lib/log.js';
+import { check, debug, info, panic, warn } from '../lib/log.js';
+import { formatDuration, waitForNpmRelease } from '../lib/npm-registry.js';
 import { getReleaseBaseUrl, RELEASE_VERSION_ENV, unpinReleaseLinks } from '../lib/release-link.js';
 import { withRetry } from '../lib/retry.js';
 import { Shell } from '../lib/shell.js';
@@ -24,6 +25,8 @@ import { Shell } from '../lib/shell.js';
  * Represents the required structure of package.json for releases.
  */
 interface PackageJson {
+	/** Package name, needed to look up the published version on npm */
+	name?: string;
 	/** Current package version (semver format) */
 	version: string;
 	/** npm scripts configuration */
@@ -124,6 +127,7 @@ function isValidPackageJson(pkg: unknown): pkg is PackageJson {
  *    pinned to the release tag, then restores those links to relative ones
  * 9. Creates git commit and tag (fails if the tag already exists, so tagged files never change)
  * 10. Pushes to remote and creates GitHub release
+ * 11. Waits until npm serves the published version, which may take a few minutes
  *
  * @param directory - The project directory containing package.json
  * @param branch - The git branch to release from (default: 'main')
@@ -253,6 +257,8 @@ export async function release(
 
 	await publishGitHubRelease();
 
+	if (publishToNpm) await waitUntilAvailableOnNpm();
+
 	info('Finished');
 
 	return;
@@ -289,6 +295,7 @@ export async function release(
 		info(`    git tag -a "v${nextVersion}" -m "new release: v${nextVersion}"`);
 		info('    git push --atomic --no-verify --follow-tags');
 		info(`    gh release create/edit "v${nextVersion}"`);
+		if (publishToNpm) info(`    Wait until npm serves ${pkg.name ?? 'the package'}@${nextVersion}`);
 		info('Dry-run complete - no changes were made');
 	}
 
@@ -314,6 +321,30 @@ export async function release(
 						warn(`gh release create failed (attempt ${attempt}): ${error.message}, retrying...`),
 				}),
 			);
+		}
+	}
+
+	/**
+	 * Probes npm until the published version can be installed. npm may hold a new version back for
+	 * a few minutes, e.g. for security scans. Running out of time only warns, because the release
+	 * itself is complete at this point.
+	 */
+	async function waitUntilAvailableOnNpm(): Promise<void> {
+		if (!pkg.name) {
+			warn('package.json has no name, so the release cannot be looked up on npm');
+			return;
+		}
+		const spec = `${pkg.name}@${nextVersion}`;
+		const elapsed = await check(
+			`wait until npm serves ${spec}`,
+			waitForNpmRelease(shell, pkg.name, nextVersion, {
+				onPending: (ms) => debug(`${spec} not available yet after ${formatDuration(ms)}`),
+			}),
+		);
+		if (elapsed === undefined) {
+			warn(`${spec} is still not available on npm, check it later with "npm view ${spec}"`);
+		} else {
+			info(`${spec} is available on npm after ${formatDuration(elapsed)}`);
 		}
 	}
 

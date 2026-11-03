@@ -13,6 +13,7 @@ vi.mock('fs', () => ({
 
 vi.mock('../lib/log.js', () => ({
 	check: vi.fn(),
+	debug: vi.fn(),
 	info: vi.fn(),
 	panic: vi.fn((message: string) => {
 		throw Error(message);
@@ -53,6 +54,14 @@ vi.mock('../lib/shell.js', () => ({
 	}),
 }));
 
+vi.mock('../lib/npm-registry.js', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../lib/npm-registry.js')>();
+	return {
+		...actual,
+		waitForNpmRelease: vi.fn(async () => 75_000),
+	};
+});
+
 vi.mock('../lib/git.js', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('../lib/git.js')>();
 	return {
@@ -65,6 +74,7 @@ const select = (await import('@inquirer/select')).default;
 const { readFileSync, writeFileSync } = await import('fs');
 const { check, info, panic, warn } = await import('../lib/log.js');
 const { getGit } = await import('../lib/git.js');
+const { waitForNpmRelease } = await import('../lib/npm-registry.js');
 const { bumpVersion, release, resolveRequestedVersion } = await import('./release-npm.js');
 
 describe('release function', () => {
@@ -121,6 +131,7 @@ describe('release function', () => {
 					return '# Changelog\n\n## [0.9.0] - 2024-01-01\n\n- old entry\n';
 				}
 				return JSON.stringify({
+					name: 'test-package',
 					version: '1.0.0',
 					scripts: { check: '', prepack: '' },
 					repository: { type: 'git', url: 'git+https://github.com/owner/repo.git' },
@@ -144,6 +155,7 @@ describe('release function', () => {
 			['authenticated as npm user: test-user'],
 			['prepared release notes'],
 			['updated CHANGELOG.md'],
+			['test-package@1.1.0 is available on npm after 1m 15s'],
 			['Finished'],
 		]);
 		expect(vi.mocked(warn).mock.calls).toStrictEqual([
@@ -168,6 +180,10 @@ describe('release function', () => {
 			'git push',
 			'check github release',
 			'edit release',
+			'wait until npm serves test-package@1.1.0',
+		]);
+		expect(vi.mocked(waitForNpmRelease).mock.calls).toStrictEqual([
+			[mockedShellInstance, 'test-package', '1.1.0', { onPending: expect.any(Function) }],
 		]);
 
 		expect(vi.mocked(readFileSync).mock.calls).toStrictEqual([
@@ -182,6 +198,7 @@ describe('release function', () => {
 			.mock.calls.find((c) => c[0].toString().includes('package.json'));
 		expect(packageJsonWrite).toBeDefined();
 		expect(JSON.parse(packageJsonWrite![1] as string)).toStrictEqual({
+			name: 'test-package',
 			version: '1.1.0',
 			scripts: { check: '', prepack: '' },
 			repository: { type: 'git', url: 'git+https://github.com/owner/repo.git' },
@@ -336,6 +353,25 @@ describe('release function', () => {
 		const checkCalls = vi.mocked(check).mock.calls.map((v) => v[0]);
 		expect(checkCalls).not.toContain('verify npm authentication');
 		expect(checkCalls).not.toContain('npm publish');
+		expect(vi.mocked(waitForNpmRelease)).not.toHaveBeenCalled();
+	});
+
+	it('should only warn when npm does not serve the release in time', async () => {
+		vi.mocked(waitForNpmRelease).mockResolvedValueOnce(undefined);
+
+		await release('/test/directory', 'main');
+
+		expect(vi.mocked(warn)).toHaveBeenCalledWith(
+			'test-package@1.1.0 is still not available on npm, check it later with "npm view test-package@1.1.0"',
+		);
+		expect(vi.mocked(panic)).not.toHaveBeenCalled();
+		expect(vi.mocked(info)).toHaveBeenLastCalledWith('Finished');
+	});
+
+	it('should not wait for npm when publishing is left to CI', async () => {
+		await release('/test/directory', 'main', false, undefined, false);
+
+		expect(vi.mocked(waitForNpmRelease)).not.toHaveBeenCalled();
 	});
 
 	it('should throw error when uncommitted changes exist', async () => {

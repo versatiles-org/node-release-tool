@@ -244,7 +244,7 @@ Commands:
   doc-toc <readme> [heading]                Generate a Table of Contents (TOC) in a Markdown file.
   doc-typescript [options]                  Generate documentation for a TypeScript project.
   help [command]                            display help for command
-  release-npm [options] [path]              Publish an npm package from the specified path to the npm registry.
+  release-npm [options] [path]              Publish an npm package from the specified path to the npm registry, then wait until npm serves the new version.
   treemap [options]                         Render a treemap from JSON on stdin as SVG file and output a Markdown image link to it.
 ```
 
@@ -420,7 +420,8 @@ Options:
 $ vrt release-npm
 Usage: vrt release-npm [options] [path]
 
-Publish an npm package from the specified path to the npm registry.
+Publish an npm package from the specified path to the npm registry, then wait
+until npm serves the new version.
 
 Arguments:
   path                  Root path of the Node.js project. Defaults to the

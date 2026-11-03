@@ -303,7 +303,9 @@ program
  */
 program
 	.command('release-npm')
-	.description('Publish an npm package from the specified path to the npm registry.')
+	.description(
+		'Publish an npm package from the specified path to the npm registry, then wait until npm serves the new version.',
+	)
 	.option('-n, --dry-run', 'Show what would be done without making any changes')
 	.option(
 		'-b, --bump <version>',
