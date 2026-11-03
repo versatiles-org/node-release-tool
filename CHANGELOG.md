@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.21.0] - 2026-11-03
+
+### Features
+
+- **release-npm:** wait until npm serves the published version ([2b46b04](https://github.com/versatiles-org/node-release-tool/commit/2b46b04966b0d6764951fbc4da0d61aad34b9eeb))
+
+### Bug Fixes
+
+- **log:** keep messages logged during a check out of its progress line ([5a6c7cd](https://github.com/versatiles-org/node-release-tool/commit/5a6c7cdf93909a4fad65af8856a648964109d127))
+
+### Build System
+
+- **deps:** bump markdown-it ([981513b](https://github.com/versatiles-org/node-release-tool/commit/981513baa7ab100fa1740a4a4c2a0872d91fd859))
+
 ## [2.20.0] - 2026-10-09
 
 ### Features
