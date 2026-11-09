@@ -30,6 +30,10 @@
   },
   "author": "Michael Kreil <versatiles@michael-kreil.de>",
   "license": "Unlicense",
+  "funding": [
+    { "type": "github", "url": "https://github.com/sponsors/versatiles-org" },
+    { "type": "opencollective", "url": "https://opencollective.com/versatiles" }
+  ],
   "type": "module",
   "engines": {
     "node": ">=20"
