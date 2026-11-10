@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.23.0] - 2026-11-10
+
+### Features
+
+- **release:** show the release notes in a box ([85963c5](https://github.com/versatiles-org/node-release-tool/commit/85963c5832f83dcbf78541fe18a273922e457add))
+
+### Bug Fixes
+
+- **release:** show finished steps in green and format the release notes ([7fc70d7](https://github.com/versatiles-org/node-release-tool/commit/7fc70d7a9195a9e858b66bdfda49159d2ef0aca3))
+
+### Documentation
+
+- **release:** make required reviewers optional and recommend tag restrictions, closes #61 ([57f5f42](https://github.com/versatiles-org/node-release-tool/commit/57f5f423ebfc0017cbe2e6393522841419f4dd4b))
+
 ## [2.22.0] - 2026-11-10
 
 ### Features
