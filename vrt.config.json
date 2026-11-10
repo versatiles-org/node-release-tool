@@ -1,0 +1,5 @@
+{
+	"deps-graph": {
+		"merge-incoming": ["src/core"]
+	}
+}

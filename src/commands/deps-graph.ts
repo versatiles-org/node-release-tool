@@ -51,6 +51,16 @@ export interface DepsGraphOptions {
 	 */
 	mergeOutgoing?: string[];
 	/**
+	 * Globs matched against the directory path of each subgraph. For matching
+	 * directories, edges from outside that point to files inside the directory
+	 * are merged into a single edge to the directory per source directory, i.e.
+	 * the outermost directory around the source that does not contain the
+	 * matching directory. Useful for modules that everything imports, e.g. a
+	 * logger: in their own directory, they get one edge per importing directory
+	 * instead of one per importing file.
+	 */
+	mergeIncoming?: string[];
+	/**
 	 * Globs matched against directory paths. Imports of the barrel file of a
 	 * matching directory, i.e. its `index.ts` (or `.js`, `.tsx`, …), from outside
 	 * of the directory point to the directory instead. Imports of other files in
@@ -75,6 +85,7 @@ const LIST_CONFIG_KEYS = {
 	'collapse-dir': 'collapseDir',
 	exclude: 'exclude',
 	include: 'include',
+	'merge-incoming': 'mergeIncoming',
 	'merge-outgoing': 'mergeOutgoing',
 	'subgraph-direction': 'subgraphDirection',
 } as const satisfies Record<string, Exclude<keyof DepsGraphOptions, 'svg'>>;
@@ -258,6 +269,7 @@ export async function generateDependencyGraph(directory: string, cliOptions: Dep
 	const options = mergeOptions(readDepsGraphConfig(directory), cliOptions);
 	const directionRules = (options.subgraphDirection ?? []).map(parseDirectionRule);
 	const mergeRules = (options.mergeOutgoing ?? []).map(parseGlobRule);
+	const mergeIncomingRules = (options.mergeIncoming ?? []).map(parseGlobRule);
 	const barrelRules = (options.barrel ?? []).map(parseGlobRule);
 	const userExcludes = (options.exclude ?? []).map(globToCruiseRegex);
 	const includeGlobs = (options.include?.length ? options.include : [DEFAULT_INCLUDE]).map(normalizeInclude);
@@ -307,7 +319,7 @@ export async function generateDependencyGraph(directory: string, cliOptions: Dep
 
 	if (options.svg !== undefined) {
 		if (directionRules.length > 0) warn('subgraph direction is not supported for SVG output and is ignored');
-		const svg = await renderSvgGraph(buildGraphModel(cruiseResult, mergeRules, barrelRules));
+		const svg = await renderSvgGraph(buildGraphModel(cruiseResult, { mergeRules, mergeIncomingRules, barrelRules }));
 		process.stdout.write((await writeSvgImage(directory, options.svg, svg, 'Dependency graph')) + '\n');
 		return;
 	}
@@ -328,6 +340,9 @@ export async function generateDependencyGraph(directory: string, cliOptions: Dep
 	}
 	if (mergeRules.length > 0) {
 		output = mergeOutgoingEdges(output, mergeRules);
+	}
+	if (mergeIncomingRules.length > 0) {
+		output = mergeIncomingEdges(output, mergeIncomingRules);
 	}
 
 	const matches = Array.from(output.matchAll(/subgraph ([0-9a-z]+)/gi));
@@ -925,12 +940,114 @@ function mergeEdgesFrom(
 }
 
 /**
+ * Merges edges that point into `container` from outside of it into a single
+ * edge per source directory, pointing to `container` itself. The source
+ * directory of an edge is the outermost directory around its source that does
+ * not contain `container`, e.g. `src/commands` for an edge from
+ * `src/commands/check.ts` to `src/core/log.ts`. A source without such a
+ * directory, e.g. `src/index.ts`, is its own group. Groups of only one edge are
+ * left untouched. A merged edge lists the sources it replaces in `via` and the
+ * targets in `into`.
+ *
+ * @param parentOf - The directory that directly contains a node or directory, if any
+ * @param isInside - Whether a node or container id lies (indirectly) inside another container
+ */
+function mergeEdgesInto(
+	edges: GraphEdge[],
+	container: string,
+	parentOf: (id: string) => string | undefined,
+	isInside: (id: string, ancestor: string) => boolean,
+): GraphEdge[] {
+	const isIncoming = (edge: GraphEdge): boolean =>
+		(edge.to === container || isInside(edge.to, container)) &&
+		edge.from !== container &&
+		!isInside(edge.from, container);
+	const groupOf = (id: string): string => {
+		let group = id;
+		for (
+			let parent = parentOf(group);
+			parent !== undefined && !isInside(container, parent);
+			parent = parentOf(parent)
+		) {
+			group = parent;
+		}
+		return group;
+	};
+
+	const counts = new Map<string, number>();
+	for (const edge of edges) {
+		if (isIncoming(edge)) counts.set(groupOf(edge.from), (counts.get(groupOf(edge.from)) ?? 0) + 1);
+	}
+
+	const merged = new Map<string, GraphEdge & { via: string[]; into: string[] }>();
+	return edges.flatMap((edge) => {
+		if (!isIncoming(edge)) return [edge];
+		const group = groupOf(edge.from);
+		if ((counts.get(group) ?? 0) < 2) return [edge];
+		const sources = [edge.from, ...(edge.via ?? [])].filter((source) => source !== group);
+		const targets = [edge.to, ...(edge.into ?? [])].filter((target) => target !== container);
+		const existing = merged.get(group);
+		if (existing) {
+			existing.via.push(...sources.filter((source) => !existing.via.includes(source)));
+			existing.into.push(...targets.filter((target) => !existing.into.includes(target)));
+			return [];
+		}
+		const mergedEdge = { from: group, to: container, via: sources, into: targets };
+		merged.set(group, mergedEdge);
+		return [mergedEdge];
+	});
+}
+
+/**
+ * For every subgraph whose directory path matches one of the rules, merges the
+ * edges that point into it, see {@link mergeEdgesInto}.
+ */
+function mergeIncomingEdges(output: string, rules: GlobRule[]): string {
+	const lines = output.split('\n');
+	const { subgraphs, parents } = parseMermaidStructure(lines);
+	const isInside = isInsideSubgraph(parents);
+
+	const edgeLines = new Set<number>();
+	let edges: GraphEdge[] = [];
+	lines.forEach((line, index) => {
+		const edge = /^\s*(\w+)-->(\w+)\s*$/.exec(line);
+		if (!edge) return;
+		edgeLines.add(index);
+		edges.push({ from: edge[1], to: edge[2] });
+	});
+	if (edges.length === 0) return output;
+
+	const used = new Set<GlobRule>();
+	for (const subgraph of subgraphs) {
+		const matching = rules.filter((r) => r.isMatch(subgraph.path));
+		if (matching.length === 0) continue;
+		matching.forEach((r) => used.add(r));
+		edges = mergeEdgesInto(edges, subgraph.id, (id) => parents.get(id), isInside);
+	}
+
+	warnUnusedRules(rules, used, 'merge incoming');
+
+	const firstEdgeLine = Math.min(...edgeLines);
+	return lines
+		.flatMap((line, index) => {
+			if (index === firstEdgeLine) return edges.map((e) => `${e.from}-->${e.to}`);
+			return edgeLines.has(index) ? [] : [line];
+		})
+		.join('\n');
+}
+
+/**
  * Converts the cruise result into files and edges for SVG rendering, pointing
  * edges to barrel files of directories that match `barrelRules` to the
- * directories, and merging outgoing edges of directories that match
- * `mergeRules` (inner before outer directories, like {@link mergeOutgoingEdges}).
+ * directories, merging outgoing edges of directories that match `mergeRules`
+ * (inner before outer directories, like {@link mergeOutgoingEdges}), and then
+ * merging incoming edges of directories that match `mergeIncomingRules`.
  */
-function buildGraphModel(result: ICruiseResult, mergeRules: GlobRule[], barrelRules: GlobRule[]): GraphModel {
+function buildGraphModel(
+	result: ICruiseResult,
+	rules: { mergeRules: GlobRule[]; mergeIncomingRules: GlobRule[]; barrelRules: GlobRule[] },
+): GraphModel {
+	const { mergeRules, mergeIncomingRules, barrelRules } = rules;
 	const isInside = (path: string, ancestor: string): boolean => path.startsWith(ancestor + '/');
 	const files = result.modules.map((m) => m.source);
 	let edges: GraphEdge[] = result.modules.flatMap((m) =>
@@ -956,6 +1073,19 @@ function buildGraphModel(result: ICruiseResult, mergeRules: GlobRule[], barrelRu
 		edges = mergeEdgesFrom(edges, directory, isInside);
 	}
 	warnUnusedRules(mergeRules, used, 'merge outgoing');
+
+	const parentOf = (path: string): string | undefined => {
+		const slash = path.lastIndexOf('/');
+		return slash < 0 ? undefined : path.slice(0, slash);
+	};
+	const usedIncoming = new Set<GlobRule>();
+	for (const directory of innerFirst) {
+		const matching = mergeIncomingRules.filter((r) => r.isMatch(directory));
+		if (matching.length === 0) continue;
+		matching.forEach((r) => usedIncoming.add(r));
+		edges = mergeEdgesInto(edges, directory, parentOf, isInside);
+	}
+	warnUnusedRules(mergeIncomingRules, usedIncoming, 'merge incoming');
 
 	return { files, edges };
 }

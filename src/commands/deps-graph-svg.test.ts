@@ -186,6 +186,20 @@ describe('renderSvgGraph', () => {
 			}
 		});
 
+		it('connects an edge merged into a directory with the files it points to', async () => {
+			const svg = await renderSvgGraph({
+				...model,
+				edges: [{ from: 'src/index.ts', to: 'src/lib', via: [], into: ['src/lib/a.ts', 'src/lib/b&c.ts'] }],
+			});
+
+			expect(svg).toContain('<path class="edge from-n0 to-n5 to-n1 to-n2 inner-n4 in-n5" ');
+			// hovering a file inside the directory highlights the edge and its source
+			expect(svg).toContain('svg:has(.n1:hover) .to-n1');
+			expect(svg).toContain('svg:has(.n2:hover) .to-n2');
+			expect(svg).toContain('svg:has(.n1:hover) .n0 .file');
+			expect(svg).toContain('svg:has(.n0:hover) .n2 .file');
+		});
+
 		it('adds no hover rules for a graph without edges', async () => {
 			const svg = await renderSvgGraph({ files: ['src/a.ts'], edges: [] });
 			expect(svg).not.toContain(':hover) .edge');

@@ -103,6 +103,12 @@ program
 		[] as string[],
 	)
 	.option(
+		'--merge-incoming <glob>',
+		'Merge edges from files outside of directories matching the glob that point into them into one edge per source directory (repeatable).',
+		(value: string, prev: string[] = []) => prev.concat(value),
+		[] as string[],
+	)
+	.option(
 		'--barrel <glob>',
 		'Point imports of the index file (e.g. index.ts) in directories matching the glob to the directory itself (repeatable).',
 		(value: string, prev: string[] = []) => prev.concat(value),
@@ -118,6 +124,7 @@ program
 			collapseDir: string[];
 			exclude: string[];
 			include: string[];
+			mergeIncoming: string[];
 			mergeOutgoing: string[];
 			subgraphDirection: string[];
 			svg?: string;
@@ -127,6 +134,7 @@ program
 				collapseDir: opts.collapseDir,
 				exclude: opts.exclude,
 				include: opts.include,
+				mergeIncoming: opts.mergeIncoming,
 				mergeOutgoing: opts.mergeOutgoing,
 				subgraphDirection: opts.subgraphDirection,
 				svg: opts.svg,

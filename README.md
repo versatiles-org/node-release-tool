@@ -89,9 +89,14 @@ vrt deps-graph --subgraph-direction 'src/lib=LR' --subgraph-direction 'src/comma
 # Replace edges from several files in src/commands/ to the same target with one edge from the directory.
 vrt deps-graph --merge-outgoing 'src/commands'
 
+# Replace edges into src/core/ with one edge per importing directory, e.g. for a logger that every file imports.
+vrt deps-graph --merge-incoming 'src/core'
+
 # Draw imports of barrel files (src/lib/*/index.ts) as edges to their directory.
 vrt deps-graph --barrel 'src/lib/*'
 ```
+
+`--merge-incoming` suits modules that almost every file imports, such as logging and errors, once they have a directory of their own next to the others. Each directory around it then has one edge into it, instead of one edge per file. Files directly in a common parent directory, such as `src/index.ts`, keep their own edge, and so do files in a directory that contains the merged one.
 
 Tests and mocks (`*.test.*`, `*.spec.*`, `*.mock.*`, `__tests__/`, `__mocks__/`), type declarations (`*.d.ts`) and `node_modules` are always left out.
 
@@ -103,6 +108,7 @@ Instead of passing long lists of flags, you can put the options into a `vrt.conf
     "barrel": ["src/lib/*"],
     "collapse-dir": ["src/themes/*", "src/omt/layers/*"],
     "exclude": ["**/_planned.ts"],
+    "merge-incoming": ["src/core"],
     "merge-outgoing": ["src/*"],
     "subgraph-direction": ["src/lib=LR"]
   }
@@ -383,6 +389,10 @@ Options:
   --include <glob>                 Analyze files in directories matching the
                                    glob instead of "src", e.g. "packages/*/src"
                                    in a workspace (repeatable). (default: [])
+  --merge-incoming <glob>          Merge edges from files outside of directories
+                                   matching the glob that point into them into
+                                   one edge per source directory (repeatable).
+                                   (default: [])
   --merge-outgoing <glob>          Merge edges from files in directories
                                    matching the glob that point to the same
                                    target into one edge from the directory

@@ -25,6 +25,18 @@ vi.mock('../core/log.js', () => ({
 	isVerbose: vi.fn(() => false),
 }));
 
+// Most tests run in this repository, whose own vrt.config.json must not change their options
+vi.mock('../lib/config.js', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../lib/config.js')>();
+	const { resolve } = await import('path');
+	return {
+		...actual,
+		readConfigSection: vi.fn((directory: string, command: string) =>
+			resolve(directory) === process.cwd() ? undefined : actual.readConfigSection(directory, command),
+		),
+	};
+});
+
 // Capture the graph model instead of running the ELK layout (tested in deps-graph-svg.test.ts)
 vi.mock('./deps-graph-svg.js', () => ({
 	renderSvgGraph: vi.fn(async () => '<svg/>'),
@@ -552,6 +564,70 @@ describe('generateDependencyGraph', () => {
 		});
 	});
 
+	describe('--merge-incoming', () => {
+		// a/b.ts, a/c.ts and a/sub/d.ts import core/log.ts, a/b.ts also core/errors.ts;
+		// index.ts imports both, x.ts only log.ts; log.ts imports errors.ts; a/c.ts imports a/b.ts
+		const mermaid = [
+			'flowchart LR',
+			'',
+			'subgraph 0["src"]',
+			'subgraph 1["a"]',
+			'2["b.ts"]',
+			'3["c.ts"]',
+			'subgraph 4["sub"]',
+			'5["d.ts"]',
+			'end',
+			'end',
+			'subgraph 6["core"]',
+			'7["log.ts"]',
+			'8["errors.ts"]',
+			'end',
+			'9["index.ts"]',
+			'10["x.ts"]',
+			'end',
+			'2-->7',
+			'2-->8',
+			'3-->7',
+			'5-->7',
+			'9-->7',
+			'9-->8',
+			'10-->7',
+			'7-->8',
+			'3-->2',
+		].join('\n');
+
+		function edges(): string[] {
+			const output = (mockStdoutWrite.mock.calls[0][0] as Buffer).toString();
+			return output.split('\n').filter((line) => line.includes('-->'));
+		}
+
+		beforeEach(() => {
+			vi.mocked(format).mockResolvedValue({ output: mermaid } as IReporterOutput);
+		});
+
+		it('merges edges into a directory per source directory', async () => {
+			await generateDependencyGraph('.', { mergeIncoming: ['src/core'] });
+
+			// a/ and its subdirectory become one edge; index.ts merges its own two edges;
+			// x.ts has a single edge and the edge inside core stays
+			expect(edges()).toEqual(['1-->6', '9-->6', '10-->7', '7-->8', '3-->2']);
+			expect(warn).not.toHaveBeenCalled();
+		});
+
+		it('merges edges that merge-outgoing has merged before', async () => {
+			await generateDependencyGraph('.', { mergeOutgoing: ['src/a'], mergeIncoming: ['src/core'] });
+
+			expect(edges()).toEqual(['1-->6', '9-->6', '10-->7', '7-->8', '3-->2']);
+		});
+
+		it('warns about globs that match no subgraph', async () => {
+			await generateDependencyGraph('.', { mergeIncoming: ['src/nope'] });
+
+			expect(warn).toHaveBeenCalledWith('merge incoming glob "src/nope" did not match any directory');
+			expect(edges()).toHaveLength(9);
+		});
+	});
+
 	describe('--barrel', () => {
 		// b.ts and a/c.ts import the barrel a/index.ts, b.ts also a/c.ts; the barrel re-exports a/c.ts
 		const mermaid = [
@@ -719,6 +795,7 @@ describe('generateDependencyGraph', () => {
 					'collapse-dir': ['src/themes/*'],
 					exclude: ['**/_planned.ts'],
 					include: ['packages/*/src'],
+					'merge-incoming': ['src/core'],
 					'merge-outgoing': ['src/*'],
 					'subgraph-direction': ['src/lib=LR'],
 				},
@@ -728,6 +805,7 @@ describe('generateDependencyGraph', () => {
 				collapseDir: ['src/themes/*'],
 				exclude: ['**/_planned.ts'],
 				include: ['packages/*/src'],
+				mergeIncoming: ['src/core'],
 				mergeOutgoing: ['src/*'],
 				subgraphDirection: ['src/lib=LR'],
 			});
@@ -821,6 +899,43 @@ describe('generateDependencyGraph', () => {
 					{ from: 'src/a', to: 'src/x.ts', via: ['src/a/b.ts', 'src/a/c.ts'] },
 					{ from: 'src/a', to: 'src/y.ts', via: ['src/a/b.ts', 'src/a/c.ts'] },
 					{ from: 'src/a/c.ts', to: 'src/a/b.ts' },
+				],
+			});
+			expect(warn).not.toHaveBeenCalled();
+		});
+
+		it('merges incoming edges of matching directories in the graph model', async () => {
+			vi.mocked(cruise).mockResolvedValue({
+				output: fakeCruiseResult([
+					{ source: 'src/a/b.ts', dependencies: [{ resolved: 'src/core/log.ts' }] as IModule['dependencies'] },
+					{
+						source: 'src/a/c.ts',
+						dependencies: [
+							{ resolved: 'src/core/log.ts' },
+							{ resolved: 'src/core/errors.ts' },
+						] as IModule['dependencies'],
+					},
+					{
+						source: 'src/core/log.ts',
+						dependencies: [{ resolved: 'src/core/errors.ts' }] as IModule['dependencies'],
+					},
+					{ source: 'src/core/errors.ts', dependencies: [] },
+					{ source: 'src/index.ts', dependencies: [{ resolved: 'src/core/log.ts' }] as IModule['dependencies'] },
+				]),
+			} as IReporterOutput);
+			await generateDependencyGraph(directory, { svg: 'graph.svg', mergeIncoming: ['src/core'] });
+
+			expect(vi.mocked(renderSvgGraph).mock.calls[0][0]).toStrictEqual({
+				files: ['src/a/b.ts', 'src/a/c.ts', 'src/core/log.ts', 'src/core/errors.ts', 'src/index.ts'],
+				edges: [
+					{
+						from: 'src/a',
+						to: 'src/core',
+						via: ['src/a/b.ts', 'src/a/c.ts'],
+						into: ['src/core/log.ts', 'src/core/errors.ts'],
+					},
+					{ from: 'src/core/log.ts', to: 'src/core/errors.ts' },
+					{ from: 'src/index.ts', to: 'src/core/log.ts' },
 				],
 			});
 			expect(warn).not.toHaveBeenCalled();

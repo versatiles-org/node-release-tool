@@ -10,6 +10,8 @@ export interface GraphEdge {
 	to: string;
 	/** For merged edges: the files and directories whose edges were merged into this one. */
 	via?: string[];
+	/** For edges merged into a directory: the files and directories they pointed to. */
+	into?: string[];
 }
 
 /**
@@ -191,7 +193,7 @@ export async function renderSvgGraph(model: GraphModel): Promise<string> {
 		const classes = [
 			'edge',
 			...fileSources(modelEdge, files).map((source) => `from-${idOf(source)}`),
-			`to-${idOf(modelEdge.to)}`,
+			...targetPaths(modelEdge).map((target) => `to-${idOf(target)}`),
 			...directoryRelations(modelEdge, directories).map(
 				({ directory, relation }) => `${relation}-${idOf(directory)}`,
 			),
@@ -242,12 +244,14 @@ function hoverStyle(model: GraphModel, directories: string[], idOf: (path: strin
 		const target = idOf(edge.to);
 		const edgeFiles = fileSources(edge, files);
 
-		incoming.add(`svg:has(.${target}:hover) .to-${target}`);
-		for (const path of edgeFiles) {
-			const source = idOf(path);
-			outgoing.add(`svg:has(.${source}:hover) .from-${source}`);
-			targets.add(`svg:has(.${source}:hover) .${target} .file`);
-			sources.add(`svg:has(.${target}:hover) .${source} .file`);
+		for (const targetId of targetPaths(edge).map(idOf)) {
+			incoming.add(`svg:has(.${targetId}:hover) .to-${targetId}`);
+			for (const path of edgeFiles) {
+				const source = idOf(path);
+				outgoing.add(`svg:has(.${source}:hover) .from-${source}`);
+				targets.add(`svg:has(.${source}:hover) .${targetId} .file`);
+				sources.add(`svg:has(.${targetId}:hover) .${source} .file`);
+			}
 		}
 
 		for (const { directory, relation } of directoryRelations(edge, directories)) {
@@ -291,6 +295,14 @@ function hoverStyle(model: GraphModel, directories: string[], idOf: (path: strin
  */
 function fileSources(edge: GraphEdge, files: Set<string>): string[] {
 	return [edge.from, ...(edge.via ?? [])].filter((path) => files.has(path));
+}
+
+/**
+ * The paths an edge points to: its target, and for edges merged into a
+ * directory also the files they pointed to.
+ */
+function targetPaths(edge: GraphEdge): string[] {
+	return [edge.to, ...(edge.into ?? [])];
 }
 
 /**

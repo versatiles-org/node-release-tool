@@ -106,6 +106,7 @@ describe('release-tool CLI', () => {
 				collapseDir: [],
 				exclude: [],
 				include: [],
+				mergeIncoming: [],
 				mergeOutgoing: [],
 				subgraphDirection: [],
 				svg: undefined,
@@ -120,6 +121,7 @@ describe('release-tool CLI', () => {
 				collapseDir: [],
 				exclude: [],
 				include: [],
+				mergeIncoming: [],
 				mergeOutgoing: [],
 				subgraphDirection: ['src/lib=LR', 'src/commands=RL'],
 				svg: undefined,
@@ -134,6 +136,7 @@ describe('release-tool CLI', () => {
 				collapseDir: [],
 				exclude: [],
 				include: [],
+				mergeIncoming: [],
 				mergeOutgoing: [],
 				subgraphDirection: [],
 				svg: 'docs/graph.svg',
@@ -148,7 +151,23 @@ describe('release-tool CLI', () => {
 				collapseDir: [],
 				exclude: [],
 				include: [],
+				mergeIncoming: [],
 				mergeOutgoing: ['src/lib', 'src/commands'],
+				subgraphDirection: [],
+				svg: undefined,
+			});
+		});
+
+		it('should collect repeated --merge-incoming options', async () => {
+			await run('deps-graph', '--merge-incoming', 'src/core', '--merge-incoming', 'src/util');
+
+			expect(generateDependencyGraph).toHaveBeenCalledWith(process.cwd(), {
+				barrel: [],
+				collapseDir: [],
+				exclude: [],
+				include: [],
+				mergeIncoming: ['src/core', 'src/util'],
+				mergeOutgoing: [],
 				subgraphDirection: [],
 				svg: undefined,
 			});
@@ -162,6 +181,7 @@ describe('release-tool CLI', () => {
 				collapseDir: [],
 				exclude: [],
 				include: [],
+				mergeIncoming: [],
 				mergeOutgoing: [],
 				subgraphDirection: [],
 				svg: undefined,
