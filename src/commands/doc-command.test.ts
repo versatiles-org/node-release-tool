@@ -27,25 +27,36 @@ function createMockReadable(text: string): Readable {
 }
 
 /**
+ * Creates a mock child process with the given output that exits with the given code.
+ *
+ * Like a real child process, it emits 'close' only after stdout and stderr have ended. Emitting
+ * it on a timer instead would race the streams, and newer Node versions deliver the data later.
+ */
+function createChildProcess(stdout: string, stderr: string, code: number): ChildProcessWithoutNullStreams {
+	const mockProcess = new EventEmitter() as ChildProcessByStdio<Writable, Readable, Readable>;
+	mockProcess.stdout = createMockReadable(stdout);
+	mockProcess.stderr = createMockReadable(stderr);
+	let openStreams = 2;
+	const onEnd = (): void => {
+		if (--openStreams === 0) mockProcess.emit('close', code, null);
+	};
+	mockProcess.stdout.on('end', onEnd);
+	mockProcess.stderr.on('end', onEnd);
+	return mockProcess;
+}
+
+/**
  * Creates a mock child process that emits the given stdout content.
  */
 function createMockChildProcess(stdout: string): ChildProcessWithoutNullStreams {
-	const mockProcess = new EventEmitter() as ChildProcessByStdio<Writable, Readable, Readable>;
-	mockProcess.stdout = createMockReadable(stdout);
-	mockProcess.stderr = createMockReadable('');
-	process.nextTick(() => mockProcess.emit('close', 0));
-	return mockProcess;
+	return createChildProcess(stdout, '', 0);
 }
 
 /**
  * Creates a mock child process that writes to stderr and exits with the given code.
  */
 function createFailingChildProcess(stderr: string, code: number): ChildProcessWithoutNullStreams {
-	const mockProcess = new EventEmitter() as ChildProcessByStdio<Writable, Readable, Readable>;
-	mockProcess.stdout = createMockReadable('');
-	mockProcess.stderr = createMockReadable(stderr);
-	process.nextTick(() => mockProcess.emit('close', code));
-	return mockProcess;
+	return createChildProcess('', stderr, code);
 }
 
 describe('generateCommandDocumentation', () => {
