@@ -367,10 +367,42 @@ export function compile(source, options) {
 }`;
 
 /**
- * ESM resolve hook for {@link loadDependencyCruiser}: if a bare specifier can
- * not be resolved from the importing module, it is resolved from the project
- * directory instead. When dependency-cruiser imports `svelte/compiler`, it
- * gets {@link SVELTE_COMPILER_WRAPPER} instead.
+ * Resolve hook for {@link loadDependencyCruiser}, for `module.registerHooks`: if
+ * a bare specifier can not be resolved from the importing module, it is resolved
+ * from the project directory instead. When dependency-cruiser imports
+ * `svelte/compiler`, it gets {@link SVELTE_COMPILER_WRAPPER} instead.
+ *
+ * {@link FALLBACK_RESOLVE_HOOK} is the same hook for `module.register`. Keep both alike.
+ *
+ * @param parentURL - URL of a file in the project directory to resolve from.
+ */
+function createFallbackResolveHook(parentURL: string): Module.ResolveHookSync {
+	return (specifier, context, next) => {
+		// Node may change the context in the calls of next(), so it is read first. These hooks
+		// also run for `require`, which can not load the wrapper.
+		const wrapCompiler =
+			specifier === 'svelte/compiler' &&
+			context.conditions.includes('import') &&
+			context.parentURL?.includes('/dependency-cruiser/') === true;
+		let result: Module.ResolveFnOutput;
+		try {
+			result = next(specifier, context);
+		} catch (error) {
+			const code = (error as { code?: unknown } | undefined)?.code;
+			if (code !== 'ERR_MODULE_NOT_FOUND' || /^[./]|^[a-z]+:/i.test(specifier)) throw error;
+			result = next(specifier, { ...context, parentURL });
+		}
+		if (wrapCompiler) {
+			const code = SVELTE_COMPILER_WRAPPER.replaceAll('REAL_URL', JSON.stringify(result.url));
+			return { url: 'data:text/javascript,' + encodeURIComponent(code), shortCircuit: true };
+		}
+		return result;
+	};
+}
+
+/**
+ * {@link createFallbackResolveHook} as a module for `module.register`, which
+ * runs it asynchronously in a thread of its own, for Node versions before 22.15.
  */
 const FALLBACK_RESOLVE_HOOK = `
 let parentURL;
@@ -511,10 +543,16 @@ async function loadDependencyCruiser(
 	if (!paths.includes(nodeModules)) {
 		process.env.NODE_PATH = [...paths, nodeModules].join(delimiter);
 		(Module as unknown as { _initPaths: () => void })._initPaths();
-		// `module.register` is available since Node 20.6
-		Module.register?.('data:text/javascript,' + encodeURIComponent(FALLBACK_RESOLVE_HOOK), {
-			data: { parentURL: pathToFileURL(resolve(directory, 'package.json')).href },
-		});
+		const parentURL = pathToFileURL(resolve(directory, 'package.json')).href;
+		if (typeof Module.registerHooks === 'function') {
+			// available since Node 22.15. Node 26 deprecates `module.register`.
+			Module.registerHooks({ resolve: createFallbackResolveHook(parentURL) });
+		} else {
+			// available since Node 20.6
+			Module.register?.('data:text/javascript,' + encodeURIComponent(FALLBACK_RESOLVE_HOOK), {
+				data: { parentURL },
+			});
+		}
 	}
 	const { default: extractTSConfig } = await import('dependency-cruiser/config-utl/extract-ts-config');
 	return { ...(await import('dependency-cruiser')), extractTSConfig };
