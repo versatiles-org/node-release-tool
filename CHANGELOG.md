@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.22.0] - 2026-11-10
+
+### Features
+
+- **dependencies:** add nonrecursive-glob-match and update minimatch version ([0a1692d](https://github.com/versatiles-org/node-release-tool/commit/0a1692dc76f3d80067e2f98c9c1f5b3fe3a29c39))
+- **release:** add vrt release and a reusable release workflow with trusted publishing (#61) ([5cbe0fc](https://github.com/versatiles-org/node-release-tool/commit/5cbe0fc87415293c7c2abbc081a0449050088876))
+- **deps-graph:** add --merge-incoming to merge edges into a directory ([7348e17](https://github.com/versatiles-org/node-release-tool/commit/7348e173d1d6aa79e9bde4fd6a4ce30d8d43e423))
+- **ci:** add Node.js version 26 to CI matrix ([a2de9a4](https://github.com/versatiles-org/node-release-tool/commit/a2de9a41603ede5d9619f90e4446c4609fe386f0))
+- **release:** update release script and add GitHub Actions workflow for publishing ([d54a5f4](https://github.com/versatiles-org/node-release-tool/commit/d54a5f48a6ca54552e63d7f9e78089726753834d))
+
+### Bug Fixes
+
+- **deps-graph:** use module.registerHooks, since Node 26 deprecates module.register ([861a162](https://github.com/versatiles-org/node-release-tool/commit/861a162553c39fbd1f88482f4b598772c87c1df7))
+
+### Code Refactoring
+
+- move log and errors into src/core ([5d4143b](https://github.com/versatiles-org/node-release-tool/commit/5d4143baf52c841bb8152e052833c8f75da67019))
+- move shell into src/core ([498016c](https://github.com/versatiles-org/node-release-tool/commit/498016c9e05c285a69558643754b84e86f44f3ff))
+
+### Documentation
+
+- add funding information to package.json ([147a16e](https://github.com/versatiles-org/node-release-tool/commit/147a16e3e5aa56e10b652d1ffa61cf28400c996b))
+
+### Tests
+
+- **doc-command:** emit close after the mock's stdio streams end ([d3c41df](https://github.com/versatiles-org/node-release-tool/commit/d3c41df78489755572e8015b095b12179a9b617f))
+
+### Chores
+
+- update dependencies and devDependencies in package.json ([088bf10](https://github.com/versatiles-org/node-release-tool/commit/088bf10b86eb1c82d9a0a7fb6110ad9a32dffd6e))
+
 ## [2.21.0] - 2026-11-03
 
 ### Features
