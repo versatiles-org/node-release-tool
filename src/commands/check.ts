@@ -53,8 +53,8 @@ export function checkPackage(directory: string): void {
 		}
 
 		if (!scripts.release) warn('scripts.release is required');
-		else if (scripts.release !== 'vrt release-npm') {
-			warn(`scripts.release should be "vrt release-npm", but is "${scripts.release}"`);
+		else if (scripts.release !== 'vrt release' && scripts.release !== 'vrt release-npm') {
+			warn(`scripts.release should be "vrt release" or "vrt release-npm", but is "${scripts.release}"`);
 		}
 	}
 

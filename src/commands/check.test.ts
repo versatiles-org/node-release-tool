@@ -105,11 +105,14 @@ describe('check', () => {
 		it('should warn if "release" is missing', () => {
 			testPackage({ scripts: { release: null } }, { warn: ['scripts.release is required'] });
 		});
-		it('should warn  if "release" is not "vrt release-npm"', () => {
+		it('should warn  if "release" is neither "vrt release" nor "vrt release-npm"', () => {
 			testPackage(
 				{ scripts: { release: 'something' } },
-				{ warn: ['scripts.release should be "vrt release-npm", but is "something"'] },
+				{ warn: ['scripts.release should be "vrt release" or "vrt release-npm", but is "something"'] },
 			);
+		});
+		it('should accept "vrt release" as "release"', () => {
+			testPackage({ scripts: { release: 'vrt release' } }, {});
 		});
 
 		it('should panic if "upgrade" is missing', () => {

@@ -8,6 +8,11 @@ import { Command, InvalidArgumentError } from 'commander';
 import { cwd } from 'process';
 import { generateCommandDocumentation } from './commands/doc-command.js';
 import { release } from './commands/release-npm.js';
+import { startRelease } from './commands/release.js';
+import { releaseCheck } from './commands/release-check.js';
+import { releasePack } from './commands/release-pack.js';
+import { releasePublish } from './commands/release-publish.js';
+import { formatError } from './lib/errors.js';
 import { upgradeDependencies } from './commands/deps-upgrade.js';
 import { generateDependencyGraph } from './commands/deps-graph.js';
 import { check } from './commands/check.js';
@@ -325,8 +330,113 @@ program
 		void release(resolve(process.cwd(), path ?? '.'), 'main', options.dryRun ?? false, options.bump, options.publish);
 	});
 
+/**
+ * Command: release
+ * Prepares a release locally and pushes its tag, which starts the release workflow.
+ */
+program
+	.command('release')
+	.description(
+		'Prepare a release: check, raise the version, update CHANGELOG.md, commit, tag and push. The pushed tag starts the release workflow, which publishes; this command watches it.',
+	)
+	.argument(
+		'[version]',
+		'Version to release: "patch", "minor", "major" or an explicit version. Default: recommended from the commits, and asked for.',
+	)
+	.option('-n, --dry-run', 'Run the checks and show what would happen, but change nothing.')
+	.option('-y, --yes', 'Ask nothing: take the recommended version and confirm everything.')
+	.option('--skip-ci-check', 'Do not require passing CI runs on the released commit (emergencies only).')
+	.option('--resume', 'Finish the unfinished release of the current version without asking.')
+	.addHelpText(
+		'after',
+		[
+			'',
+			'The repository needs a workflow named "Release" that the tag starts, see',
+			'https://github.com/versatiles-org/node-release-tool#release-workflow',
+		].join('\n'),
+	)
+	.action(
+		async (
+			version: string | undefined,
+			opts: { dryRun?: boolean; yes?: boolean; skipCiCheck?: boolean; resume?: boolean },
+		) => {
+			await reportErrors(
+				startRelease(process.cwd(), {
+					version,
+					dryRun: opts.dryRun,
+					yes: opts.yes,
+					skipCiCheck: opts.skipCiCheck,
+					resume: opts.resume,
+				}),
+			);
+		},
+	);
+
+/**
+ * Command: release-check
+ * Verifies a pushed tag in the release workflow.
+ */
+program
+	.command('release-check')
+	.description(
+		'Check that a tag can be released: it must match the version of every package.json, and CHANGELOG.md must have notes for it. Used by the release workflow.',
+	)
+	.argument('<tag>', 'The tag to release, e.g. "v1.2.3".')
+	.option('--notes <file>', 'Write the release notes to this file.')
+	.action(async (tag: string, opts: { notes?: string }) => {
+		await reportErrors(async () => releaseCheck(process.cwd(), tag, { notesFile: opts.notes }));
+	});
+
+/**
+ * Command: release-pack
+ * Packs the packages of a release in the release workflow.
+ */
+program
+	.command('release-pack')
+	.description(
+		'Pack every public package of the repository, including workspaces, into a directory, in the order to publish them. Used by the release workflow.',
+	)
+	.argument('<directory>', 'Directory to write the tarballs to, e.g. "release".')
+	.action(async (directory: string) => {
+		await reportErrors(releasePack(process.cwd(), directory));
+	});
+
+/**
+ * Command: release-publish
+ * Publishes a packed release in the release workflow.
+ */
+program
+	.command('release-publish')
+	.description(
+		'Publish the packed packages to npm with trusted publishing, skipping versions npm has, and create the GitHub release. Used by the release workflow.',
+	)
+	.argument('<directory>', 'Directory with the tarballs and notes.md, e.g. "release".')
+	.requiredOption('--tag <tag>', 'The tag to release, e.g. "v1.2.3".')
+	.action(async (directory: string, opts: { tag: string }) => {
+		await reportErrors(releasePublish(resolve(process.cwd(), directory), opts.tag));
+	});
+
 if (process.env.NODE_ENV !== 'test') {
 	await program.parseAsync();
+}
+
+/**
+ * Waits for a command and reports its error as a message instead of a stack trace.
+ */
+async function reportErrors(work: Promise<unknown> | (() => Promise<unknown>)): Promise<void> {
+	try {
+		await (typeof work === 'function' ? work() : work);
+	} catch (error) {
+		panic(formatError(error));
+	}
+}
+
+function parsePositiveInteger(value: string): number {
+	const number = Number(value);
+	if (!Number.isInteger(number) || number <= 0) {
+		throw new InvalidArgumentError(`Expected a positive integer, got "${value}".`);
+	}
+	return number;
 }
 
 /**
@@ -336,14 +446,6 @@ if (process.env.NODE_ENV !== 'test') {
  * @param filename - The filename to check.
  * @returns The resolved full path if the file exists.
  */
-function parsePositiveInteger(value: string): number {
-	const number = Number(value);
-	if (!Number.isInteger(number) || number <= 0) {
-		throw new InvalidArgumentError(`Expected a positive integer, got "${value}".`);
-	}
-	return number;
-}
-
 function checkFilename(filename: string): string {
 	const fullname = resolve(cwd(), filename);
 	if (!existsSync(fullname)) {

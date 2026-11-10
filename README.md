@@ -219,6 +219,75 @@ Without `--svg`, the treemap is printed as JSON instead of being rendered, which
 vrt bundle-treemap dist/bundle.js | jq '.title = "What ships to the browser"' | vrt treemap --svg assets/bundle.svg
 ```
 
+# Release workflow
+
+`vrt release` splits a release into a local half and a remote half. Locally, it checks the repository, raises the version in every `package.json` (all workspaces share one version), adds the section generated from the commits to `CHANGELOG.md`, commits `release: vX.Y.Z`, and pushes the commit and its tag atomically. It never publishes. The tag starts the project's release workflow, which tests the tagged commit, waits for an approval, publishes the tested tarballs to npm with [trusted publishing](https://docs.npmjs.com/trusted-publishers) and provenance, and creates the GitHub release. `vrt release` watches it and confirms at the end that the packages are on npm.
+
+So no npm login is needed on the maintainer's machine, npm gets what CI tested, and nothing is published before git has the release commit.
+
+## Setup, once per project
+
+1. On npmjs.com, add a trusted publisher to every package: GitHub Actions, this repository, the workflow file `release.yml` and the environment `npm`.
+
+2. In the repository settings, create the environment `npm` with required reviewers.
+
+3. Add `.github/workflows/release.yml`. The workflow has to be named `Release`, which `vrt release` looks for:
+
+   ```yaml
+   name: Release
+
+   on:
+      push:
+         tags:
+            - 'v*'
+
+   permissions: {}
+
+   concurrency:
+      group: release-${{ github.ref }}
+      cancel-in-progress: false
+
+   jobs:
+      build:
+         uses: versatiles-org/node-release-tool/.github/workflows/release.yml@vX.Y.Z
+         permissions:
+            contents: read
+
+      # npm only accepts trusted publishing from the workflow file configured on npmjs.com,
+      # so this job lives here and not in the reusable workflow.
+      publish:
+         name: Publish
+         needs: build
+         runs-on: ubuntu-latest
+         environment: npm
+         permissions:
+            contents: write # GitHub release
+            id-token: write # npm trusted publishing
+         steps:
+            - uses: actions/setup-node@v7
+              with:
+                 node-version: 24
+                 registry-url: https://registry.npmjs.org
+            - uses: actions/download-artifact@v8
+              with:
+                 name: release
+                 path: release
+            - run: npx --yes "@versatiles/release-tool@${{ needs.build.outputs.tool-version }}" release-publish release --tag "$GITHUB_REF_NAME"
+              env:
+                 GH_TOKEN: ${{ github.token }}
+                 GH_REPO: ${{ github.repository }}
+   ```
+
+   Replace `vX.Y.Z` with the release of this tool that the project uses. The reusable workflow runs `npm run check` and the `vrt` of the project's devDependencies; the inputs `check-script` and `vrt` change that. A project without public packages can drop `environment: npm` and `id-token: write`: it only gets the GitHub release.
+
+4. Set `scripts.release` in `package.json` to `vrt release`.
+
+## When a release fails
+
+- **Before the tag is pushed:** the release commit and the tag are undone. Start again.
+- **In the workflow, for a reason outside the code**, such as an npm outage or a declined approval: the next `vrt release` notices the unfinished release and offers to run the failed jobs again. Re-running is safe, because versions that are already on npm are skipped.
+- **In the workflow, because the code had to be fixed:** commit the fix, then `vrt release` moves the tag to HEAD and releases that, with the same version and changelog section. This is only possible while nothing of the version is on npm. After that, the fix is the next version.
+
 # Command `vrt`
 
 <!--- This chapter is generated automatically --->
@@ -244,7 +313,11 @@ Commands:
   doc-toc <readme> [heading]                Generate a Table of Contents (TOC) in a Markdown file.
   doc-typescript [options]                  Generate documentation for a TypeScript project.
   help [command]                            display help for command
+  release [options] [version]               Prepare a release: check, raise the version, update CHANGELOG.md, commit, tag and push. The pushed tag starts the release workflow, which publishes; this command watches it.
+  release-check [options] <tag>             Check that a tag can be released: it must match the version of every package.json, and CHANGELOG.md must have notes for it. Used by the release workflow.
   release-npm [options] [path]              Publish an npm package from the specified path to the npm registry, then wait until npm serves the new version.
+  release-pack <directory>                  Pack every public package of the repository, including workspaces, into a directory, in the order to publish them. Used by the release workflow.
+  release-publish [options] <directory>     Publish the packed packages to npm with trusted publishing, skipping versions npm has, and create the GitHub release. Used by the release workflow.
   treemap [options]                         Render a treemap from JSON on stdin as SVG file and output a Markdown image link to it.
 ```
 
@@ -414,6 +487,54 @@ Options:
                              Default is "./docs".
 ```
 
+## Subcommand: `vrt release`
+
+```console
+$ vrt release
+Usage: vrt release [options] [version]
+
+Prepare a release: check, raise the version, update CHANGELOG.md, commit, tag
+and push. The pushed tag starts the release workflow, which publishes; this
+command watches it.
+
+Arguments:
+  version          Version to release: "patch", "minor", "major" or an explicit
+                   version. Default: recommended from the commits, and asked
+                   for.
+
+Options:
+  -h, --help       display help for command
+  -n, --dry-run    Run the checks and show what would happen, but change
+                   nothing.
+  --resume         Finish the unfinished release of the current version without
+                   asking.
+  --skip-ci-check  Do not require passing CI runs on the released commit
+                   (emergencies only).
+  -y, --yes        Ask nothing: take the recommended version and confirm
+                   everything.
+
+The repository needs a workflow named "Release" that the tag starts, see
+https://github.com/versatiles-org/node-release-tool#release-workflow
+```
+
+## Subcommand: `vrt release-check`
+
+```console
+$ vrt release-check
+Usage: vrt release-check [options] <tag>
+
+Check that a tag can be released: it must match the version of every
+package.json, and CHANGELOG.md must have notes for it. Used by the release
+workflow.
+
+Arguments:
+  tag             The tag to release, e.g. "v1.2.3".
+
+Options:
+  -h, --help      display help for command
+  --notes <file>  Write the release notes to this file.
+```
+
 ## Subcommand: `vrt release-npm`
 
 ```console
@@ -435,6 +556,39 @@ Options:
   --no-publish          Do not publish to npm: only raise the version, update
                         the changelog, tag, push and create the GitHub release,
                         e.g. when a CI workflow publishes the pushed tag.
+```
+
+## Subcommand: `vrt release-pack`
+
+```console
+$ vrt release-pack
+Usage: vrt release-pack [options] <directory>
+
+Pack every public package of the repository, including workspaces, into a
+directory, in the order to publish them. Used by the release workflow.
+
+Arguments:
+  directory   Directory to write the tarballs to, e.g. "release".
+
+Options:
+  -h, --help  display help for command
+```
+
+## Subcommand: `vrt release-publish`
+
+```console
+$ vrt release-publish
+Usage: vrt release-publish [options] <directory>
+
+Publish the packed packages to npm with trusted publishing, skipping versions
+npm has, and create the GitHub release. Used by the release workflow.
+
+Arguments:
+  directory    Directory with the tarballs and notes.md, e.g. "release".
+
+Options:
+  -h, --help   display help for command
+  --tag <tag>  The tag to release, e.g. "v1.2.3".
 ```
 
 ## Subcommand: `vrt treemap`

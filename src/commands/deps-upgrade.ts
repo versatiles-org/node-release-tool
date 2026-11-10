@@ -6,7 +6,7 @@ import { satisfies, validRange } from 'semver';
 import { formatError, validationError } from '../lib/errors.js';
 import { check, info, panic, warn } from '../lib/log.js';
 import { Shell } from '../lib/shell.js';
-import { readWorkspaceDirectories } from './deps-graph-workspace.js';
+import { readWorkspaceDirectories } from '../lib/workspaces.js';
 
 /**
  * Rules describing which dependencies must not be upgraded.

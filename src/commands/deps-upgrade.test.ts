@@ -40,7 +40,7 @@ vi.mock('../lib/shell.js', () => ({
 	}),
 }));
 
-vi.mock('./deps-graph-workspace.js', () => ({
+vi.mock('../lib/workspaces.js', () => ({
 	readWorkspaceDirectories: vi.fn((): string[] => []),
 }));
 
@@ -48,7 +48,7 @@ const ncu = (await import('npm-check-updates')).default;
 const { check, info, panic, warn } = await import('../lib/log.js');
 const { existsSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } = await import('fs');
 const { Shell } = await import('../lib/shell.js');
-const { readWorkspaceDirectories } = await import('./deps-graph-workspace.js');
+const { readWorkspaceDirectories } = await import('../lib/workspaces.js');
 const { parseIgnoreRules, upgradeDependencies } = await import('./deps-upgrade.js');
 
 const PACKAGE_JSON = '/test/directory/package.json';
