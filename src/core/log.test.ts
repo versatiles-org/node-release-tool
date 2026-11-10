@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, MockInstance, vi } from 'vitest';
-import { check, formatMarkdown, info, markdown, panic, success, warn } from './log.js';
+import { check, formatBox, formatMarkdown, info, markdown, panic, success, warn } from './log.js';
 
 describe('Your Module Tests', () => {
 	let processSpy: MockInstance<{
@@ -119,9 +119,44 @@ describe('Your Module Tests', () => {
 		expect(processSpy).toHaveBeenCalledWith('\x1b[0;92m\u2714 test success\x1b[0m\n');
 	});
 
-	it('markdown should write formatted Markdown to stderr', () => {
-		markdown('### Features');
-		expect(processSpy).toHaveBeenCalledWith('\x1b[1;93mFeatures\x1b[0m\n');
+	it('markdown should write formatted Markdown in a box to stderr', () => {
+		markdown('### Features', 'notes');
+		const output = String(processSpy.mock.calls[0][0]);
+		expect(output).toContain('\x1b[1;93mFeatures\x1b[0m');
+		expect(output).toContain('\x1b[1mnotes\x1b[22m');
+		expect(output).toContain('╭');
+		expect(output.endsWith('╯\x1b[39m\n')).toBe(true);
+	});
+});
+
+describe('formatBox', () => {
+	// eslint-disable-next-line no-control-regex
+	const plain = (text: string): string => text.replace(/\x1b\[[0-9;]*m/g, '');
+
+	it('frames the text, padding every line to the widest one', () => {
+		expect(plain(formatBox('ab\n\x1b[1mabcd\x1b[0m', undefined, 80)).split('\n')).toStrictEqual([
+			'╭' + '─'.repeat(6) + '╮',
+			'│ ab   │',
+			'│ abcd │',
+			'╰' + '─'.repeat(6) + '╯',
+		]);
+	});
+
+	it('shows the title in the top border and makes the box wide enough for it', () => {
+		expect(plain(formatBox('a', '1.0.0 → 1.1.0', 80)).split('\n')).toStrictEqual([
+			'╭─ 1.0.0 → 1.1.0 ──╮',
+			'│ a' + ' '.repeat(15) + ' │',
+			'╰' + '─'.repeat(18) + '╯',
+		]);
+	});
+
+	it('leaves the box open on the right if the text is wider than the terminal', () => {
+		expect(plain(formatBox('a'.repeat(20) + '\nb', undefined, 10)).split('\n')).toStrictEqual([
+			'╭' + '─'.repeat(8),
+			'│ ' + 'a'.repeat(20),
+			'│ b',
+			'╰' + '─'.repeat(8),
+		]);
 	});
 });
 

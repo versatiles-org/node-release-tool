@@ -119,8 +119,8 @@ export async function startRelease(directory: string, options: StartReleaseOptio
 	// summary
 	const notes = generateChangelogEntry(version, commits, date, { repoUrl });
 	const prerelease = isPrerelease(version) ? ' (prerelease: npm dist-tag "next")' : '';
-	process.stderr.write(`\n\x1b[1m${current} → ${version}\x1b[0m${prerelease}\n\n`);
-	markdown(`${notes.trimEnd()}\n`);
+	process.stderr.write('\n');
+	markdown(notes.trimEnd(), `${current} → ${version}${prerelease}`);
 	if (unpushed > 0) info(`${unpushed} commit(s) are pushed to origin first, and CI has to pass on them`);
 
 	panicOnProblems();

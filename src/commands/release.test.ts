@@ -199,7 +199,7 @@ describe('startRelease', () => {
 		expect(successes()).toContain('the GitHub release v1.1.0 is published');
 		expect(successes()).toContain('@x/pkg@1.1.0 is on npm');
 		expect(successes()).toContain('released v1.1.0: https://github.com/o/r/releases/tag/v1.1.0');
-		expect(markdown).toHaveBeenCalledWith(expect.stringContaining('### Features\n\n- add a thing'));
+		expect(markdown).toHaveBeenCalledWith(expect.stringContaining('### Features\n\n- add a thing'), '1.0.0 → 1.1.0');
 	});
 
 	it('asks for the version and the confirmation', async () => {

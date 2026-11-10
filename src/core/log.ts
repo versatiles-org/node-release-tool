@@ -99,12 +99,49 @@ export function success(text: string): void {
 }
 
 /**
- * Logs Markdown, such as release notes, to stderr, formatted for the terminal.
+ * Logs Markdown, such as release notes, to stderr, formatted for the terminal and framed by a box,
+ * so that it stands out from the other messages.
  *
  * @param text - The Markdown to display.
+ * @param title - Optional title, shown in the top border of the box.
  */
-export function markdown(text: string): void {
-	writeLine(formatMarkdown(text) + '\n');
+export function markdown(text: string, title?: string): void {
+	writeLine(formatBox(formatMarkdown(text), title) + '\n');
+}
+
+/** Matches ANSI escape codes for colors and styles. */
+// eslint-disable-next-line no-control-regex
+const ANSI_CODE = /\x1b\[[0-9;]*m/g;
+
+/** Returns the number of characters that a text takes up in the terminal, without ANSI codes. */
+function visibleWidth(text: string): number {
+	return [...text.replace(ANSI_CODE, '')].length;
+}
+
+/**
+ * Frames text with a box of gray lines. If the text is wider than the terminal, the box is left
+ * open on the right, because the terminal would break the lines and with them the right border.
+ *
+ * @param text - The text to frame; it may contain ANSI codes.
+ * @param title - Optional title, shown in bold in the top border.
+ * @param columns - The width of the terminal, or undefined if unknown.
+ * @returns The framed text, without a trailing line break.
+ */
+export function formatBox(text: string, title?: string, columns: number | undefined = process.stderr.columns): string {
+	const gray = (border: string): string => `\x1b[90m${border}\x1b[39m`;
+	const lines = text.split('\n');
+	const head = title === undefined ? '' : ` \x1b[1m${title}\x1b[22m `;
+	const headWidth = visibleWidth(head);
+	let width = Math.max(headWidth + 1, ...lines.map(visibleWidth));
+	const closed = columns === undefined || width + 4 <= columns;
+	if (!closed) width = Math.max(headWidth + 1, columns - 4);
+
+	const top = gray('╭─') + head + gray('─'.repeat(width + 1 - headWidth) + (closed ? '╮' : ''));
+	const body = lines.map((line) =>
+		closed ? `${gray('│')} ${line}${' '.repeat(width - visibleWidth(line))} ${gray('│')}` : `${gray('│')} ${line}`,
+	);
+	const bottom = gray('╰' + '─'.repeat(width + 2) + (closed ? '╯' : ''));
+	return [top, ...body, bottom].join('\n');
 }
 
 /**
