@@ -1,0 +1,47 @@
+name: Release
+
+# This repository's own release, started by the tag that `vrt release` pushes. It follows the
+# caller template in the README, with two differences: it calls the reusable workflow of the
+# same commit, and it runs vrt from the tested tarball, because that version isn't on npm yet.
+# npm's trusted publisher for @versatiles/release-tool must name this file, publish.yml.
+
+on:
+   push:
+      tags:
+         - 'v*'
+
+permissions: {}
+
+concurrency:
+   group: release-${{ github.ref }}
+   cancel-in-progress: false
+
+jobs:
+   build:
+      uses: ./.github/workflows/release.yml
+      permissions:
+         contents: read
+      with:
+         vrt: npx tsx src/index.ts
+
+   publish:
+      name: Publish
+      needs: build
+      runs-on: ubuntu-latest
+      environment: npm
+      permissions:
+         contents: write # GitHub release
+         id-token: write # npm trusted publishing
+      steps:
+         - uses: actions/setup-node@v7
+           with:
+              node-version: 24
+              registry-url: https://registry.npmjs.org
+         - uses: actions/download-artifact@v8
+           with:
+              name: release
+              path: release
+         - run: npx --yes "./release/versatiles-release-tool-${{ needs.build.outputs.version }}.tgz" release-publish release --tag "$GITHUB_REF_NAME"
+           env:
+              GH_TOKEN: ${{ github.token }}
+              GH_REPO: ${{ github.repository }}

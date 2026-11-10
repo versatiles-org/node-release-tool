@@ -22,7 +22,7 @@
     "format:check": "prettier --check .",
     "lint": "eslint . --color",
     "prepack": "npm run build",
-    "release": "tsx src/index.ts release-npm",
+    "release": "tsx src/index.ts release",
     "typecheck": "tsc --noEmit",
     "test:coverage": "vitest --run --coverage",
     "test": "vitest --run",
