@@ -235,7 +235,7 @@ So no npm login is needed on the maintainer's machine, npm gets what CI tested, 
 
 1. On npmjs.com, add a trusted publisher to every package: GitHub Actions, this repository, the workflow file `release.yml` and the environment `npm`.
 
-2. In the repository settings, create the environment `npm` with required reviewers.
+2. In the repository settings, create the environment `npm` and allow only tags `v*` to deploy to it. Add required reviewers only if every publish should wait for an approval. To control who can start a release, add a tag ruleset for `v*` that restricts creation, deletion and non-fast-forward updates to the maintainers.
 
 3. Add `.github/workflows/release.yml`. The workflow has to be named `Release`, which `vrt release` looks for:
 
