@@ -6,6 +6,8 @@ import type { WorkflowRun } from '../lib/github.js';
 
 vi.mock('../core/log.js', () => ({
 	info: vi.fn(),
+	success: vi.fn(),
+	markdown: vi.fn(),
 	warn: vi.fn(),
 	debug: vi.fn(),
 	panic: vi.fn((message: string) => {
@@ -113,7 +115,7 @@ const run = (workflowName: string, headSha: string, fields: Partial<WorkflowRun>
 	...fields,
 });
 
-const { info, warn } = await import('../core/log.js');
+const { info, markdown, success, warn } = await import('../core/log.js');
 const { startRelease } = await import('./release.js');
 
 describe('startRelease', () => {
@@ -166,6 +168,7 @@ describe('startRelease', () => {
 	const gitCommands = () =>
 		exec.mock.calls.filter((call) => call[0] === 'git').map((call) => (call[1] as string[]).join(' '));
 	const messages = () => vi.mocked(info).mock.calls.map((call) => call[0]);
+	const successes = () => vi.mocked(success).mock.calls.map((call) => call[0]);
 	const version = () =>
 		(JSON.parse(readFileSync(join(directory, 'package.json'), 'utf8')) as { version: string }).version;
 
@@ -193,9 +196,10 @@ describe('startRelease', () => {
 			'--no-fund',
 		]);
 		expect(messages()).toContain('recommended version: 1.1.0 (a minor release)');
-		expect(messages()).toContain('the GitHub release v1.1.0 is published');
-		expect(messages()).toContain('@x/pkg@1.1.0 is on npm');
-		expect(messages()).toContain('released v1.1.0: https://github.com/o/r/releases/tag/v1.1.0');
+		expect(successes()).toContain('the GitHub release v1.1.0 is published');
+		expect(successes()).toContain('@x/pkg@1.1.0 is on npm');
+		expect(successes()).toContain('released v1.1.0: https://github.com/o/r/releases/tag/v1.1.0');
+		expect(markdown).toHaveBeenCalledWith(expect.stringContaining('### Features\n\n- add a thing'));
 	});
 
 	it('asks for the version and the confirmation', async () => {
@@ -212,7 +216,7 @@ describe('startRelease', () => {
 		await startRelease(directory, { dryRun: true, version: 'patch', sleep, now, date });
 		expect(version()).toBe('1.0.0');
 		expect(gitCommands().filter((command) => /^(commit|tag --annotate|push)/.test(command))).toStrictEqual([]);
-		expect(messages()).toContain('dry run: all checks pass, nothing was changed');
+		expect(successes()).toContain('dry run: all checks pass, nothing was changed');
 	});
 
 	it('requires --yes without a terminal', async () => {
@@ -263,9 +267,9 @@ describe('startRelease', () => {
 
 		const commands = gitCommands();
 		expect(commands.indexOf('push origin main')).toBeLessThan(commands.indexOf('commit --quiet -m release: v1.1.0'));
-		expect(messages()).toContain('pushed 2 commit(s) to origin');
+		expect(successes()).toContain('pushed 2 commit(s) to origin');
 		expect(messages()).toContain('waiting for CI');
-		expect(messages()).toContain('CI passed on this commit');
+		expect(successes()).toContain('CI passed on this commit');
 	});
 
 	it('stops if CI fails on the pushed commits', async () => {
@@ -343,7 +347,7 @@ describe('startRelease', () => {
 			await startRelease(directory, { resume: true, yes: true, sleep, now, date });
 			expect(exec).toHaveBeenCalledWith('gh', ['run', 'rerun', '42', '--failed']);
 			expect(messages()).toContain('the release of v1.0.0 is not finished');
-			expect(messages()).toContain('released v1.0.0: https://github.com/o/r/releases/tag/v1.0.0');
+			expect(successes()).toContain('released v1.0.0: https://github.com/o/r/releases/tag/v1.0.0');
 			expect(sleep).toHaveBeenCalled();
 		});
 

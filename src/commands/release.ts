@@ -10,7 +10,7 @@ import {
 	listPushRuns,
 	type WorkflowRun,
 } from '../lib/github.js';
-import { info, panic, warn } from '../core/log.js';
+import { info, markdown, panic, success, warn } from '../core/log.js';
 import { formatDuration, waitForNpmRelease } from '../lib/npm-registry.js';
 import {
 	isPrerelease,
@@ -119,19 +119,20 @@ export async function startRelease(directory: string, options: StartReleaseOptio
 	// summary
 	const notes = generateChangelogEntry(version, commits, date, { repoUrl });
 	const prerelease = isPrerelease(version) ? ' (prerelease: npm dist-tag "next")' : '';
-	process.stderr.write(`\n${current} → ${version}${prerelease}\n\n${notes.trimEnd()}\n\n`);
+	process.stderr.write(`\n\x1b[1m${current} → ${version}\x1b[0m${prerelease}\n\n`);
+	markdown(`${notes.trimEnd()}\n`);
 	if (unpushed > 0) info(`${unpushed} commit(s) are pushed to origin first, and CI has to pass on them`);
 
 	panicOnProblems();
 	if (dryRun) {
-		info('dry run: all checks pass, nothing was changed');
+		success('dry run: all checks pass, nothing was changed');
 		return;
 	}
 	if (!(await confirm(`Release ${tag} and push it to origin?`))) panic('aborted, nothing was changed');
 
 	await pushAndAwaitCi(sha);
 	const releaseSha = await createReleaseCommit(sha, version, commits);
-	info(`pushed ${tag}`);
+	success(`pushed ${tag}`);
 	await watchRelease(tag, releaseSha);
 
 	/**
@@ -251,7 +252,7 @@ export async function startRelease(directory: string, options: StartReleaseOptio
 	async function pushAndAwaitCi(sha: string): Promise<void> {
 		if (unpushed > 0) {
 			await git('push', 'origin', branch);
-			info(`pushed ${unpushed} commit(s) to origin`);
+			success(`pushed ${unpushed} commit(s) to origin`);
 		}
 		if (skipCiCheck) return;
 
@@ -267,7 +268,7 @@ export async function startRelease(directory: string, options: StartReleaseOptio
 						`CI failed, nothing was released:\n  ${failed.map((run) => `${run.workflowName}: ${run.url}`).join('\n  ')}`,
 					);
 				}
-				info('CI passed on this commit');
+				success('CI passed on this commit');
 				return;
 			}
 			if (runs.length === 0 && now() - started > START_TIMEOUT_MS) {
@@ -356,7 +357,7 @@ export async function startRelease(directory: string, options: StartReleaseOptio
 		if ((await getGitHubReleaseState(shell, tag)) !== 'published') {
 			panic(`the release workflow succeeded, but the GitHub release ${tag} is missing or still a draft`);
 		}
-		info(`the GitHub release ${tag} is published`);
+		success(`the GitHub release ${tag} is published`);
 
 		// npm has accepted the packages, but serves a new version only after a few minutes
 		const version = tag.slice(1);
@@ -366,11 +367,11 @@ export async function startRelease(directory: string, options: StartReleaseOptio
 			if (elapsed === undefined) {
 				warn(`npm does not serve ${spec} yet, check it later with "npm view ${spec}"`);
 			} else {
-				info(`${spec} is on npm${elapsed > 0 ? ` after ${formatDuration(elapsed)}` : ''}`);
+				success(`${spec} is on npm${elapsed > 0 ? ` after ${formatDuration(elapsed)}` : ''}`);
 			}
 		}
 
-		info(`released ${tag}${repoUrl ? `: ${repoUrl}/releases/tag/${tag}` : ''}`);
+		success(`released ${tag}${repoUrl ? `: ${repoUrl}/releases/tag/${tag}` : ''}`);
 	}
 
 	/**
@@ -476,7 +477,7 @@ export async function startRelease(directory: string, options: StartReleaseOptio
 		// deleted on origin first; that fails if origin does not have it
 		await shell.exec('git', ['push', '--no-verify', 'origin', `:refs/tags/${currentTag}`], false, true);
 		await git('push', '--force', '--no-verify', 'origin', `refs/tags/${currentTag}`);
-		info(`pushed ${currentTag}`);
+		success(`pushed ${currentTag}`);
 		return watchRelease(currentTag, sha);
 	}
 }

@@ -89,6 +89,55 @@ export function info(text: string): void {
 }
 
 /**
+ * Logs a finished step to stderr.
+ * The message is displayed in green text with a checkmark, like a successful {@link check}.
+ *
+ * @param text - The message to display.
+ */
+export function success(text: string): void {
+	writeLine(`\x1b[0;92m✔ ${text}\x1b[0m\n`);
+}
+
+/**
+ * Logs Markdown, such as release notes, to stderr, formatted for the terminal.
+ *
+ * @param text - The Markdown to display.
+ */
+export function markdown(text: string): void {
+	writeLine(formatMarkdown(text) + '\n');
+}
+
+/**
+ * Formats the Markdown that changelogs use for the terminal: headings in bold, list items with a
+ * bullet, `**bold**` and `` `code` `` highlighted, and links shown by their text only.
+ *
+ * @param text - The Markdown to format.
+ * @returns The text with ANSI escape codes.
+ */
+export function formatMarkdown(text: string): string {
+	const inline = (line: string): string =>
+		line
+			.replace(/ ?\(\[([^\]]+)\]\([^)]+\)\)/g, ' \x1b[90m($1)\x1b[39m')
+			.replace(/\[([^\]]+)\]\([^)]+\)/g, '\x1b[4m$1\x1b[24m')
+			.replace(/\*\*([^*]+)\*\*/g, '\x1b[1m$1\x1b[22m')
+			.replace(/`([^`]+)`/g, '\x1b[36m$1\x1b[39m');
+	return text
+		.split('\n')
+		.map((line) => {
+			const heading = /^(#{1,6})\s+(.*)$/.exec(line);
+			if (heading) {
+				const content = heading[2].replace(/^\[([^\]]+)\]/, '$1');
+				const color = heading[1].length <= 2 ? '\x1b[1;96m' : '\x1b[1;93m';
+				return `${color}${content}\x1b[0m`;
+			}
+			const item = /^(\s*)[-*]\s+(.*)$/.exec(line);
+			if (item) return `${item[1]}  • ${inline(item[2])}`;
+			return inline(line);
+		})
+		.join('\n');
+}
+
+/**
  * Logs a debug message to stderr if verbose mode is enabled.
  * The message is displayed in gray text.
  *

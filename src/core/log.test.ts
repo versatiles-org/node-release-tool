@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, MockInstance, vi } from 'vitest';
-import { check, info, panic, warn } from './log.js';
+import { check, formatMarkdown, info, markdown, panic, success, warn } from './log.js';
 
 describe('Your Module Tests', () => {
 	let processSpy: MockInstance<{
@@ -112,5 +112,40 @@ describe('Your Module Tests', () => {
 			expect.stringContaining('! ERROR: {"code":1,"stdout":"","stderr":"npm install failed"}'),
 		);
 		expect(abortSpy).toHaveBeenCalled();
+	});
+
+	it('success should write a green message with a checkmark to stderr', () => {
+		success('test success');
+		expect(processSpy).toHaveBeenCalledWith('\x1b[0;92m\u2714 test success\x1b[0m\n');
+	});
+
+	it('markdown should write formatted Markdown to stderr', () => {
+		markdown('### Features');
+		expect(processSpy).toHaveBeenCalledWith('\x1b[1;93mFeatures\x1b[0m\n');
+	});
+});
+
+describe('formatMarkdown', () => {
+	it('formats headings, list items, bold text, code and commit links', () => {
+		const notes = [
+			'## [1.1.0] - 2026-11-10',
+			'',
+			'### Features',
+			'',
+			'- **cli:** add `--yes` ([abc1234](https://github.com/o/r/commit/abc1234def))',
+			'- see [the docs](https://example.org)',
+		].join('\n');
+		expect(formatMarkdown(notes).split('\n')).toStrictEqual([
+			'\x1b[1;96m1.1.0 - 2026-11-10\x1b[0m',
+			'',
+			'\x1b[1;93mFeatures\x1b[0m',
+			'',
+			'  \u2022 \x1b[1mcli:\x1b[22m add \x1b[36m--yes\x1b[39m \x1b[90m(abc1234)\x1b[39m',
+			'  \u2022 see \x1b[4mthe docs\x1b[24m',
+		]);
+	});
+
+	it('leaves plain text unchanged', () => {
+		expect(formatMarkdown('nothing to format\n')).toBe('nothing to format\n');
 	});
 });
