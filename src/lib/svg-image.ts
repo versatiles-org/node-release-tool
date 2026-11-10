@@ -3,7 +3,7 @@ import { dirname, relative, resolve, sep } from 'path';
 import { extractGitHubRepoUrl } from './git.js';
 import { warn } from '../core/log.js';
 import { getReleaseBaseUrl, RELEASE_VERSION_ENV } from './release-link.js';
-import { Shell } from './shell.js';
+import { Shell } from '../core/shell.js';
 
 /**
  * Writes a generated SVG file for the docs and returns Markdown that shows it

@@ -1,5 +1,5 @@
 import { releaseError } from '../core/errors.js';
-import type { Shell } from './shell.js';
+import type { Shell } from '../core/shell.js';
 
 /**
  * A GitHub Actions workflow run, as `gh run list --json` describes it.

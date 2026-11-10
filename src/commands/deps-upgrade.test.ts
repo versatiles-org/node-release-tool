@@ -34,7 +34,7 @@ const mockedShellInstance = {
 	stdout: vi.fn(async (_command: string) => ''),
 	kill: vi.fn((_signal?: NodeJS.Signals) => 0),
 };
-vi.mock('../lib/shell.js', () => ({
+vi.mock('../core/shell.js', () => ({
 	Shell: vi.fn(function () {
 		return mockedShellInstance;
 	}),
@@ -47,7 +47,7 @@ vi.mock('../lib/workspaces.js', () => ({
 const ncu = (await import('npm-check-updates')).default;
 const { check, info, panic, warn } = await import('../core/log.js');
 const { existsSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } = await import('fs');
-const { Shell } = await import('../lib/shell.js');
+const { Shell } = await import('../core/shell.js');
 const { readWorkspaceDirectories } = await import('../lib/workspaces.js');
 const { parseIgnoreRules, upgradeDependencies } = await import('./deps-upgrade.js');
 

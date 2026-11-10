@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Shell, ShellResult } from './shell.js';
+import type { Shell, ShellResult } from '../core/shell.js';
 import { formatDuration, isAvailableOnNpm, waitForNpmRelease } from './npm-registry.js';
 
 const TARBALL = 'https://registry.npmjs.org/@scope/pkg/-/pkg-1.2.3.tgz';

@@ -5,7 +5,7 @@ import { join } from 'path';
 import { satisfies, validRange } from 'semver';
 import { formatError, validationError } from '../core/errors.js';
 import { check, info, panic, warn } from '../core/log.js';
-import { Shell } from '../lib/shell.js';
+import { Shell } from '../core/shell.js';
 import { readWorkspaceDirectories } from '../lib/workspaces.js';
 
 /**

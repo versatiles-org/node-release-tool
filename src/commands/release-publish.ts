@@ -5,7 +5,7 @@ import { releaseError } from '../core/errors.js';
 import { getGitHubReleaseState } from '../lib/github.js';
 import { check, info } from '../core/log.js';
 import { distTag, isPrerelease } from '../lib/release-plan.js';
-import { Shell } from '../lib/shell.js';
+import { Shell } from '../core/shell.js';
 import { PACKAGES_FILE, type PackedRelease } from './release-pack.js';
 
 /** The oldest npm that supports trusted publishing. */

@@ -4,7 +4,7 @@ import { releaseError } from '../core/errors.js';
 import { check, info } from '../core/log.js';
 import { publishOrder, readManifests } from '../lib/release-plan.js';
 import { RELEASE_VERSION_ENV } from '../lib/release-link.js';
-import { Shell } from '../lib/shell.js';
+import { Shell } from '../core/shell.js';
 
 /** Name of the file that lists the packed tarballs, in the output directory. */
 export const PACKAGES_FILE = 'packages.json';

@@ -1,4 +1,4 @@
-import { Shell } from './shell.js';
+import { Shell } from '../core/shell.js';
 
 /**
  * Represents a Git commit with its SHA, message, and optional tag.

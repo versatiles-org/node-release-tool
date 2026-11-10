@@ -19,7 +19,7 @@ import { check, debug, info, panic, warn } from '../core/log.js';
 import { formatDuration, waitForNpmRelease } from '../lib/npm-registry.js';
 import { getReleaseBaseUrl, RELEASE_VERSION_ENV, unpinReleaseLinks } from '../lib/release-link.js';
 import { withRetry } from '../lib/retry.js';
-import { Shell } from '../lib/shell.js';
+import { Shell } from '../core/shell.js';
 
 /**
  * Represents the required structure of package.json for releases.

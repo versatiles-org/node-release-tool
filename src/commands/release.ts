@@ -20,7 +20,7 @@ import {
 	resolveReleaseVersion,
 	setManifestVersion,
 } from '../lib/release-plan.js';
-import { Shell } from '../lib/shell.js';
+import { Shell } from '../core/shell.js';
 import { getErrorMessage } from '../lib/utils.js';
 
 /**

@@ -1,5 +1,5 @@
 import { debug } from '../core/log.js';
-import type { Shell } from './shell.js';
+import type { Shell } from '../core/shell.js';
 
 /**
  * Options for {@link waitForNpmRelease}.

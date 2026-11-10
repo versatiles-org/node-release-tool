@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { getGitHubReleaseState, isPassing, listPushRuns, type WorkflowRun } from './github.js';
-import type { Shell } from './shell.js';
+import type { Shell } from '../core/shell.js';
 
 function fakeShell(result: { code?: number; stdout?: string; stderr?: string }) {
 	const exec = vi.fn(async () => ({ code: 0, signal: null, stdout: '', stderr: '', ...result }));

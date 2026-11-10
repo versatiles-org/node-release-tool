@@ -9,13 +9,13 @@ vi.mock('../core/log.js', () => ({
 }));
 
 const exec = vi.fn();
-vi.mock('../lib/shell.js', () => ({
+vi.mock('../core/shell.js', () => ({
 	Shell: vi.fn(function () {
 		return { exec };
 	}),
 }));
 
-const { Shell } = await import('../lib/shell.js');
+const { Shell } = await import('../core/shell.js');
 const { releasePack } = await import('./release-pack.js');
 
 describe('releasePack', () => {

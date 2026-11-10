@@ -16,7 +16,7 @@ const exec = vi.fn(async (command: string, args: string[]) => {
 });
 const stdout = vi.fn(async (command: string) => (command === 'npm --version' ? npmVersion : ''));
 let npmVersion = '11.6.0';
-vi.mock('../lib/shell.js', () => ({
+vi.mock('../core/shell.js', () => ({
 	Shell: vi.fn(function () {
 		return { exec, stdout };
 	}),

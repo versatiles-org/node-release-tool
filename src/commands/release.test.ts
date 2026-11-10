@@ -48,7 +48,7 @@ async function fakeExec(command: string, args: string[], errorOnCodeNonZero = tr
 	return full;
 }
 const exec = vi.fn(fakeExec);
-vi.mock('../lib/shell.js', () => ({
+vi.mock('../core/shell.js', () => ({
 	Shell: vi.fn(function () {
 		return { exec };
 	}),

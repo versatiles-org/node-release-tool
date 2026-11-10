@@ -48,7 +48,7 @@ const mockedShellInstance = {
 	}),
 	ok: vi.fn(async (_command: string): Promise<boolean> => true),
 };
-vi.mock('../lib/shell.js', () => ({
+vi.mock('../core/shell.js', () => ({
 	Shell: vi.fn(function () {
 		return mockedShellInstance;
 	}),
@@ -293,7 +293,7 @@ describe('release function', () => {
 	});
 
 	it('should publish with the release version and restore relative links afterwards', async () => {
-		const { Shell } = await import('../lib/shell.js');
+		const { Shell } = await import('../core/shell.js');
 		const pinned = '![Dependency graph](https://raw.githubusercontent.com/owner/repo/v1.1.0/docs/graph.svg)';
 		vi.mocked(mockedShellInstance.exec).mockImplementation(async (command: string, args: string[]) => ({
 			code: 0,
