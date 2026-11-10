@@ -1,5 +1,5 @@
 import * as td from 'typedoc';
-import { panic, warn } from '../lib/log.js';
+import { panic, warn } from '../core/log.js';
 
 /**
  * Output format for generated TypeScript documentation.

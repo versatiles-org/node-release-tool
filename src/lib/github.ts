@@ -1,4 +1,4 @@
-import { releaseError } from './errors.js';
+import { releaseError } from '../core/errors.js';
 import type { Shell } from './shell.js';
 
 /**

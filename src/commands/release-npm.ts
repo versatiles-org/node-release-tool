@@ -5,7 +5,7 @@ import { resolve } from 'path';
 import { valid } from 'semver';
 import select from '@inquirer/select';
 import { updateChangelog } from '../lib/changelog.js';
-import { releaseError, validationError } from '../lib/errors.js';
+import { releaseError, validationError } from '../core/errors.js';
 import {
 	COMMIT_TYPES,
 	extractGitHubRepoUrl,
@@ -15,7 +15,7 @@ import {
 	parseConventionalCommit,
 	type ParsedCommit,
 } from '../lib/git.js';
-import { check, debug, info, panic, warn } from '../lib/log.js';
+import { check, debug, info, panic, warn } from '../core/log.js';
 import { formatDuration, waitForNpmRelease } from '../lib/npm-registry.js';
 import { getReleaseBaseUrl, RELEASE_VERSION_ENV, unpinReleaseLinks } from '../lib/release-link.js';
 import { withRetry } from '../lib/retry.js';

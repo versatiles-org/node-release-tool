@@ -5,9 +5,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
 
-vi.mock('../lib/log.js', () => ({ debug: vi.fn(), warn: vi.fn() }));
+vi.mock('../core/log.js', () => ({ debug: vi.fn(), warn: vi.fn() }));
 
-const { warn } = await import('../lib/log.js');
+const { warn } = await import('../core/log.js');
 const { mapBuildOutputToSource, readWorkspacePackages } = await import('./deps-graph-workspace.js');
 
 describe('deps-graph workspaces', () => {

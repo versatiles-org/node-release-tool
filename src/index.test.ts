@@ -43,13 +43,13 @@ vi.mock('./commands/markdown.js', () => ({
 }));
 const { injectMarkdown } = await import('./commands/markdown.js');
 
-vi.mock('./lib/log.js', () => ({
+vi.mock('./core/log.js', () => ({
 	setVerbose: vi.fn(),
 	panic: vi.fn(() => {
 		throw new Error('panic');
 	}),
 }));
-const { panic, setVerbose } = await import('./lib/log.js');
+const { panic, setVerbose } = await import('./core/log.js');
 
 vi.mock(import('fs'), async (importOriginal) => {
 	const fs = await importOriginal();

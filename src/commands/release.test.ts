@@ -4,7 +4,7 @@ import { join } from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WorkflowRun } from '../lib/github.js';
 
-vi.mock('../lib/log.js', () => ({
+vi.mock('../core/log.js', () => ({
 	info: vi.fn(),
 	warn: vi.fn(),
 	debug: vi.fn(),
@@ -113,7 +113,7 @@ const run = (workflowName: string, headSha: string, fields: Partial<WorkflowRun>
 	...fields,
 });
 
-const { info, warn } = await import('../lib/log.js');
+const { info, warn } = await import('../core/log.js');
 const { startRelease } = await import('./release.js');
 
 describe('startRelease', () => {

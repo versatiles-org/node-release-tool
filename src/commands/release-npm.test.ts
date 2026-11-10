@@ -11,7 +11,7 @@ vi.mock('fs', () => ({
 	writeFileSync: vi.fn(),
 }));
 
-vi.mock('../lib/log.js', () => ({
+vi.mock('../core/log.js', () => ({
 	check: vi.fn(),
 	debug: vi.fn(),
 	info: vi.fn(),
@@ -72,7 +72,7 @@ vi.mock('../lib/git.js', async (importOriginal) => {
 
 const select = (await import('@inquirer/select')).default;
 const { readFileSync, writeFileSync } = await import('fs');
-const { check, info, panic, warn } = await import('../lib/log.js');
+const { check, info, panic, warn } = await import('../core/log.js');
 const { getGit } = await import('../lib/git.js');
 const { waitForNpmRelease } = await import('../lib/npm-registry.js');
 const { bumpVersion, release, resolveRequestedVersion } = await import('./release-npm.js');

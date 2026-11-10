@@ -6,7 +6,7 @@ import { delimiter, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import picomatch from 'picomatch';
 import { CONFIG_FILENAME, readConfigSection } from '../lib/config.js';
-import { debug, isVerbose, panic, warn } from '../lib/log.js';
+import { debug, isVerbose, panic, warn } from '../core/log.js';
 import { writeSvgImage } from '../lib/svg-image.js';
 import { type GraphEdge, type GraphModel, renderSvgGraph } from './deps-graph-svg.js';
 import { mapBuildOutputToSource, readWorkspacePackages } from './deps-graph-workspace.js';

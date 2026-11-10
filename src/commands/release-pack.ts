@@ -1,7 +1,7 @@
 import { mkdirSync, readdirSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
-import { releaseError } from '../lib/errors.js';
-import { check, info } from '../lib/log.js';
+import { releaseError } from '../core/errors.js';
+import { check, info } from '../core/log.js';
 import { publishOrder, readManifests } from '../lib/release-plan.js';
 import { RELEASE_VERSION_ENV } from '../lib/release-link.js';
 import { Shell } from '../lib/shell.js';

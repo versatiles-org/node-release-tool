@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
-import { panic } from './log.js';
+import { panic } from '../core/log.js';
 
 /**
  * Name of the vrt configuration file in the project directory.

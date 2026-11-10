@@ -4,13 +4,13 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
-vi.mock('./log.js', () => ({
+vi.mock('../core/log.js', () => ({
 	warn: vi.fn(),
 	debug: vi.fn(),
 	isVerbose: vi.fn(() => false),
 }));
 
-const { warn } = await import('./log.js');
+const { warn } = await import('../core/log.js');
 const { writeSvgImage } = await import('./svg-image.js');
 
 const SVG = '<svg xmlns="http://www.w3.org/2000/svg"/>';

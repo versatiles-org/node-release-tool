@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'fs';
 import { relative, resolve } from 'path';
 import semver from 'semver';
 import { readWorkspaceDirectories } from './workspaces.js';
-import { releaseError, validationError } from './errors.js';
+import { releaseError, validationError } from '../core/errors.js';
 import { getSuggestedBump, type ParsedCommit } from './git.js';
 
 /**

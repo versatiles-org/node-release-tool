@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'fs';
 import { dirname, resolve } from 'path';
 import { gzipSync } from 'zlib';
-import { debug, panic } from '../lib/log.js';
+import { debug, panic } from '../core/log.js';
 import { bytesPerSource, commonDirectoryPrefix, normalizeSource, SourceMap } from '../lib/sourcemap.js';
 import { writeSvgImage } from '../lib/svg-image.js';
 import { renderTreemapSvg, TreemapData, TreemapNode } from './treemap.js';

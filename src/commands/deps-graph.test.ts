@@ -16,7 +16,7 @@ vi.mock('dependency-cruiser/config-utl/extract-ts-config', () => ({
 }));
 
 // 2. Mock the log/panic module
-vi.mock('../lib/log.js', () => ({
+vi.mock('../core/log.js', () => ({
 	panic: vi.fn((message: string) => {
 		throw new Error(message);
 	}),
@@ -33,7 +33,7 @@ vi.mock('./deps-graph-svg.js', () => ({
 // 3. Import the mocked modules and the function under test
 const { cruise, format } = await import('dependency-cruiser');
 const { default: extractTSConfig } = await import('dependency-cruiser/config-utl/extract-ts-config');
-const { debug, isVerbose, panic, warn } = await import('../lib/log.js');
+const { debug, isVerbose, panic, warn } = await import('../core/log.js');
 const { renderSvgGraph } = await import('./deps-graph-svg.js');
 const { generateDependencyGraph, readDepsGraphConfig, readSvelteKitAliases } = await import('./deps-graph.js');
 

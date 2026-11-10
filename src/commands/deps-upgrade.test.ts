@@ -4,7 +4,7 @@ vi.mock('npm-check-updates', () => ({
 	default: vi.fn(),
 }));
 
-vi.mock('../lib/log.js', () => ({
+vi.mock('../core/log.js', () => ({
 	check: vi.fn(),
 	info: vi.fn(),
 	panic: vi.fn(() => {
@@ -45,7 +45,7 @@ vi.mock('../lib/workspaces.js', () => ({
 }));
 
 const ncu = (await import('npm-check-updates')).default;
-const { check, info, panic, warn } = await import('../lib/log.js');
+const { check, info, panic, warn } = await import('../core/log.js');
 const { existsSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } = await import('fs');
 const { Shell } = await import('../lib/shell.js');
 const { readWorkspaceDirectories } = await import('../lib/workspaces.js');

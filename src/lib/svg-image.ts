@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, relative, resolve, sep } from 'path';
 import { extractGitHubRepoUrl } from './git.js';
-import { warn } from './log.js';
+import { warn } from '../core/log.js';
 import { getReleaseBaseUrl, RELEASE_VERSION_ENV } from './release-link.js';
 import { Shell } from './shell.js';
 

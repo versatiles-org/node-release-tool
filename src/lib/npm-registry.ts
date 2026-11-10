@@ -1,4 +1,4 @@
-import { debug } from './log.js';
+import { debug } from '../core/log.js';
 import type { Shell } from './shell.js';
 
 /**

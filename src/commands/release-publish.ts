@@ -1,9 +1,9 @@
 import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 import semver from 'semver';
-import { releaseError } from '../lib/errors.js';
+import { releaseError } from '../core/errors.js';
 import { getGitHubReleaseState } from '../lib/github.js';
-import { check, info } from '../lib/log.js';
+import { check, info } from '../core/log.js';
 import { distTag, isPrerelease } from '../lib/release-plan.js';
 import { Shell } from '../lib/shell.js';
 import { PACKAGES_FILE, type PackedRelease } from './release-pack.js';

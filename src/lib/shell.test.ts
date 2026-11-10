@@ -1,7 +1,7 @@
 import { type ChildProcess, spawn } from 'child_process';
 import { EventEmitter } from 'events';
 import { describe, expect, it, vi } from 'vitest';
-import { ShellError } from './errors.js';
+import { ShellError } from '../core/errors.js';
 import { Shell } from './shell.js';
 
 vi.mock('child_process', async (importOriginal) => {

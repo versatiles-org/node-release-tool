@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
-vi.mock('./log.js', () => ({
+vi.mock('../core/log.js', () => ({
 	panic: vi.fn((message: string) => {
 		throw new Error(message);
 	}),

@@ -1,4 +1,4 @@
-import { panic } from '../lib/log.js';
+import { panic } from '../core/log.js';
 import { writeSvgImage } from '../lib/svg-image.js';
 import { escapeXml, FONT_FAMILY, num, textWidth } from '../lib/svg-text.js';
 

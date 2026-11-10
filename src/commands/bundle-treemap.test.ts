@@ -4,7 +4,7 @@ import { tmpdir } from 'os';
 import { dirname, join } from 'path';
 import { encodeMappings } from '../test/sourcemap-fixture.js';
 
-vi.mock('../lib/log.js', () => ({
+vi.mock('../core/log.js', () => ({
 	panic: vi.fn((message: string) => {
 		throw new Error(message);
 	}),

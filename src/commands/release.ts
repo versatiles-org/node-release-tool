@@ -10,7 +10,7 @@ import {
 	listPushRuns,
 	type WorkflowRun,
 } from '../lib/github.js';
-import { info, panic, warn } from '../lib/log.js';
+import { info, panic, warn } from '../core/log.js';
 import { formatDuration, waitForNpmRelease } from '../lib/npm-registry.js';
 import {
 	isPrerelease,

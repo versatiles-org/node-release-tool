@@ -1,8 +1,8 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, resolve } from 'path';
 import semver from 'semver';
-import { releaseError } from '../lib/errors.js';
-import { info } from '../lib/log.js';
+import { releaseError } from '../core/errors.js';
+import { info } from '../core/log.js';
 import { changelogSection, distTag, isPrerelease, readManifests } from '../lib/release-plan.js';
 
 /**

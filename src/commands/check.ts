@@ -1,7 +1,7 @@
 import { JSONSchemaForNPMPackageJsonFiles as Package } from '@schemastore/package';
 import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
-import { info, panic, warn } from '../lib/log.js';
+import { info, panic, warn } from '../core/log.js';
 
 /**
  * Runs all project checks including package.json and workflow validation.

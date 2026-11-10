@@ -1,7 +1,7 @@
 import { type ChildProcess, spawn } from 'child_process';
 import { existsSync } from 'fs';
-import { ShellError } from './errors.js';
-import { debug, isVerbose } from './log.js';
+import { ShellError } from '../core/errors.js';
+import { debug, isVerbose } from '../core/log.js';
 
 /**
  * Result of a shell command execution.

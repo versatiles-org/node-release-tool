@@ -2,7 +2,7 @@ import type { ICruiseResult } from 'dependency-cruiser';
 import type extractTSConfig from 'dependency-cruiser/config-utl/extract-ts-config';
 import { existsSync } from 'node:fs';
 import { posix, relative, resolve } from 'node:path';
-import { debug, warn } from '../lib/log.js';
+import { debug, warn } from '../core/log.js';
 import { readPackageJson, readWorkspaceDirectories } from '../lib/workspaces.js';
 
 /**

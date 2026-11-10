@@ -3,7 +3,7 @@ import type { Info, State } from 'mdast-util-to-markdown';
 import { remark } from 'remark';
 import remarkGfm from 'remark-gfm';
 import remarkStringify from 'remark-stringify';
-import { markdownError, notImplementedError } from '../lib/errors.js';
+import { markdownError, notImplementedError } from '../core/errors.js';
 import { getErrorMessage } from '../lib/utils.js';
 
 // Custom blockquote handler that preserves GitHub alert syntax

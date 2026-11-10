@@ -3,7 +3,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../lib/log.js', () => ({ info: vi.fn() }));
+vi.mock('../core/log.js', () => ({ info: vi.fn() }));
 
 const { getToolVersion, releaseCheck } = await import('./release-check.js');
 

@@ -12,14 +12,14 @@ import { startRelease } from './commands/release.js';
 import { releaseCheck } from './commands/release-check.js';
 import { releasePack } from './commands/release-pack.js';
 import { releasePublish } from './commands/release-publish.js';
-import { formatError } from './lib/errors.js';
+import { formatError } from './core/errors.js';
 import { upgradeDependencies } from './commands/deps-upgrade.js';
 import { generateDependencyGraph } from './commands/deps-graph.js';
 import { check } from './commands/check.js';
 import { generateTypescriptDocs } from './commands/doc-typescript.js';
 import { generateTreemap } from './commands/treemap.js';
 import { generateBundleTreemap } from './commands/bundle-treemap.js';
-import { panic, setVerbose } from './lib/log.js';
+import { panic, setVerbose } from './core/log.js';
 
 /**
  * Main CLI program, configured with custom text styling for titles, commands, options, etc.

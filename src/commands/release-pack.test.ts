@@ -3,7 +3,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../lib/log.js', () => ({
+vi.mock('../core/log.js', () => ({
 	check: vi.fn(async (_message: string, promise: Promise<unknown>) => promise),
 	info: vi.fn(),
 }));

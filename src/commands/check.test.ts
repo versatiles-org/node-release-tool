@@ -6,7 +6,7 @@ vi.mock('fs', () => ({
 	existsSync: vi.fn(() => true),
 }));
 
-vi.mock('../lib/log.js', () => ({
+vi.mock('../core/log.js', () => ({
 	panic: vi.fn((message: string) => {
 		throw new Error(message);
 	}),
@@ -16,7 +16,7 @@ vi.mock('../lib/log.js', () => ({
 
 // 2. Import the mocked modules and the function under test
 const { readFileSync } = await import('fs');
-const log = await import('../lib/log.js');
+const log = await import('../core/log.js');
 const { check } = await import('./check.js');
 
 describe('check', () => {
