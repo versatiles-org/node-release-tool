@@ -31,8 +31,14 @@
   "author": "Michael Kreil <versatiles@michael-kreil.de>",
   "license": "Unlicense",
   "funding": [
-    { "type": "github", "url": "https://github.com/sponsors/versatiles-org" },
-    { "type": "opencollective", "url": "https://opencollective.com/versatiles" }
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/versatiles-org"
+    },
+    {
+      "type": "opencollective",
+      "url": "https://opencollective.com/versatiles"
+    }
   ],
   "type": "module",
   "engines": {
@@ -43,6 +49,9 @@
     "url": "git+https://github.com/versatiles-org/node-release-tool.git"
   },
   "homepage": "https://github.com/versatiles-org/node-release-tool",
+  "overrides": {
+    "minimatch": "^11.0.5"
+  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@schemastore/package": "^1.0.5",
