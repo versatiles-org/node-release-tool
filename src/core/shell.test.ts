@@ -163,20 +163,20 @@ describe('Shell', () => {
 		});
 
 		it('inherits the current environment by default', async () => {
-			const result = await shell.exec('sh', ['-c', 'echo "$PATH"']);
+			const result = await shell.exec('node', ['-e', 'console.log(process.env.PATH)']);
 			expect(result.stdout.trim()).toBe(process.env.PATH);
 		});
 
 		it('adds the environment given to the constructor', async () => {
 			const custom = new Shell(cwd, { VRT_TEST_VALUE: 'from-the-constructor' });
-			const result = await custom.exec('sh', ['-c', 'echo "$VRT_TEST_VALUE"']);
+			const result = await custom.exec('node', ['-e', 'console.log(process.env.VRT_TEST_VALUE)']);
 			expect(result.stdout.trim()).toBe('from-the-constructor');
 		});
 
 		it('merges the given environment into the current one', async () => {
 			// a replaced environment would drop PATH and the command could not even be started
 			const custom = new Shell(cwd, { VRT_TEST_VALUE: 'x' });
-			const result = await custom.exec('sh', ['-c', 'echo "$PATH"']);
+			const result = await custom.exec('node', ['-e', 'console.log(process.env.PATH)']);
 			expect(result.stdout.trim()).toBe(process.env.PATH);
 		});
 
@@ -184,7 +184,10 @@ describe('Shell', () => {
 			process.env.VRT_TEST_REMOVE_ME = 'present';
 			try {
 				const custom = new Shell(cwd, { VRT_TEST_REMOVE_ME: undefined });
-				const result = await custom.exec('sh', ['-c', 'echo "[$VRT_TEST_REMOVE_ME]"']);
+				const result = await custom.exec('node', [
+					'-e',
+					'console.log(`[${process.env.VRT_TEST_REMOVE_ME ?? ""}]`)',
+				]);
 				expect(result.stdout.trim()).toBe('[]');
 			} finally {
 				delete process.env.VRT_TEST_REMOVE_ME;
@@ -194,10 +197,10 @@ describe('Shell', () => {
 		it('throws on non-zero exit code', async () => {
 			const mockError = vi.spyOn(console, 'error');
 			mockError.mockImplementationOnce(() => {});
-			await expect(shell.exec('sh', ['-c', 'exit 1'])).rejects.toMatchObject({
+			await expect(shell.exec('node', ['-e', 'process.exit(1)'])).rejects.toMatchObject({
 				exitCode: 1,
-				command: 'sh -c exit 1',
-				message: 'Command failed with exit code 1: sh -c exit 1',
+				command: 'node -e process.exit(1)',
+				message: 'Command failed with exit code 1: node -e process.exit(1)',
 			});
 			mockError.mockRestore();
 		});
@@ -222,7 +225,7 @@ describe('Shell', () => {
 
 			it('survives a process that exits without reading its input', async () => {
 				// more than a pipe buffer holds, so the write fails with EPIPE instead of vanishing
-				const result = await shell.exec('sh', ['-c', 'exit 3'], false, false, 'x'.repeat(1_000_000));
+				const result = await shell.exec('node', ['-e', 'process.exit(3)'], false, false, 'x'.repeat(1_000_000));
 				expect(result.code).toBe(3);
 			});
 		});
