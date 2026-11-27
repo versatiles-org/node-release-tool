@@ -37,11 +37,13 @@ describe('Git module tests', () => {
 	});
 });
 
-function checkCommit(commit: { tag?: string; sha: string; message: string }): void {
+function checkCommit(commit: Commit): void {
 	expect(commit).toBeDefined();
 	expect(commit).toHaveProperty('tag');
 	expect(commit.sha).toMatch(/^[a-f0-9]{40}$/);
 	expect(typeof commit.message).toBe('string');
+	expect(commit.message).not.toContain('\n');
+	expect(typeof commit.body).toBe('string');
 }
 
 describe('parseConventionalCommit', () => {
@@ -89,6 +91,25 @@ describe('parseConventionalCommit', () => {
 		const parsed = parseConventionalCommit(commit);
 
 		expect(parsed.breaking).toBe(true);
+	});
+
+	it.each([
+		['feat: add x', 'BREAKING CHANGE: removed y'],
+		['fix: handle y', 'BREAKING-CHANGE: config z renamed'],
+		['fix: handle y', 'Some explanation.\n\nRefs: #12\nBREAKING CHANGE #13'],
+		['Update dependencies', 'BREAKING CHANGE: node 18 is no longer supported'],
+	])('detects a breaking footer in the body of "%s"', (message, body) => {
+		const parsed = parseConventionalCommit({ ...baseCommit, message, body });
+		expect(parsed.breaking).toBe(true);
+	});
+
+	it.each([
+		'This is not a BREAKING CHANGE: it only mentions one.',
+		'breaking change: lower case is no footer token',
+		'BREAKING CHANGES: wrong token',
+	])('ignores a body without a breaking footer: "%s"', (body) => {
+		const parsed = parseConventionalCommit({ ...baseCommit, message: 'feat: add x', body });
+		expect(parsed.breaking).toBe(false);
 	});
 
 	it('handles non-conventional commits', () => {

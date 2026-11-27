@@ -8,6 +8,8 @@ export interface Commit {
 	sha: string;
 	/** The commit message (first line / subject). */
 	message: string;
+	/** The commit body: everything after the subject, including the footers. */
+	body?: string;
 	/** The tag associated with this commit, if any. */
 	tag?: string;
 }
@@ -54,6 +56,7 @@ export interface ParsedCommit extends Commit {
  */
 export function parseConventionalCommit(commit: Commit): ParsedCommit {
 	const message = commit.message.trim();
+	const breakingFooter = hasBreakingFooter(commit.body);
 
 	// Pattern: type(scope)!: description OR type!: description OR type(scope): description OR type: description
 	// Note: No space allowed before colon per Conventional Commits spec
@@ -65,7 +68,7 @@ export function parseConventionalCommit(commit: Commit): ParsedCommit {
 		return {
 			...commit,
 			description: message,
-			breaking: message.toUpperCase().includes('BREAKING CHANGE'),
+			breaking: breakingFooter || message.toUpperCase().includes('BREAKING CHANGE'),
 		};
 	}
 
@@ -78,8 +81,16 @@ export function parseConventionalCommit(commit: Commit): ParsedCommit {
 		type: isKnownType ? type : undefined,
 		scope: scope || undefined,
 		description: description.trim(),
-		breaking: breakingMark === '!' || message.toUpperCase().includes('BREAKING CHANGE'),
+		breaking: breakingMark === '!' || breakingFooter || message.toUpperCase().includes('BREAKING CHANGE'),
 	};
+}
+
+/**
+ * Checks a commit body for a `BREAKING CHANGE` or `BREAKING-CHANGE` footer.
+ * The spec requires the token in upper case, followed by `: ` or ` #`.
+ */
+function hasBreakingFooter(body: string | undefined): boolean {
+	return body !== undefined && /^BREAKING[ -]CHANGE(?::| #)/m.test(body);
 }
 
 /**
@@ -218,20 +229,24 @@ export function getGit(cwd: string): Git {
 
 	/**
 	 * Retrieves all commits from the repository's history.
-	 * Parses the git log output to extract SHA, message, and tag information.
+	 * Parses the git log output to extract SHA, message, body, and tag information.
+	 * Fields are separated by the ASCII unit separator and commits by the record separator,
+	 * because commit bodies are free text and these control characters don't occur in them.
 	 */
 	async function getAllCommits(): Promise<Commit[]> {
-		const result: string = await shell.stdout("git log --pretty=format:'⍃%H⍄%s⍄%D⍄'");
+		const result: string = await shell.stdout("git log --pretty=format:'%H%x1f%s%x1f%D%x1f%b%x1e'");
 
 		return result
-			.split('⍃')
-			.filter((line) => line.length > 2)
-			.map((line) => {
-				const obj: string[] = line.split('⍄');
+			.split('\x1e')
+			.map((entry) => entry.trim())
+			.filter((entry) => entry !== '')
+			.map((entry) => {
+				const [sha, message, refs, body] = entry.split('\x1f');
 				return {
-					sha: obj[0],
-					message: obj[1],
-					tag: /tag: ([a-z0-9.]+)/.exec(obj[2])?.[1],
+					sha,
+					message,
+					body: body.trim(),
+					tag: /tag: ([a-z0-9.]+)/.exec(refs)?.[1],
 				};
 			});
 	}

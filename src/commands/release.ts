@@ -235,14 +235,14 @@ export async function startRelease(directory: string, options: StartReleaseOptio
 	}
 
 	async function getCommits(since: string | undefined): Promise<ParsedCommit[]> {
-		const log = await git('log', '--format=%H%x1f%s%x1e', since ? `${since}..HEAD` : 'HEAD');
+		const log = await git('log', '--format=%H%x1f%s%x1f%b%x1e', since ? `${since}..HEAD` : 'HEAD');
 		return log
 			.split('\x1e')
 			.map((entry) => entry.trim())
 			.filter((entry) => entry !== '')
 			.map((entry) => {
-				const [commitSha, message] = entry.split('\x1f');
-				return parseConventionalCommit({ sha: commitSha, message });
+				const [commitSha, message, body] = entry.split('\x1f');
+				return parseConventionalCommit({ sha: commitSha, message, body });
 			});
 	}
 

@@ -31,7 +31,7 @@ interface FakeState {
 	revCount: string;
 	tags: Map<string, string>;
 	lastTag?: string;
-	/** Subjects of the commits since the last tag, newest first */
+	/** Messages of the commits since the last tag, newest first: the subject, optionally followed by a blank line and the body */
 	commits: string[];
 	/** `git log --format=%h %s <tag>..HEAD` */
 	fixes: string;
@@ -74,7 +74,11 @@ function answerGit(args: string[]): Answer {
 	if (line.startsWith('describe'))
 		return state.lastTag ? { stdout: state.lastTag } : { code: 128, stderr: 'No names found' };
 	if (line.startsWith('log --format=%H')) {
-		return { stdout: state.commits.map((subject, i) => `${String(i).repeat(40)}\x1f${subject}\x1e`).join('\n') };
+		const entries = state.commits.map((message, i) => {
+			const [subject, ...body] = message.split('\n\n');
+			return `${String(i).repeat(40)}\x1f${subject}\x1f${body.join('\n\n')}\x1e`;
+		});
+		return { stdout: entries.join('\n') };
 	}
 	if (line.startsWith('log --format=%h')) return { stdout: state.fixes };
 	if (line.startsWith('tag --list')) return { stdout: state.tags.has(args[2]) ? args[2] : '' };
@@ -200,6 +204,16 @@ describe('startRelease', () => {
 		expect(successes()).toContain('@x/pkg@1.1.0 is on npm');
 		expect(successes()).toContain('released v1.1.0: https://github.com/o/r/releases/tag/v1.1.0');
 		expect(markdown).toHaveBeenCalledWith(expect.stringContaining('### Features\n\n- add a thing'), '1.0.0 → 1.1.0');
+	});
+
+	it('recommends a major release for a BREAKING CHANGE footer', async () => {
+		state.commits = ['feat: add x\n\nBREAKING CHANGE: removed y', 'fix: handle z'];
+		await startRelease(directory, { dryRun: true, sleep, now, date });
+		expect(messages()).toContain('recommended version: 2.0.0 (a major release)');
+		expect(markdown).toHaveBeenCalledWith(
+			expect.stringContaining('### Breaking Changes\n\n- add x'),
+			'1.0.0 → 2.0.0',
+		);
 	});
 
 	it('asks for the version and the confirmation', async () => {
