@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.23.1] - 2026-11-27
+
+### Breaking Changes
+
+- detect BREAKING CHANGE footers in commit bodies, closes #64 ([29aaf41](https://github.com/versatiles-org/node-release-tool/commit/29aaf4100fed37dc0e1b7b9f8a2f1b5c485037e6))
+
+### Bug Fixes
+
+- escape all regex metacharacters in changelog lookup and separate shell spawn sites ([7b09251](https://github.com/versatiles-org/node-release-tool/commit/7b0925125bb662c813416ff258780d328b302e41))
+
+### Tests
+
+- **shell:** run node instead of sh in exec tests ([c8f3958](https://github.com/versatiles-org/node-release-tool/commit/c8f395893e81600877f7641c56d6b29ddef3a085))
+
+### Chores
+
+- update dependencies to latest versions ([996bded](https://github.com/versatiles-org/node-release-tool/commit/996bded298328a5411d8f8029732486e9d34097e))
+- update dependencies to latest versions ([7d96410](https://github.com/versatiles-org/node-release-tool/commit/7d96410b03495ca1b78eac68b6d9ead77f17571d))
+- update dependencies to latest versions ([a1073d7](https://github.com/versatiles-org/node-release-tool/commit/a1073d79b56534462b8c8a4ac5235a57b4c8854f))
+
 ## [2.23.0] - 2026-11-10
 
 ### Features
