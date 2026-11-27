@@ -1,4 +1,9 @@
-import { type ChildProcess, spawn } from 'child_process';
+import {
+	type ChildProcess,
+	type ChildProcessWithoutNullStreams,
+	spawn,
+	type SpawnOptionsWithoutStdio,
+} from 'child_process';
 import { existsSync } from 'fs';
 import { ShellError } from './errors.js';
 import { debug, isVerbose } from './log.js';
@@ -116,7 +121,7 @@ export class Shell {
 	 */
 	async run(command: string, errorOnCodeNonZero: boolean = true): Promise<ShellResult> {
 		debug(`$ ${command}`);
-		return this.spawnProcess('bash', ['-c', command], errorOnCodeNonZero, command);
+		return this.spawnProcess((options) => spawn('bash', ['-c', command], options), command, errorOnCodeNonZero);
 	}
 
 	/**
@@ -144,7 +149,12 @@ export class Shell {
 		if (!skipLog) {
 			debug(`$ ${command} ${args.join(' ')}`);
 		}
-		return this.spawnProcess(command, args, errorOnCodeNonZero, undefined, stdin);
+		return this.spawnProcess(
+			(options) => spawn(command, args, options),
+			[command, ...args].join(' '),
+			errorOnCodeNonZero,
+			stdin,
+		);
 	}
 
 	/**
@@ -169,28 +179,28 @@ export class Shell {
 	/**
 	 * Spawns a process, captures its output and rejects with a {@link ShellError} on failure.
 	 *
-	 * @param command - The command executable to run.
-	 * @param args - Array of arguments to pass to the command.
+	 * The caller does the actual `spawn`, so that the `bash -c` call of {@link Shell.run} and the
+	 * direct call of {@link Shell.exec} stay separate and arguments of one never reach the other.
+	 *
+	 * @param start - Spawns the process with the given options.
+	 * @param commandLine - Command description used in error messages.
 	 * @param errorOnCodeNonZero - If true, rejects the promise on non-zero exit code.
-	 * @param label - Command description used in error messages. Defaults to command and args.
 	 * @param stdin - Input to write to the process, which then sees end-of-file.
 	 * @returns A promise resolving to the command result with exit code, signal, stdout, and stderr.
 	 */
 	private async spawnProcess(
-		command: string,
-		args: string[],
+		start: (options: SpawnOptionsWithoutStdio) => ChildProcessWithoutNullStreams,
+		commandLine: string,
 		errorOnCodeNonZero: boolean,
-		label?: string,
 		stdin?: string,
 	): Promise<ShellResult> {
-		const commandLine = label ?? [command, ...args].join(' ');
 		this.assertCwdExists(commandLine);
 		return await new Promise((resolve, reject) => {
 			const stdout: Buffer[] = [];
 			const stderr: Buffer[] = [];
 			// merged, so that overriding a single variable does not strip PATH from the subprocess
 			const env = this.env ? { ...process.env, ...this.env } : undefined;
-			const cp = spawn(command, args, { cwd: this.cwd, env })
+			const cp = start({ cwd: this.cwd, env })
 				.on('error', (error) =>
 					reject(
 						new ShellError({

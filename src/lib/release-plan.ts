@@ -173,7 +173,7 @@ export function setManifestVersion(content: string, version: string): string {
  */
 export function changelogSection(changelog: string, version: string): string {
 	const lines = changelog.split('\n');
-	const heading = new RegExp(`^## \\[?v?${version.replace(/[.+]/g, '\\$&')}\\]?(\\s|$)`);
+	const heading = new RegExp(`^## \\[?v?${version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]?(\\s|$)`);
 	const start = lines.findIndex((line) => heading.test(line));
 	if (start < 0) throw releaseError(`CHANGELOG.md has no section for ${version}`);
 	const next = lines.findIndex((line, index) => index > start && line.startsWith('## '));
